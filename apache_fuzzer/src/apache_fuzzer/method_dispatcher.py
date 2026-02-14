@@ -73,7 +73,7 @@ class MethodDispatcher:
         if not httpd_root:
             return
 
-        self.config_manager = ConfigManager(build_mode=args.mode)
+        self.config_manager = ConfigManager(build_mode=args.mode, asan=getattr(args, 'asan', False))
         self.build_manager = BuildManager(httpd_root, self.config_manager)
         self.build_manager.configure_httpd()
 
@@ -137,15 +137,21 @@ class MethodDispatcher:
         
         self.report_manager = ReportManager(httpd_root, self.config_manager)
         
-        # We need the harness binary. Usually .libs/fuzz_harness_<engine>
-        # Triage usually uses ASan harness: fuzz_harness_asan
-        harness_path = Config.WORK_DIR / ".libs" / "fuzz_harness_asan"
-        if not harness_path.exists():
-             # Fallback to current dir or check if it exists
-             harness_path = Config.WORK_DIR / "fuzz_harness_asan"
-             
-        if not harness_path.exists():
-            logger.error("ASan harness not found. Run 'fuzzer build asan' first.")
+        # Find a harness binary for triage. Prefer standalone (reads from
+        # stdin) over AFL (expects shared memory forkserver protocol).
+        harness_path = None
+        for name in ("fuzz_harness_standalone", "fuzz_harness_afl"):
+            candidate = Config.WORK_DIR / ".libs" / name
+            if candidate.exists():
+                harness_path = candidate
+                break
+            candidate = Config.WORK_DIR / name
+            if candidate.exists():
+                harness_path = candidate
+                break
+
+        if not harness_path:
+            logger.error("No harness binary found. Run 'fuzzer build standalone' or 'fuzzer build afl' first.")
             return
 
         # We need to tell the config manager which config to use if it's not default?

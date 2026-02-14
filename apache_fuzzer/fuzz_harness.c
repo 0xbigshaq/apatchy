@@ -66,10 +66,24 @@ void __asan_set_death_callback(void (*callback)(void));
 /* Saved stderr fd for restoration after Apache redirects it to /dev/null */
 static int asan_saved_stderr_fd = -1;
 
+/* Saved signal handlers (ASan installs its own at startup; Apache overrides them) */
+static struct sigaction asan_saved_sa_segv;
+static struct sigaction asan_saved_sa_bus;
+static struct sigaction asan_saved_sa_abrt;
+static struct sigaction asan_saved_sa_fpe;
+static struct sigaction asan_saved_sa_ill;
+
 static void asan_save_stderr(void)
 {
     /* Save stderr fd before Apache initialization redirects it to /dev/null */
     asan_saved_stderr_fd = dup(STDERR_FILENO);
+
+    /* Save ASan's signal handlers before Apache overrides them */
+    sigaction(SIGSEGV, NULL, &asan_saved_sa_segv);
+    sigaction(SIGBUS, NULL, &asan_saved_sa_bus);
+    sigaction(SIGABRT, NULL, &asan_saved_sa_abrt);
+    sigaction(SIGFPE, NULL, &asan_saved_sa_fpe);
+    sigaction(SIGILL, NULL, &asan_saved_sa_ill);
 }
 
 static void asan_restore_stderr_and_signals(void)
@@ -85,14 +99,15 @@ static void asan_restore_stderr_and_signals(void)
     }
 
     /*
-     * Reset signal handlers to default so ASan can catch them.
-     * Apache's mpm_unix.c installs sig_coredump handlers that override ASan's.
+     * Restore ASan's signal handlers that Apache's mpm_unix.c overrode
+     * with sig_coredump handlers. This ensures ASan can catch crashes
+     * and print detailed reports.
      */
-    signal(SIGSEGV, SIG_DFL);
-    signal(SIGBUS, SIG_DFL);
-    signal(SIGABRT, SIG_DFL);
-    signal(SIGFPE, SIG_DFL);
-    signal(SIGILL, SIG_DFL);
+    sigaction(SIGSEGV, &asan_saved_sa_segv, NULL);
+    sigaction(SIGBUS, &asan_saved_sa_bus, NULL);
+    sigaction(SIGABRT, &asan_saved_sa_abrt, NULL);
+    sigaction(SIGFPE, &asan_saved_sa_fpe, NULL);
+    sigaction(SIGILL, &asan_saved_sa_ill, NULL);
 }
 #endif
 

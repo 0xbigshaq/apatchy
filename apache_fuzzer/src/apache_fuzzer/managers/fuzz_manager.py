@@ -152,15 +152,23 @@ class FuzzManager:
             self.logger.info(f"Using custom mutator: {mutator_path}")
 
         # Set LD_LIBRARY_PATH for APR/APR-Util shared libraries
-        httpd_dirs = [d for d in self.work_dir.glob("httpd-*") if not d.name.endswith("-cov")]
+        httpd_dirs = [d for d in self.work_dir.glob("httpd-*") if not d.name.endswith(("-cov", "-standalone"))]
         if httpd_dirs:
             srclib = httpd_dirs[0] / "srclib"
+            crypto_libs = srclib / "apr-util" / "crypto" / ".libs"
             lib_paths = [
                 str(srclib / "apr" / ".libs"),
                 str(srclib / "apr-util" / ".libs"),
+                str(crypto_libs),
             ]
             existing = env.get("LD_LIBRARY_PATH", "")
             env["LD_LIBRARY_PATH"] = ":".join(lib_paths + ([existing] if existing else []))
+
+            # Preload the APR crypto DSO so AFL++ sees its instrumentation
+            # before the forkserver starts (avoids "instrumented dlopen()" error).
+            crypto_so = crypto_libs / "apr_crypto_openssl-1.so"
+            if crypto_so.exists():
+                env["AFL_PRELOAD"] = str(crypto_so)
         cmd = [
             "afl-fuzz",
             "-i", str(input_dir),

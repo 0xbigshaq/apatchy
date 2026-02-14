@@ -74,7 +74,8 @@ def main():
 
     # Configure
     configure_parser = _sub(subparsers, "configure", help="Configure Apache for fuzzing")
-    configure_parser.add_argument("--mode", choices=["fuzz", "coverage", "asan"], default="fuzz", help="Build mode")
+    configure_parser.add_argument("--mode", choices=["fuzz", "coverage"], default="fuzz", help="Build mode (compiler selection)")
+    configure_parser.add_argument("--asan", action="store_true", help="Enable AddressSanitizer (can combine with any mode)")
 
     # Compile
     compile_parser = _sub(subparsers, "compile", help="Compile Apache")

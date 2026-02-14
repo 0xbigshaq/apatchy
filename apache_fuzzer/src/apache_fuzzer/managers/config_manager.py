@@ -5,16 +5,18 @@ from apache_fuzzer.utils.logger import get_logger
 logger = get_logger(__name__)
 
 class ConfigManager:
-    def __init__(self, build_mode: str = "fuzz", engine: str = "afl", config_name: str = "fuzz.conf") -> None:
+    def __init__(self, build_mode: str = "fuzz", engine: str = "afl", config_name: str = "fuzz.conf", asan: bool = False) -> None:
         self.build_mode = build_mode
         self.engine = engine
         self.config_name = config_name
+        self.asan = asan
         self.logger = logger
         self.httpd_config_path: Optional[Path] = None
 
     def generate_build_config(self) -> Dict[str, str]:
         """
         Generates CFLAGS and LDFLAGS based on the build mode.
+        ASan is an independent flag that can be combined with any mode.
         """
         cflags = ["-g", "-O0", "-fno-omit-frame-pointer"]
         ldflags = []
@@ -27,11 +29,6 @@ class ConfigManager:
             # Apache's upstream code triggers under -Werror (maintainer-mode).
             cflags.append("-Wno-error=format")
 
-        elif self.build_mode == "asan":
-            self.logger.info("Enabling AddressSanitizer")
-            cflags.append("-fsanitize=address")
-            ldflags.append("-fsanitize=address")
-
         elif self.build_mode == "coverage":
             self.logger.info("Enabling Coverage Instrumentation")
             cflags.append("-fprofile-instr-generate")
@@ -41,6 +38,13 @@ class ConfigManager:
             # instrumentation (non-PIC). Disable PIE to avoid
             # R_X86_64_32S relocation errors at link time.
             ldflags.append("-no-pie")
+
+        # ASan is orthogonal to the build mode - it can be combined with
+        # any compiler (fuzz, coverage, or default).
+        if self.asan:
+            self.logger.info("Enabling AddressSanitizer")
+            cflags.append("-fsanitize=address")
+            ldflags.append("-fsanitize=address")
 
         result = {
             "CFLAGS": " ".join(cflags),

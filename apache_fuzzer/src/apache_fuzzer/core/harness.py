@@ -86,6 +86,17 @@ class HarnessBuilder:
 
         self.logger.info(f"Using compiler: {cc}")
 
+        # Propagate sanitizer flags from Apache's config_vars.mk so the
+        # harness objects are compiled with the same sanitizer as Apache.
+        config_vars = self._parse_config_vars()
+        for key in ("CFLAGS", "LDFLAGS"):
+            for token in config_vars.get(key, "").split():
+                if token.startswith("-fsanitize="):
+                    if token not in cflags:
+                        cflags = f"{cflags} {token}"
+                    if token not in ldflags:
+                        ldflags = f"{ldflags} {token}"
+
         # Add mode-specific defines so the harness compiles the right entry point
         if mode == "afl":
             cflags = f"-DAFL_FUZZ {cflags}"
@@ -120,16 +131,23 @@ class HarnessBuilder:
         if modules_src.exists():
             self._compile_object(str(modules_src), "modules.lo", cflags, cc, bear=bear)
 
-        # For fuzzer modes, the harness provides its own main() which conflicts
-        # with Apache's main() in libmain.a. Use -z muldefs to allow both;
+        # All harness modes provide their own main() which conflicts with
+        # Apache's main() in libmain.a. Use -z muldefs to allow both;
         # our object file main() wins over the archive's.
-        allow_muldefs = mode in ("afl", "libfuzzer")
+        allow_muldefs = mode in ("afl", "libfuzzer", "standalone")
 
-        # Coverage and standalone modes rebuild Apache without AFL
+        # Coverage mode uses a separate Apache tree without AFL
         # instrumentation, so afl-compiler-rt.o is unnecessary and harmful
         # (it hooks dlopen and aborts when OpenSSL is loaded by
-        # mod_session_crypto).
-        skip_afl_rt = mode in ("coverage", "standalone")
+        # mod_session_crypto).  Standalone links against the existing
+        # (possibly AFL-instrumented) tree and needs the runtime.
+        skip_afl_rt = mode == "coverage"
+
+        # When linking non-AFL compilers against AFL-instrumented Apache
+        # objects (SanCov uses non-PIC R_X86_64_32S relocations), disable
+        # PIE to avoid relocation errors.
+        if mode == "standalone" and cc != "afl-clang-fast":
+            ldflags = f"{ldflags} -no-pie"
 
         # Link everything
         objects = ["fuzz_harness.lo", "buildmark.lo", "modules.lo"]
@@ -251,15 +269,6 @@ class HarnessBuilder:
         config_vars = self._parse_config_vars()
         system_libs = self._get_system_libs(config_vars)
 
-        # Propagate sanitizer flags from Apache's build config.
-        # When Apache was compiled with -fsanitize=address, all its .o files
-        # contain ASan-instrumented code requiring the ASan runtime at link time.
-        sanitizer_flags = []
-        for key in ("CFLAGS", "LDFLAGS"):
-            for token in config_vars.get(key, "").split():
-                if token.startswith("-fsanitize=") and token not in sanitizer_flags:
-                    sanitizer_flags.append(token)
-
         muldefs_flags = []
         if allow_muldefs:
             # Our harness provides main() which conflicts with Apache's main()
@@ -288,7 +297,6 @@ class HarnessBuilder:
         cmd = [
             str(self.libtool), "--mode=link", cc,
             *muldefs_flags,
-            *sanitizer_flags,
             *cflags.split(), *ldflags.split(),
             "-o", output,
             *objects,

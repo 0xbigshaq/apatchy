@@ -137,18 +137,13 @@ class BuildManager:
         cflags = config["CFLAGS"]
         ldflags = config["LDFLAGS"]
 
-        # Standalone mode needs Apache compiled with plain clang (no AFL
-        # instrumentation) to avoid runtime conflicts.  Build a separate
-        # tree if the main one was compiled with afl-clang-fast.
+        # Standalone harness is compiled with plain clang (no AFL defines)
+        # but links against the existing Apache build tree. This avoids
+        # the expensive separate tree rebuild while still producing a
+        # binary that reads from stdin (for crash triage).
         if mode == "standalone":
-            tree = AlternateBuildTree(self.httpd_root, "-standalone")
-            standalone_root = tree.ensure_build(
-                cc="clang",
-                cflags="-g -O0 -fno-omit-frame-pointer -Wno-error=format",
-                ldflags="",
-            )
-            harness_builder = HarnessBuilder(standalone_root)
+            self.harness_builder.build(mode=mode, cflags=cflags, ldflags=ldflags,
+                                      harness_name=harness_name, cc="clang", bear=bear)
         else:
-            harness_builder = self.harness_builder
-
-        harness_builder.build(mode=mode, cflags=cflags, ldflags=ldflags, harness_name=harness_name, bear=bear)
+            self.harness_builder.build(mode=mode, cflags=cflags, ldflags=ldflags,
+                                      harness_name=harness_name, bear=bear)

@@ -414,18 +414,42 @@ class ReportManager:
         env = os.environ.copy()
         env["FUZZ_CONF"] = str(config_path)
         env["FUZZ_ROOT"] = str(self.work_dir)
+        env["LD_LIBRARY_PATH"] = self._get_ld_library_path()
 
-        # Using ASan binary to replay crash
-        cmd = [str(harness_binary)]
+        # Preload the APR crypto DSO so AFL-instrumented harnesses don't
+        # abort when mod_session_crypto dlopen()s it after forkserver init.
+        crypto_so = self.httpd_root / "srclib" / "apr-util" / "crypto" / ".libs" / "apr_crypto_openssl-1.so"
+        if crypto_so.exists():
+            existing = env.get("LD_PRELOAD", "")
+            env["LD_PRELOAD"] = f"{crypto_so}:{existing}" if existing else str(crypto_so)
+
+        # Build command with both env vars (AFL entry point) and
+        # command-line args (standalone entry point) for config/root.
+        cmd = [
+            str(harness_binary),
+            "-f", str(config_path),
+            "-d", str(self.work_dir),
+        ]
 
         try:
-            with open(crash_file, "rb") as f:
-                # Run harness with crash input
-                result = self.runner.run_command(cmd, env=env, stdin=f, capture_output=True)
+            crash_data = Path(crash_file).read_bytes()
+            # Run harness with crash input piped to stdin.
+            # We use subprocess directly because ProcessRunner doesn't
+            # support binary stdin.
+            result = subprocess.run(
+                cmd, env=env, input=crash_data,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                timeout=30,
+            )
 
-            # Log the output (ASan usually prints to stderr)
             self.logger.info("Crash Output (Stderr):")
-            print(result.stderr)
+            print(result.stderr.decode("utf-8", errors="replace"))
 
+            if result.stdout:
+                self.logger.info("Stdout:")
+                print(result.stdout.decode("utf-8", errors="replace"))
+
+        except subprocess.TimeoutExpired:
+            self.logger.error("Triage timed out (30s)")
         except Exception as e:
             self.logger.error(f"Failed to triage crash: {e}")
