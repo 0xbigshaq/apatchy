@@ -236,7 +236,7 @@ class ReportManager:
 
     def _replay_corpus(
         self, harness: Path, queue_dir: Path, prof_dir: Path, config_path: Path,
-        httpd_root: Optional[Path] = None,
+        httpd_root: Optional[Path] = None, prof_offset: int = 0,
     ) -> int:
         """Replay AFL queue through coverage harness, producing .profraw files."""
         env = os.environ.copy()
@@ -269,7 +269,7 @@ class ReportManager:
 
         count = 0
         for i, tc in enumerate(test_cases):
-            prof_file = prof_dir / f"prof-{i}.profraw"
+            prof_file = prof_dir / f"prof-{prof_offset + i}.profraw"
             run_env = env.copy()
             run_env["LLVM_PROFILE_FILE"] = str(prof_file)
 
@@ -327,11 +327,19 @@ class ReportManager:
             self.logger.error(f"Config '{config_name}' not found")
             return
 
-        # 5. Replay corpus
+        # 5. Replay corpus (queue + crashes)
         prof_dir = Path(output_dir).resolve() / "profraw"
         prof_dir.mkdir(parents=True, exist_ok=True)
 
         count = self._replay_corpus(harness, queue_dir, prof_dir, config_path, httpd_root=cov_root)
+
+        # Also replay crashes - they exercise unique code paths worth covering.
+        crashes_dir = queue_dir.parent / "crashes"
+        if crashes_dir.is_dir() and any(crashes_dir.iterdir()):
+            self.logger.info("Replaying crash inputs for additional coverage...")
+            count += self._replay_corpus(harness, crashes_dir, prof_dir, config_path,
+                                         httpd_root=cov_root, prof_offset=count)
+
         if count == 0:
             self.logger.error("No test cases were replayed successfully")
             return
