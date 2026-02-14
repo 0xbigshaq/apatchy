@@ -153,9 +153,11 @@ class MutatorManager:
         # Bundled grammars
         for p in Config.GRAMMARS_DIR.glob("*.json"):
             found[p.stem] = p
-        # Work-dir grammars
+        # Work-dir grammars (skip build artifacts)
+        skip = {"compile_commands"}
         for p in self.work_dir.glob("*.json"):
-            found[p.stem] = p
+            if p.stem not in skip:
+                found[p.stem] = p
         return sorted(found.keys())
 
 
