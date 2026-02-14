@@ -133,12 +133,6 @@ class ReportManager:
             return ":".join(lib_paths + ([existing] if existing else []))
         return os.environ.get("LD_LIBRARY_PATH", "")
 
-    @staticmethod
-    def _patch_libtool_cc(cc: str, httpd_root: Optional[Path] = None) -> None:
-        """Patch libtool scripts to use the given CC instead of afl-clang-fast."""
-        if httpd_root:
-            AlternateBuildTree.patch_libtool_cc(cc, httpd_root)
-
     def _ensure_coverage_build(self, cc: str) -> Path:
         """Ensure the separate coverage tree is configured and compiled.
 
@@ -150,7 +144,7 @@ class ReportManager:
             cflags="-g -O0 -fno-omit-frame-pointer"
             " -fprofile-instr-generate -fcoverage-mapping"
             " -Wno-error=format",
-            ldflags="-fprofile-instr-generate",
+            ldflags="-fprofile-instr-generate -lcrypt -lm",
         )
 
     def _build_coverage_modules(self, cc: str, cov_root: Path) -> List[Path]:

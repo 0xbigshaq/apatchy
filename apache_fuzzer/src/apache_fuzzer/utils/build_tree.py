@@ -65,7 +65,7 @@ class AlternateBuildTree:
 
         # Build
         logger.info(f"Rebuilding Apache with {self.suffix} flags (CC={cc})...")
-        self.patch_libtool_cc(cc, self.alt_root)
+        self.patch_build_flags(cc, cflags, ldflags, self.alt_root)
         self.runner.run_command(["make", "clean"], cwd=self.alt_root)
         jobs = os.cpu_count() or 4
         make_cmd = [
@@ -73,11 +73,11 @@ class AlternateBuildTree:
             f"CC={cc}",
             f"CFLAGS={cflags}",
         ]
-        # Only override LDFLAGS if non-empty; passing LDFLAGS= (empty) on
-        # the command line clobbers the Makefile's built-in value and breaks
-        # linking of support utilities that need -lcrypt.
-        if ldflags:
-            make_cmd.append(f"LDFLAGS={ldflags}")
+        # CC and CFLAGS are passed on the command line as well for top-level
+        # targets.  LDFLAGS is only patched in config files (not passed on the
+        # command line) because command-line LDFLAGS clobbers the Makefile
+        # variable everywhere, breaking libtool's transitive dependency
+        # resolution (support utilities lose -lcrypt/-lm).
         self.runner.run_command(make_cmd, cwd=self.alt_root)
 
         # Save config hash after successful build
@@ -128,45 +128,76 @@ class AlternateBuildTree:
                     path.write_text(replaced)
 
     @staticmethod
-    def patch_libtool_cc(cc: str, httpd_root: Path) -> None:
-        """Patch libtool scripts and config_vars.mk to use the given CC.
+    def patch_build_flags(cc: str, cflags: str, ldflags: str, httpd_root: Path) -> None:
+        """Patch CC, CFLAGS, and LDFLAGS across all build-system files.
 
-        Apache's configure bakes the original CC into libtool scripts.  When
-        we override CC on the make command line, object compilation uses the
-        new CC but libtool's link step still uses the hardcoded value.
+        The AFL build bakes afl-clang-fast, -fsanitize=address, and other
+        AFL-specific flags into config_vars.mk, apr_rules.mk, rules.mk,
+        and libtool scripts throughout the tree (including srclib/apr and
+        srclib/apr-util).  We must patch ALL of them so the alternate build
+        compiles and links cleanly without AFL or ASan references.
+
+        LDFLAGS is patched in config files rather than passed on the make
+        command line because command-line LDFLAGS clobbers the Makefile
+        variable everywhere, which breaks libtool's transitive dependency
+        resolution (support utilities lose -lcrypt, -lm, etc.).
         """
-        libtool_files = list(httpd_root.rglob("libtool"))
-        config_vars_files = list(httpd_root.rglob("config_vars.mk"))
-
-        for lt in libtool_files:
+        # --- Patch libtool scripts (CC, LTCC, LTCFLAGS) ---
+        for lt in httpd_root.rglob("libtool"):
+            if not lt.is_file():
+                continue
             text = lt.read_text()
             patched = re.sub(
-                r'^(CC=)".*"',
-                rf'\1"{cc}"',
-                text,
-                flags=re.MULTILINE,
+                r'^(CC=)".*"', rf'\1"{cc}"', text, flags=re.MULTILINE,
             )
             patched = re.sub(
-                r'^(LTCC=)".*"',
-                rf'\1"{cc}"',
-                patched,
-                flags=re.MULTILINE,
+                r'^(LTCC=)".*"', rf'\1"{cc}"', patched, flags=re.MULTILINE,
+            )
+            patched = re.sub(
+                r'^(LTCFLAGS=)".*"', rf'\1"{cflags}"', patched, flags=re.MULTILINE,
             )
             if patched != text:
                 lt.write_text(patched)
-                logger.info(f"Patched CC in {lt}")
+                logger.info(f"Patched CC/CFLAGS in {lt}")
 
-        for cv in config_vars_files:
-            text = cv.read_text()
+        # --- Patch all .mk config files (config_vars.mk, apr_rules.mk, rules.mk) ---
+        for mk in httpd_root.rglob("*.mk"):
+            if not mk.is_file():
+                continue
+            try:
+                text = mk.read_text()
+            except (UnicodeDecodeError, OSError):
+                continue
             patched = re.sub(
-                r'^(CC\s*=\s*).*$',
-                rf'\1{cc}',
-                text,
-                flags=re.MULTILINE,
+                r'^(CC\s*=\s*).*$', rf'\1{cc}', text, flags=re.MULTILINE,
+            )
+            patched = re.sub(
+                r'^(CPP\s*=\s*).*$', rf'\1{cc} -E', patched, flags=re.MULTILINE,
+            )
+            patched = re.sub(
+                r'^(CFLAGS\s*=).*$', rf'\1{cflags}', patched, flags=re.MULTILINE,
+            )
+            patched = re.sub(
+                r'^(LDFLAGS\s*=).*$', rf'\1{ldflags}', patched, flags=re.MULTILINE,
             )
             if patched != text:
-                cv.write_text(patched)
-                logger.info(f"Patched CC in {cv}")
+                mk.write_text(patched)
+                logger.info(f"Patched build flags in {mk}")
+
+        # --- Patch top-level Makefiles that reference CC/CPP directly ---
+        for mf in httpd_root.rglob("Makefile"):
+            if not mf.is_file():
+                continue
+            try:
+                text = mf.read_text()
+            except (UnicodeDecodeError, OSError):
+                continue
+            patched = re.sub(
+                r'^(CPP\s*=\s*).*$', rf'\1{cc} -E', text, flags=re.MULTILINE,
+            )
+            if patched != text:
+                mf.write_text(patched)
+                logger.info(f"Patched CPP in {mf}")
 
     @staticmethod
     def afl_config_hash(httpd_root: Path) -> str:
