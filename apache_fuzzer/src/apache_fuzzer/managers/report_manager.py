@@ -410,12 +410,16 @@ class ReportManager:
         env["FUZZ_ROOT"] = str(self.work_dir)
         env["LD_LIBRARY_PATH"] = self._get_ld_library_path()
 
-        # Preload the APR crypto DSO so AFL-instrumented harnesses don't
-        # abort when mod_session_crypto dlopen()s it after forkserver init.
+        # Preload the APR crypto DSO so the AFL-instrumented harness can
+        # resolve __afl_area_ptr when mod_session_crypto dlopen()s it.
         crypto_so = self.httpd_root / "srclib" / "apr-util" / "crypto" / ".libs" / "apr_crypto_openssl-1.so"
         if crypto_so.exists():
             existing = env.get("LD_PRELOAD", "")
             env["LD_PRELOAD"] = f"{crypto_so}:{existing}" if existing else str(crypto_so)
+
+        # NOTE: LD_PRELOAD is inherited by child processes, but the harness
+        # calls unsetenv("LD_PRELOAD") early so that ASan's llvm-symbolizer
+        # subprocess doesn't inherit the AFL-instrumented crypto DSO.
 
         # Build command with both env vars (AFL entry point) and
         # command-line args (standalone entry point) for config/root.

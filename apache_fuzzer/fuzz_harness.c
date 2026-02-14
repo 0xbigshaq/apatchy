@@ -78,6 +78,12 @@ static void asan_save_stderr(void)
     /* Save stderr fd before Apache initialization redirects it to /dev/null */
     asan_saved_stderr_fd = dup(STDERR_FILENO);
 
+    /* Strip LD_PRELOAD so child processes (e.g. llvm-symbolizer spawned by
+     * ASan) don't inherit the AFL-instrumented crypto DSO, which would crash
+     * them with "undefined symbol: __afl_area_ptr".  The DSO is already
+     * mapped into our address space from exec-time preloading. */
+    unsetenv("LD_PRELOAD");
+
     /* Save ASan's signal handlers before Apache overrides them */
     sigaction(SIGSEGV, NULL, &asan_saved_sa_segv);
     sigaction(SIGBUS, NULL, &asan_saved_sa_bus);
