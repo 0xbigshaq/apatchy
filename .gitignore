@@ -1,0 +1,75 @@
+# Apache HTTPD source (downloaded via `fuzzer download`)
+httpd-*/
+
+# IDE and OS files
+.vscode/
+.DS_Store
+compile_commands.json
+.cache/
+
+# Legacy / internal
+old/
+.claude/
+
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+venv/
+.venv/
+
+# Toolchain (built locally via `fuzzer setup`)
+toolchain/
+grammar_mutator/
+
+# Downloaded Apache source inside project dir
+apache_fuzzer/httpd-*/
+
+# Build artifacts
+*.o
+*.lo
+*.la
+*.so
+.libs/
+
+# Compiled harness binaries (fuzz_harness_afl, fuzz_harness_standalone, etc.)
+fuzz_harness_*
+
+# Libtool
+buildmark.lo
+buildmark.o
+modules.lo
+modules.o
+
+# AFL++ runtime directories
+afl-output/
+afl-pwn-*/
+afl-cov-report-*/
+
+# Generated grammar seeds (created by `fuzzer fuzz --grammar`)
+apache_fuzzer/afl-input/grammar_*.txt
+
+# Built external modules (created by `fuzzer module build`)
+apache_fuzzer/modules/
+
+# Runtime Apache config files (e.g. mime.types)
+apache_fuzzer/conf/
+
+# Debug / configure logs
+*.log
+
+# Generated config (machine-specific paths)
+toolchain.config
+
+# Coverage data
+*.profraw
+*.profdata
+coverage-report*/
+cov-*/
+
+# Dev harness projects (user-specific, created by `fuzzer dev init`)
+apache_fuzzer/dev/
+
+# Copied harness source in working dir root
+/fuzz_harness.c

@@ -1,0 +1,107 @@
+{
+	"<A>": [["<REQUEST_LINE>", "\r\n", "Host: localhost\r\n", "<PWN_HEADERS>", "<EXTRA_HEADERS>", "\r\n"]],
+
+	"<REQUEST_LINE>": [["<METHOD>", " ", "<PATH>", " ", "HTTP/1.1"]],
+	"<METHOD>": [["GET"], ["POST"], ["HEAD"], ["PUT"]],
+
+	"<PATH>": [
+		["/"],
+		["/pwn/oob/", "<OOB_INDEX>"],
+		["/pwn/read?file=", "<FILE_PATH>"],
+		["/pwn/crash"],
+		["/", "<PATH_WORD>"]
+	],
+	"<PATH_WORD>": [["index.html"], ["test"], ["admin"], ["pwn"]],
+
+	"<OOB_INDEX>": [
+		["0"], ["1"], ["2"], ["3"], ["4"], ["5"],
+		["-1"], ["10"], ["99"], ["100"], ["255"],
+		["<DIGIT>", "<DIGIT>", "<DIGIT>"]
+	],
+
+	"<FILE_PATH>": [
+		["test.txt"],
+		["../etc/passwd"],
+		["....//....//etc/passwd"],
+		["<TRAVERSE>", "<TRAVERSE>", "etc/passwd"],
+		["<CHAR_SEQ>"]
+	],
+	"<TRAVERSE>": [["../"], [".../"], ["..\\"], ["....//"]],
+
+	"<PWN_HEADERS>": [
+		["<PWN_HEADER>", "\r\n"],
+		["<PWN_HEADER>", "\r\n", "<PWN_HEADER>", "\r\n"],
+		["<PWN_HEADER>", "\r\n", "<PWN_HEADER>", "\r\n", "<PWN_HEADER>", "\r\n"]
+	],
+
+	"<PWN_HEADER>": [
+		["X-Pwn-Overflow: ", "<OVERFLOW_VAL>"],
+		["X-Pwn-Heap: ", "<HEAP_VAL>"],
+		["X-Pwn-UAF: ", "<UAF_VAL>"],
+		["X-Pwn-Null: ", "<NULL_VAL>"],
+		["X-Pwn-Integer: ", "<INTEGER_VAL>"],
+		["X-Pwn-Format: ", "<FORMAT_VAL>"],
+		["X-Pwn-Double: ", "<DOUBLE_VAL>"]
+	],
+
+	"<OVERFLOW_VAL>": [
+		["<CHAR_SEQ>"],
+		["<CHAR_SEQ>", "<CHAR_SEQ>", "<CHAR_SEQ>", "<CHAR_SEQ>"],
+		["<LONG_A>"],
+		["<LONG_A>", "<LONG_A>", "<LONG_A>", "<LONG_A>"]
+	],
+	"<LONG_A>": [["AAAAAAAAAAAAAAAA"]],
+
+	"<HEAP_VAL>": [
+		["<HEAP_SIZE>", ":", "<CHAR_SEQ>"],
+		["<HEAP_SIZE>", ":", "<CHAR_SEQ>", "<CHAR_SEQ>", "<CHAR_SEQ>", "<CHAR_SEQ>"],
+		["<HEAP_SIZE>", ":", "<LONG_A>", "<LONG_A>"]
+	],
+	"<HEAP_SIZE>": [
+		["1"], ["8"], ["16"], ["32"], ["64"], ["128"], ["256"], ["512"], ["1024"],
+		["0"], ["-1"]
+	],
+
+	"<UAF_VAL>": [["alloc"], ["free"], ["use"]],
+	"<NULL_VAL>": [["deref"], ["partial"]],
+	"<DOUBLE_VAL>": [["alloc"], ["free1"], ["free2"]],
+
+	"<INTEGER_VAL>": [
+		["0"], ["1"], ["-1"], ["127"], ["128"], ["255"], ["256"],
+		["32767"], ["32768"], ["65535"], ["65536"],
+		["2147483647"], ["2147483648"], ["4294967295"],
+		["1073741824"],
+		["<DIGIT>", "<DIGIT>", "<DIGIT>", "<DIGIT>", "<DIGIT>"]
+	],
+
+	"<FORMAT_VAL>": [
+		["%s"], ["%x"], ["%n"], ["%p"],
+		["%s%s%s%s%s"], ["%x%x%x%x"],
+		["%", "<DIGIT>", "$n"],
+		["%", "<DIGIT>", "$x"],
+		["%", "<DIGIT>", "<DIGIT>", "<DIGIT>", "d"],
+		["<CHAR_SEQ>", "%s", "<CHAR_SEQ>"],
+		["AAAA", "%08x.", "%08x.", "%08x.", "%08x"]
+	],
+
+	"<EXTRA_HEADERS>": [
+		[],
+		["Connection: close\r\n"],
+		["User-Agent: FuzzBot/1.0\r\n"],
+		["Content-Type: text/plain\r\n"],
+		["Accept: */*\r\n"]
+	],
+
+	"<CHAR_SEQ>": [
+		["<CHAR>", "<CHAR>", "<CHAR>", "<CHAR>"],
+		["<CHAR>", "<CHAR>", "<CHAR>", "<CHAR>", "<CHAR>", "<CHAR>", "<CHAR>", "<CHAR>"]
+	],
+
+	"<CHAR>": [
+		["A"], ["B"], ["C"], ["a"], ["b"], ["c"],
+		["0"], ["1"], ["2"], ["9"],
+		["/"], ["."], ["_"], ["-"], ["\\"], ["%"]
+	],
+
+	"<DIGIT>": [["0"], ["1"], ["2"], ["3"], ["4"], ["5"], ["6"], ["7"], ["8"], ["9"]]
+}

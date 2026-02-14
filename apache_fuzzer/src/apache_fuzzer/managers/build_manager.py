@@ -1,0 +1,154 @@
+import os
+import shutil
+import subprocess
+from pathlib import Path
+from apache_fuzzer.utils.logger import get_logger
+from apache_fuzzer.utils.build_tree import AlternateBuildTree
+from apache_fuzzer.core.process_runner import ProcessRunner
+from apache_fuzzer.managers.config_manager import ConfigManager
+from apache_fuzzer.core.harness import HarnessBuilder
+
+logger = get_logger(__name__)
+
+def _bear_available() -> bool:
+    """Check if the bear CLI tool is installed."""
+    return shutil.which("bear") is not None
+
+class BuildManager:
+    def __init__(self, httpd_root: Path, config_manager: ConfigManager) -> None:
+        self.httpd_root = httpd_root
+        self.config_manager = config_manager
+        self.logger = logger
+        self.runner = ProcessRunner()
+        self.harness_builder = HarnessBuilder(httpd_root)
+
+    def configure_httpd(self) -> None:
+        """
+        Runs ./configure with optimised flags.
+        """
+        config = self.config_manager.generate_build_config()
+        cflags = config["CFLAGS"]
+        ldflags = config["LDFLAGS"]
+        
+        self.logger.info(f"Configuring Apache in {self.httpd_root}")
+        self.logger.info(f"CFLAGS: {cflags}")
+        
+        # Detect PCRE
+        pcre_prefix = None
+        pcre_config = shutil.which("pcre-config") or shutil.which("pcre2-config")
+        
+        if pcre_config:
+            try:
+                # We use subprocess directly here to avoid logging noise
+                pcre_prefix = subprocess.check_output([pcre_config, "--prefix"], text=True).strip()
+            except subprocess.CalledProcessError:
+                pass
+
+        configure_cmd = [
+            "./configure",
+            "--with-included-apr",
+            "--enable-mods-static=all",
+            "--enable-maintainer-mode",
+            "--enable-debugger-mode",
+            "--disable-pie",
+            # mod_session_crypto requires APR-Util crypto support (OpenSSL)
+            "--with-crypto",
+            "--enable-session",
+            "--enable-session-cookie",
+            "--enable-session-crypto",
+        ]
+        
+        if pcre_prefix:
+             self.logger.info(f"Using PCRE prefix: {pcre_prefix}")
+             configure_cmd.append(f"--with-pcre={pcre_prefix}")
+        else:
+             self.logger.warning("pcre-config not found. Configure might fail if PCRE is not in standard paths.")
+
+        # Detect Expat
+        expat_prefix = None
+        bundled_expat = self.httpd_root / "srclib" / "apr-util" / "xml" / "expat"
+        
+        if bundled_expat.exists():
+            self.logger.info(f"Using bundled Expat in {bundled_expat}")
+            # apr-util automatically uses bundled expat if present in xml/expat
+        else:
+            if shutil.which("pkg-config"):
+                 try:
+                     # We use subprocess directly here to avoid logging noise
+                     expat_prefix = subprocess.check_output(["pkg-config", "--variable=prefix", "expat"], text=True).strip()
+                 except subprocess.CalledProcessError:
+                     pass
+            
+            if not expat_prefix:
+                 if Path("/usr/include/expat.h").exists():
+                     expat_prefix = "/usr"
+                 elif Path("/usr/local/include/expat.h").exists():
+                     expat_prefix = "/usr/local"
+
+            if expat_prefix:
+                self.logger.info(f"Using Expat prefix: {expat_prefix}")
+                configure_cmd.append(f"--with-expat={expat_prefix}")
+            else:
+                self.logger.warning("Expat not found. apr-util configure might fail.")
+
+        cc = config.get("CC")
+        if cc:
+            self.logger.info(f"Using CC: {cc}")
+            configure_cmd.append(f"CC={cc}")
+
+        configure_cmd.extend([
+            f"CFLAGS={cflags}",
+            f"LDFLAGS={ldflags}"
+        ])
+        
+        self.runner.run_command(configure_cmd, cwd=self.httpd_root)
+
+    def compile_httpd(self, jobs: int = 4, clean: bool = True, bear: bool = False) -> None:
+        if clean:
+            self.logger.info("Cleaning previous build...")
+            self.runner.run_command(["make", "clean"], cwd=self.httpd_root)
+
+        if bear:
+            if not _bear_available():
+                self.logger.error("bear not found in PATH. Install it: apt install bear")
+                raise FileNotFoundError("bear not found in PATH")
+            self.logger.info(f"Compiling Apache with {jobs} jobs (bear enabled)...")
+            self.runner.run_command(
+                ["bear", "--force-wrapper", "--", "make", f"-j{jobs}"],
+                cwd=self.httpd_root,
+            )
+        else:
+            self.logger.info(f"Compiling Apache with {jobs} jobs...")
+            self.runner.run_command(["make", f"-j{jobs}"], cwd=self.httpd_root)
+
+    def build_harness(self, mode: str = "standalone", engine: str = "standalone", harness_name: str = None, bear: bool = False) -> None:
+        self.logger.info(f"Building harness for engine: {mode}")
+
+        if bear and not _bear_available():
+            self.logger.error("bear not found in PATH. Install it: apt install bear")
+            raise FileNotFoundError("bear not found in PATH")
+
+        # Get flags from config manager again to ensure consistency
+        # (e.g. if we are building ASan harness, we need ASan flags)
+        # Note: 'mode' arg here comes from CLI (e.g. 'afl', 'libfuzzer')
+        # 'engine' arg is redundancy, can clean up
+
+        config = self.config_manager.generate_build_config()
+        cflags = config["CFLAGS"]
+        ldflags = config["LDFLAGS"]
+
+        # Standalone mode needs Apache compiled with plain clang (no AFL
+        # instrumentation) to avoid runtime conflicts.  Build a separate
+        # tree if the main one was compiled with afl-clang-fast.
+        if mode == "standalone":
+            tree = AlternateBuildTree(self.httpd_root, "-standalone")
+            standalone_root = tree.ensure_build(
+                cc="clang",
+                cflags="-g -O0 -fno-omit-frame-pointer -Wno-error=format",
+                ldflags="",
+            )
+            harness_builder = HarnessBuilder(standalone_root)
+        else:
+            harness_builder = self.harness_builder
+
+        harness_builder.build(mode=mode, cflags=cflags, ldflags=ldflags, harness_name=harness_name, bear=bear)

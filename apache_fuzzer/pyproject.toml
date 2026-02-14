@@ -1,0 +1,23 @@
+[project]
+name = "apache-fuzzer"
+version = "0.1.0"
+description = "A modular, Python-based fuzzing framework for Apache HTTPD"
+authors = [
+    {name = "Fuzzer Team", email = "fuzzer@example.com"},
+]
+dependencies = [
+    "requests",
+    "rich",
+    "argcomplete",
+]
+requires-python = ">=3.8"
+
+[project.scripts]
+fuzzer = "apache_fuzzer.main:main"
+
+[tool.setuptools.package-data]
+apache_fuzzer = ["grammars/*.json", "custom_mutators/*.c", "templates/*", "harnesses/*.c"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

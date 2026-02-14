@@ -1,0 +1,103 @@
+{
+	"<A>": [["<REQUEST_LINE>", "\r\n", "<REQUIRED_HEADERS>", "<EXTRA_HEADERS>", "\r\n"]],
+
+	"<REQUEST_LINE>": [["<METHOD>", " ", "<PATH>", " ", "<VERSION>"]],
+
+	"<METHOD>": [["GET"], ["POST"], ["HEAD"], ["PUT"], ["DELETE"]],
+
+	"<PATH>": [
+		["/"],
+		["/index.html"],
+		["/", "<PATH_WORD>"],
+		["/", "<PATH_WORD>", "/", "<PATH_WORD>"]
+	],
+	"<PATH_WORD>": [
+		["session"], ["get-session"], ["set-session"], ["admin"],
+		["test"], ["data"], ["api"], ["login"], ["logout"], ["status"]
+	],
+
+	"<VERSION>": [["HTTP/1.1"], ["HTTP/1.0"]],
+
+	"<REQUIRED_HEADERS>": [
+		["Host: localhost\r\n", "<COOKIE_HEADER>"]
+	],
+
+	"<COOKIE_HEADER>": [
+		["Cookie: session=", "<COOKIE_VALUE>", "\r\n"],
+		["Cookie: session=", "<COOKIE_VALUE>", "\r\n", "X-Session-Save: ", "<SESSION_KV>", "\r\n"],
+		["Cookie: session=", "<COOKIE_VALUE>", "; other=val\r\n"],
+		["X-Session-Save: ", "<SESSION_KV>", "\r\n"]
+	],
+
+	"<COOKIE_VALUE>": [
+		["<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_TAIL>"],
+		["<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_TAIL>"]
+	],
+
+	"<B64_SEG>": [
+		["<B64>", "<B64>", "<B64>", "<B64>"]
+	],
+
+	"<B64_TAIL>": [
+		[],
+		["<B64>", "<B64>", "=="],
+		["<B64>", "<B64>", "<B64>", "="]
+	],
+
+	"<B64>": [
+		["A"], ["B"], ["C"], ["D"], ["E"], ["F"], ["G"], ["H"],
+		["I"], ["J"], ["K"], ["L"], ["M"], ["N"], ["O"], ["P"],
+		["Q"], ["R"], ["S"], ["T"], ["U"], ["V"], ["W"], ["X"],
+		["Y"], ["Z"], ["a"], ["b"], ["c"], ["d"], ["e"], ["f"],
+		["g"], ["h"], ["i"], ["j"], ["k"], ["l"], ["m"], ["n"],
+		["o"], ["p"], ["q"], ["r"], ["s"], ["t"], ["u"], ["v"],
+		["w"], ["x"], ["y"], ["z"], ["0"], ["1"], ["2"], ["3"],
+		["4"], ["5"], ["6"], ["7"], ["8"], ["9"], ["+"], ["/"]
+	],
+
+	"<EXTRA_HEADERS>": [
+		[],
+		["<EXTRA_HEADER>", "\r\n"],
+		["<EXTRA_HEADER>", "\r\n", "<EXTRA_HEADER>", "\r\n"],
+		["<EXTRA_HEADER>", "\r\n", "<EXTRA_HEADER>", "\r\n", "<EXTRA_HEADER>", "\r\n"]
+	],
+
+	"<EXTRA_HEADER>": [
+		["Connection: close"],
+		["Connection: keep-alive"],
+		["Content-Type: application/x-www-form-urlencoded"],
+		["X-Forwarded-For: ", "<IP>"],
+		["User-Agent: FuzzBot/1.0"],
+		["Accept: */*"],
+		["X-Session-Save: ", "<SESSION_KV>"],
+		["Cookie: ", "<EXTRA_COOKIE_NAME>", "=", "<B64_SEG>", "<B64_SEG>"]
+	],
+
+	"<EXTRA_COOKIE_NAME>": [
+		["session2"], ["token"], ["auth"], ["sid"], ["PHPSESSID"]
+	],
+
+	"<IP>": [
+		["127.0.0.1"], ["10.0.0.1"], ["192.168.1.1"], ["0.0.0.0"]
+	],
+
+	"<SESSION_KV>": [
+		["username=admin"],
+		["username=admin&role=superuser"],
+		["role=user&level=5"],
+		["token=", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>", "<B64_SEG>"],
+		["data=test&flag=1"],
+		["<KV_KEY>", "=", "<KV_VAL>"],
+		["<KV_KEY>", "=", "<KV_VAL>", "&", "<KV_KEY>", "=", "<KV_VAL>"],
+		["<KV_KEY>", "=", "<KV_VAL>", "&", "<KV_KEY>", "=", "<KV_VAL>", "&", "<KV_KEY>", "=", "<KV_VAL>"]
+	],
+
+	"<KV_KEY>": [
+		["user"], ["role"], ["id"], ["token"], ["data"],
+		["flag"], ["session_id"], ["admin"], ["level"], ["name"]
+	],
+	"<KV_VAL>": [
+		["admin"], ["user"], ["root"], ["1"], ["0"], ["true"],
+		["false"], ["test"], ["<B64_SEG>"]
+	]
+}

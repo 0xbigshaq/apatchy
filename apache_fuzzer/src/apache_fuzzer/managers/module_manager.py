@@ -1,0 +1,101 @@
+import shutil
+import subprocess
+from pathlib import Path
+from typing import List, Optional
+
+from apache_fuzzer.config import Config
+from apache_fuzzer.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+
+class ModuleManager:
+    """Builds external Apache modules as DSOs (.so) for runtime loading."""
+
+    def __init__(self, httpd_root: Path) -> None:
+        self.httpd_root = httpd_root
+        self.work_dir = Config.WORK_DIR
+        self.modules_out = self.work_dir / "modules"
+
+    def list_modules(self) -> List[dict]:
+        """List available external module sources."""
+        modules = []
+        for src in sorted(Config.EXTERNAL_MODULES_DIR.glob("*.c")):
+            name = src.stem  # e.g. "mod_pwn"
+            built_so = self.modules_out / f"{name}.so"
+            modules.append({
+                "name": name,
+                "source": str(src),
+                "built": str(built_so) if built_so.exists() else "",
+            })
+        return modules
+
+    def build_module(self, name: Optional[str] = None, cc: Optional[str] = None) -> None:
+        """Build one or all external modules as shared objects."""
+        if name:
+            src = Config.EXTERNAL_MODULES_DIR / f"{name}.c"
+            if not src.exists():
+                # Try without mod_ prefix
+                src = Config.EXTERNAL_MODULES_DIR / f"mod_{name}.c"
+            if not src.exists():
+                logger.error(f"Module source not found: {name}")
+                logger.info("Available modules:")
+                for m in self.list_modules():
+                    logger.info(f"  {m['name']}")
+                return
+            self._build_one(src, cc=cc)
+        else:
+            sources = list(Config.EXTERNAL_MODULES_DIR.glob("*.c"))
+            if not sources:
+                logger.error("No external module sources found.")
+                return
+            for src in sources:
+                self._build_one(src, cc=cc)
+
+    def _build_one(self, src: Path, cc: Optional[str] = None) -> None:
+        """Compile a single .c file into a .so DSO."""
+        name = src.stem  # e.g. "mod_pwn"
+        self.modules_out.mkdir(exist_ok=True)
+        output = self.modules_out / f"{name}.so"
+
+        if cc is None:
+            # Default: use afl-clang-fast for instrumented builds, fall back to clang/gcc
+            cc = (shutil.which("afl-clang-fast")
+                  or shutil.which("clang")
+                  or shutil.which("gcc"))
+        else:
+            cc = shutil.which(cc) or cc
+
+        if not cc:
+            logger.error("No C compiler found (afl-clang-fast, clang, or gcc)")
+            return
+
+        includes = [
+            f"-I{self.httpd_root}/include",
+            f"-I{self.httpd_root}/srclib/apr/include",
+            f"-I{self.httpd_root}/srclib/apr-util/include",
+            f"-I{self.httpd_root}/os/unix",
+            f"-I{self.httpd_root}/server",
+        ]
+
+        # Add module subdirectories as includes
+        modules_dir = self.httpd_root / "modules"
+        if modules_dir.exists():
+            for p in modules_dir.iterdir():
+                if p.is_dir():
+                    includes.append(f"-I{p}")
+
+        cmd = [
+            cc, "-fPIC", "-shared",
+            "-g", "-O0",
+            "-o", str(output),
+            str(src),
+            *includes,
+        ]
+
+        logger.info(f"Building {name}.so with {Path(cc).name} ...")
+        try:
+            subprocess.run(cmd, check=True)
+            logger.info(f"Built: {output}")
+        except subprocess.CalledProcessError:
+            logger.error(f"Failed to build {name}.so")
