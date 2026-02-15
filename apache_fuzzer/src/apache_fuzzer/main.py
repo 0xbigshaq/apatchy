@@ -76,6 +76,9 @@ def main():
     configure_parser = _sub(subparsers, "configure", help="Configure Apache for fuzzing")
     configure_parser.add_argument("--mode", choices=["fuzz", "coverage"], default="fuzz", help="Build mode (compiler selection)")
     configure_parser.add_argument("--asan", action="store_true", help="Enable AddressSanitizer (can combine with any mode)")
+    configure_parser.add_argument("--ubsan", action="store_true", help="Enable UndefinedBehaviorSanitizer (can combine with any mode)")
+    configure_parser.add_argument("--intsan", action="store_true", help="Enable unsigned-integer-overflow sanitizer (can combine with any mode)")
+    configure_parser.add_argument("--truncsan", action="store_true", help="Enable implicit-unsigned-integer-truncation sanitizer (can combine with any mode)")
 
     # Compile
     compile_parser = _sub(subparsers, "compile", help="Compile Apache")

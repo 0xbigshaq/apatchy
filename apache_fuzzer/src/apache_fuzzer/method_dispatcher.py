@@ -73,7 +73,7 @@ class MethodDispatcher:
         if not httpd_root:
             return
 
-        self.config_manager = ConfigManager(build_mode=args.mode, asan=getattr(args, 'asan', False))
+        self.config_manager = ConfigManager(build_mode=args.mode, asan=getattr(args, 'asan', False), ubsan=getattr(args, 'ubsan', False), intsan=getattr(args, 'intsan', False), truncsan=getattr(args, 'truncsan', False))
         self.build_manager = BuildManager(httpd_root, self.config_manager)
         self.build_manager.configure_httpd()
 

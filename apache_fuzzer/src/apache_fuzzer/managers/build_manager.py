@@ -57,6 +57,12 @@ class BuildManager:
             "--enable-session-cookie",
             "--enable-session-crypto",
         ]
+
+        # When ASan is enabled, make apr_palloc() use direct malloc()
+        # so ASan can track individual pool allocations.
+        if self.config_manager.asan:
+            self.logger.info("Enabling APR pool debug mode for ASan")
+            configure_cmd.append("--enable-pool-debug=yes")
         
         if pcre_prefix:
              self.logger.info(f"Using PCRE prefix: {pcre_prefix}")

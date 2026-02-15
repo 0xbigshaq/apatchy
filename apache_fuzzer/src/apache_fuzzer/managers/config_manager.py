@@ -5,11 +5,14 @@ from apache_fuzzer.utils.logger import get_logger
 logger = get_logger(__name__)
 
 class ConfigManager:
-    def __init__(self, build_mode: str = "fuzz", engine: str = "afl", config_name: str = "fuzz.conf", asan: bool = False) -> None:
+    def __init__(self, build_mode: str = "fuzz", engine: str = "afl", config_name: str = "fuzz.conf", asan: bool = False, ubsan: bool = False, intsan: bool = False, truncsan: bool = False) -> None:
         self.build_mode = build_mode
         self.engine = engine
         self.config_name = config_name
         self.asan = asan
+        self.ubsan = ubsan
+        self.intsan = intsan
+        self.truncsan = truncsan
         self.logger = logger
         self.httpd_config_path: Optional[Path] = None
 
@@ -45,6 +48,23 @@ class ConfigManager:
             self.logger.info("Enabling AddressSanitizer")
             cflags.append("-fsanitize=address")
             ldflags.append("-fsanitize=address")
+
+        if self.ubsan:
+            self.logger.info("Enabling UndefinedBehaviorSanitizer")
+            cflags.append("-fsanitize=undefined")
+            ldflags.append("-fsanitize=undefined")
+
+        if self.intsan:
+            self.logger.info("Enabling unsigned-integer-overflow sanitizer")
+            self.logger.warning("--intsan is noisy on Apache internals (hash, crypto). Consider using it only for targeted module auditing.")
+            cflags.append("-fsanitize=unsigned-integer-overflow")
+            ldflags.append("-fsanitize=unsigned-integer-overflow")
+
+        if self.truncsan:
+            self.logger.info("Enabling implicit-unsigned-integer-truncation sanitizer")
+            self.logger.warning("--truncsan is noisy on Apache internals. Consider using it only for targeted module auditing.")
+            cflags.append("-fsanitize=implicit-unsigned-integer-truncation")
+            ldflags.append("-fsanitize=implicit-unsigned-integer-truncation")
 
         result = {
             "CFLAGS": " ".join(cflags),
