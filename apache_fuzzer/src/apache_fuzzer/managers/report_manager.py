@@ -428,7 +428,7 @@ class ReportManager:
         self.logger.info(f"HTML report: {html_dir / 'index.html'}")
         self.logger.info("Coverage report complete. AFL build is untouched.")
 
-    def triage_crash(self, crash_file: Path, harness_binary: Path) -> None:
+    def triage_crash(self, crash_file: Path, harness_binary: Path, no_color: bool = False) -> None:
         self.logger.info(f"Triaging crash: {crash_file}")
 
         config_path = self.config_manager.get_httpd_config()
@@ -440,6 +440,13 @@ class ReportManager:
         env["FUZZ_CONF"] = str(config_path)
         env["FUZZ_ROOT"] = str(self.work_dir)
         env["LD_LIBRARY_PATH"] = self._get_ld_library_path()
+
+        # Force sanitizer color output through the pipe (they default to
+        # auto which disables color when stderr is not a TTY).
+        color_val = "never" if no_color else "always"
+        for var in ("ASAN_OPTIONS", "UBSAN_OPTIONS", "LSAN_OPTIONS"):
+            existing = env.get(var, "")
+            env[var] = f"{existing}:color={color_val}" if existing else f"color={color_val}"
 
         # Preload instrumented DSOs so the AFL-built harness can resolve
         # __afl_area_ptr when Apache dlopen()s them at runtime.

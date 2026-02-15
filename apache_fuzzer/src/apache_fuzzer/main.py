@@ -107,6 +107,7 @@ def main():
     triage_parser = _sub(subparsers, "triage", help="Triage crashes")
     triage_parser.add_argument("crash_file", help="Path to crash file to triage")
     triage_parser.add_argument("--config", default="fuzz.conf", help="Httpd config file to use")
+    triage_parser.add_argument("--no-color", action="store_true", help="Disable colored output for sanitizer reports")
 
     # Coverage
     coverage_parser = _sub(subparsers, "coverage", help="Generate coverage report")

@@ -170,7 +170,7 @@ class MethodDispatcher:
         
         # Simpler approach: ConfigManager could have a current_config property.
         
-        self.report_manager.triage_crash(args.crash_file, harness_path)
+        self.report_manager.triage_crash(args.crash_file, harness_path, no_color=args.no_color)
 
 
     def _get_mutator_manager(self) -> MutatorManager:
