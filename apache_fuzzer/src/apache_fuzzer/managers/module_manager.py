@@ -52,6 +52,20 @@ class ModuleManager:
             for src in sources:
                 self._build_one(src, cc=cc)
 
+    def _get_sanitizer_flags(self) -> List[str]:
+        """Extract -fsanitize= flags from the Apache build's config_vars.mk."""
+        config_vars = self.httpd_root / "build" / "config_vars.mk"
+        flags = []
+        if not config_vars.exists():
+            return flags
+        for line in config_vars.read_text().splitlines():
+            key, _, value = line.partition("=")
+            if key.strip() in ("CFLAGS", "LDFLAGS"):
+                for token in value.split():
+                    if token.startswith("-fsanitize=") and token not in flags:
+                        flags.append(token)
+        return flags
+
     def _build_one(self, src: Path, cc: Optional[str] = None) -> None:
         """Compile a single .c file into a .so DSO."""
         name = src.stem  # e.g. "mod_pwn"
@@ -85,9 +99,14 @@ class ModuleManager:
                 if p.is_dir():
                     includes.append(f"-I{p}")
 
+        # Propagate sanitizer flags from the Apache build so external
+        # modules are instrumented the same way as the harness.
+        sanitizer_flags = self._get_sanitizer_flags()
+
         cmd = [
             cc, "-fPIC", "-shared",
             "-g", "-O0",
+            *sanitizer_flags,
             "-o", str(output),
             str(src),
             *includes,

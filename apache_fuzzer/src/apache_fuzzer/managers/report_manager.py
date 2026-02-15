@@ -441,12 +441,19 @@ class ReportManager:
         env["FUZZ_ROOT"] = str(self.work_dir)
         env["LD_LIBRARY_PATH"] = self._get_ld_library_path()
 
-        # Preload the APR crypto DSO so the AFL-instrumented harness can
-        # resolve __afl_area_ptr when mod_session_crypto dlopen()s it.
+        # Preload instrumented DSOs so the AFL-built harness can resolve
+        # __afl_area_ptr when Apache dlopen()s them at runtime.
+        preload = []
         crypto_so = self.httpd_root / "srclib" / "apr-util" / "crypto" / ".libs" / "apr_crypto_openssl-1.so"
         if crypto_so.exists():
+            preload.append(str(crypto_so))
+        modules_dir = self.work_dir / "modules"
+        if modules_dir.exists():
+            preload.extend(str(so) for so in sorted(modules_dir.glob("*.so")))
+        if preload:
             existing = env.get("LD_PRELOAD", "")
-            env["LD_PRELOAD"] = f"{crypto_so}:{existing}" if existing else str(crypto_so)
+            combined = ":".join(preload)
+            env["LD_PRELOAD"] = f"{combined}:{existing}" if existing else combined
 
         # NOTE: LD_PRELOAD is inherited by child processes, but the harness
         # calls unsetenv("LD_PRELOAD") early so that ASan's llvm-symbolizer

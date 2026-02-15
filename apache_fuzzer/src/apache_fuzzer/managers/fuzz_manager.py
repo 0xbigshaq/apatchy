@@ -223,11 +223,17 @@ class FuzzManager:
             existing = env.get("LD_LIBRARY_PATH", "")
             env["LD_LIBRARY_PATH"] = ":".join(lib_paths + ([existing] if existing else []))
 
-            # Preload the APR crypto DSO so AFL++ sees its instrumentation
-            # before the forkserver starts (avoids "instrumented dlopen()" error).
+            # Preload instrumented DSOs so AFL++ sees them before the
+            # forkserver starts (avoids "instrumented dlopen()" error).
+            preload = []
             crypto_so = crypto_libs / "apr_crypto_openssl-1.so"
             if crypto_so.exists():
-                env["AFL_PRELOAD"] = str(crypto_so)
+                preload.append(str(crypto_so))
+            modules_dir = self.work_dir / "modules"
+            if modules_dir.exists():
+                preload.extend(str(so) for so in sorted(modules_dir.glob("*.so")))
+            if preload:
+                env["AFL_PRELOAD"] = ":".join(preload)
 
         cmd = ["afl-fuzz"]
 
