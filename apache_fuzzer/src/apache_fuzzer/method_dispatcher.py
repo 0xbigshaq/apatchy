@@ -107,6 +107,14 @@ class MethodDispatcher:
         )
 
     def _handle_fuzz(self, args: argparse.Namespace) -> None:
+        role = getattr(args, 'role', None)
+        name = getattr(args, 'name', None)
+
+        # --role and --name are AFL-only features
+        if (role or name) and args.engine != "afl":
+            logger.error("--role and --name are only supported with --engine afl")
+            return
+
         self.config_manager = ConfigManager(engine=args.engine, config_name=args.config)
         self.fuzz_manager = FuzzManager(self.config_manager)
 
@@ -126,6 +134,8 @@ class MethodDispatcher:
             grammar=getattr(args, 'grammar', None),
             resume=getattr(args, 'resume', False),
             output_dir=getattr(args, 'output_dir', 'afl-output'),
+            role=role,
+            name=name,
         )
 
     def _handle_triage(self, args: argparse.Namespace) -> None:

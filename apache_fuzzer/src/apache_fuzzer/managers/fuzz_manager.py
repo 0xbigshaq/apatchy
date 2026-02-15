@@ -105,7 +105,8 @@ class FuzzManager:
 
     def start_fuzzer(self, harness_path: Path, engine: str = "afl",
                      mutator: Optional[str] = None, grammar: Optional[str] = None,
-                     resume: bool = False, output_dir: str = "afl-output") -> None:
+                     resume: bool = False, output_dir: str = "afl-output",
+                     role: Optional[str] = None, name: Optional[str] = None) -> None:
         input_dir, out_dir = self.prepare_corpus(output_dir=output_dir)
 
         # Generate grammar-based seeds before starting the fuzzer
@@ -118,16 +119,69 @@ class FuzzManager:
 
         if engine == "afl":
             self._start_afl(harness_path, input_dir, out_dir, mutator=mutator,
-                            resume=resume)
+                            resume=resume, role=role, name=name)
         elif engine == "libfuzzer":
             self._start_libfuzzer(harness_path, input_dir)
         else:
             self.logger.error(f"Unknown fuzzing engine: {engine}")
 
+    def _migrate_corpus_for_parallel(self, output_dir: Path, instance_name: str) -> bool:
+        """Rename 'default/' to the instance name so a solo run can resume in parallel mode.
+
+        Returns True if migration was performed or not needed, False if the user aborted.
+        """
+        from rich.console import Console
+        console = Console()
+
+        default_dir = output_dir / "default"
+        target_dir = output_dir / instance_name
+
+        if not default_dir.exists():
+            return True
+
+        if target_dir.exists():
+            self.logger.warning(
+                f"Both '{default_dir.name}/' and '{target_dir.name}/' exist in {output_dir}. "
+                f"Will use '{target_dir.name}/' - the 'default/' corpus will be ignored."
+            )
+            return True
+
+        # Count queue entries for context
+        queue_dir = default_dir / "queue"
+        queue_count = sum(1 for _ in queue_dir.iterdir()) if queue_dir.exists() else 0
+
+        console.print()
+        console.print(f"  [bold]Existing solo corpus found:[/bold] {default_dir}/")
+        console.print(f"  [bold]Queue entries:[/bold] {queue_count}")
+        console.print()
+        console.print("  AFL++ parallel mode uses named instance directories instead of 'default/'.")
+        console.print("  To preserve your corpus, the directory needs to be renamed:")
+        console.print(f"    [cyan]{default_dir.name}/[/cyan]  ->  [cyan]{instance_name}/[/cyan]")
+        console.print()
+        console.print("  [green]\\[y][/green] Rename and continue (corpus is preserved under the new name)")
+        console.print("  [red]\\[n][/red] Abort (no changes made, you can back up manually first)")
+
+        answer = console.input("\n  Rename? [y/N] ").strip().lower()
+
+        if answer != "y":
+            self.logger.info("Aborted. No changes were made.")
+            return False
+
+        default_dir.rename(target_dir)
+        self.logger.info(f"Renamed {default_dir.name}/ -> {instance_name}/")
+        return True
+
     def _start_afl(self, harness: Path, input_dir: Path, output_dir: Path,
                    mutator: Optional[str] = None,
-                   resume: bool = False) -> None:
-        self.logger.info("Starting AFL++...")
+                   resume: bool = False,
+                   role: Optional[str] = None,
+                   name: Optional[str] = None) -> None:
+        # Resolve instance name for parallel mode
+        if role and not name:
+            name = "main01" if role == "main" else "sec01"
+
+        mode_label = f" ({role}: {name})" if role else ""
+        self.logger.info(f"Starting AFL++{mode_label}...")
 
         config_path = self.config_manager.get_httpd_config()
         if not config_path:
@@ -141,6 +195,11 @@ class FuzzManager:
         env["AFL_SKIP_CPUFREQ"] = "1"
         if resume:
             env["AFL_AUTORESUME"] = "1"
+
+        # When switching from solo to parallel, migrate the default/ corpus
+        if role == "main" and resume:
+            if not self._migrate_corpus_for_parallel(output_dir, name):
+                return
 
         # Custom mutator library
         if mutator:
@@ -169,12 +228,20 @@ class FuzzManager:
             crypto_so = crypto_libs / "apr_crypto_openssl-1.so"
             if crypto_so.exists():
                 env["AFL_PRELOAD"] = str(crypto_so)
-        cmd = [
-            "afl-fuzz",
+
+        cmd = ["afl-fuzz"]
+
+        # Parallel mode flags
+        if role == "main":
+            cmd += ["-M", name]
+        elif role == "secondary":
+            cmd += ["-S", name]
+
+        cmd += [
             "-i", str(input_dir),
             "-o", str(output_dir),
             "--",
-            str(harness)
+            str(harness),
         ]
 
         try:

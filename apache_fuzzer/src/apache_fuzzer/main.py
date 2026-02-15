@@ -95,6 +95,10 @@ def main():
     fuzz_parser.add_argument("--grammar", "-g", help="Path to grammar file (sets GRAMMAR_FILE env var)")
     fuzz_parser.add_argument("--resume", action="store_true", help="Resume from existing AFL output directory")
     fuzz_parser.add_argument("--output-dir", default="afl-output", help="AFL output directory (default: afl-output)")
+    fuzz_parser.add_argument("--role", choices=["main", "secondary"], default=None,
+                             help="AFL parallel mode: 'main' (-M) or 'secondary' (-S) instance")
+    fuzz_parser.add_argument("--name", default=None,
+                             help="AFL instance name for parallel mode (default: main01/sec01)")
 
     # Triage
     triage_parser = _sub(subparsers, "triage", help="Triage crashes")
