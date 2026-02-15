@@ -91,25 +91,44 @@ class ReportManager:
             "apt install clang-14 llvm-14"
         )
 
-    def _find_afl_queue(self, afl_dir: str) -> Optional[Path]:
-        """Find the AFL queue directory, checking common subdirectory layouts."""
+    def _find_afl_instances(self, afl_dir: str) -> List[Path]:
+        """Find all AFL++ instance directories (supports single and parallel layouts).
+
+        Returns a list of instance directories, each expected to contain
+        queue/ and optionally crashes/ subdirectories.
+
+        Layouts handled:
+        - Single:   <afl_dir>/default/queue   -> [<afl_dir>/default]
+        - Parallel:  <afl_dir>/main01/queue, <afl_dir>/sec01/queue, ...
+        - Flat:      <afl_dir>/queue           -> [<afl_dir>]
+        """
         afl_path = Path(afl_dir).resolve()
         if not afl_path.exists():
             self.logger.error(f"AFL output directory not found: {afl_path}")
-            return None
+            return []
 
-        # Check common AFL++ queue locations
-        for subdir in ["default/queue", "main/queue", "queue"]:
-            candidate = afl_path / subdir
-            if candidate.is_dir():
-                self.logger.info(f"Found AFL queue: {candidate}")
-                return candidate
+        instances = []
 
-        self.logger.error(
-            f"No queue directory found in {afl_path}. "
-            "Expected default/queue, main/queue, or queue."
-        )
-        return None
+        # Check every subdirectory for a queue/ folder (covers default/,
+        # main01/, sec01/, sec02/, etc.)
+        for child in sorted(afl_path.iterdir()):
+            if child.is_dir() and (child / "queue").is_dir():
+                instances.append(child)
+
+        # Flat layout: queue/ directly under afl_dir
+        if not instances and (afl_path / "queue").is_dir():
+            instances.append(afl_path)
+
+        if instances:
+            names = [p.name for p in instances]
+            self.logger.info(f"Found {len(instances)} AFL instance(s): {', '.join(names)}")
+        else:
+            self.logger.error(
+                f"No queue directories found in {afl_path}. "
+                "Expected <instance>/queue subdirectories (e.g. default/queue, main01/queue)."
+            )
+
+        return instances
 
     def _get_ld_library_path(self, httpd_root: Optional[Path] = None) -> str:
         """Build LD_LIBRARY_PATH for APR/APR-Util .libs directories.
@@ -306,9 +325,9 @@ class ReportManager:
             self.logger.error(str(e))
             return
 
-        # 2. Find AFL queue
-        queue_dir = self._find_afl_queue(afl_dir)
-        if not queue_dir:
+        # Find AFL instances
+        instances = self._find_afl_instances(afl_dir)
+        if not instances:
             return
 
         # Build coverage harness (uses separate -cov tree, AFL build untouched)
@@ -327,18 +346,22 @@ class ReportManager:
             self.logger.error(f"Config '{config_name}' not found")
             return
 
-        # 5. Replay corpus (queue + crashes)
+        # Replay corpus from all instances (queue + crashes)
         prof_dir = Path(output_dir).resolve() / "profraw"
         prof_dir.mkdir(parents=True, exist_ok=True)
 
-        count = self._replay_corpus(harness, queue_dir, prof_dir, config_path, httpd_root=cov_root)
-
-        # Also replay crashes - they exercise unique code paths worth covering.
-        crashes_dir = queue_dir.parent / "crashes"
-        if crashes_dir.is_dir() and any(crashes_dir.iterdir()):
-            self.logger.info("Replaying crash inputs for additional coverage...")
-            count += self._replay_corpus(harness, crashes_dir, prof_dir, config_path,
+        count = 0
+        for instance in instances:
+            queue_dir = instance / "queue"
+            self.logger.info(f"Replaying queue from {instance.name}/ ({len(list(queue_dir.iterdir()))} entries)...")
+            count += self._replay_corpus(harness, queue_dir, prof_dir, config_path,
                                          httpd_root=cov_root, prof_offset=count)
+
+            crashes_dir = instance / "crashes"
+            if crashes_dir.is_dir() and any(crashes_dir.iterdir()):
+                self.logger.info(f"Replaying crashes from {instance.name}/...")
+                count += self._replay_corpus(harness, crashes_dir, prof_dir, config_path,
+                                             httpd_root=cov_root, prof_offset=count)
 
         if count == 0:
             self.logger.error("No test cases were replayed successfully")
