@@ -428,13 +428,23 @@ class ReportManager:
         self.logger.info(f"HTML report: {html_dir / 'index.html'}")
         self.logger.info("Coverage report complete. AFL build is untouched.")
 
-    def triage_crash(self, crash_file: Path, harness_binary: Path, no_color: bool = False) -> None:
+    def triage_crash(self, crash_file: Path, harness_binary: Path,
+                     no_color: bool = False, suppress: Optional[str] = None) -> None:
         self.logger.info(f"Triaging crash: {crash_file}")
 
         config_path = self.config_manager.get_httpd_config()
         if not config_path:
             self.logger.error("Config not found for triage.")
             return
+
+        # Resolve suppression file early so we can fail fast.
+        supp_path = None
+        if suppress:
+            supp_path = Path(suppress).resolve()
+            if not supp_path.exists():
+                self.logger.error(f"Suppression file not found: {supp_path}")
+                return
+            self.logger.info(f"Using UBSan suppression file: {supp_path}")
 
         env = os.environ.copy()
         env["FUZZ_CONF"] = str(config_path)
@@ -447,6 +457,12 @@ class ReportManager:
         for var in ("ASAN_OPTIONS", "UBSAN_OPTIONS", "LSAN_OPTIONS"):
             existing = env.get(var, "")
             env[var] = f"{existing}:color={color_val}" if existing else f"color={color_val}"
+
+        # Apply UBSan suppression file if provided.
+        if supp_path:
+            existing = env.get("UBSAN_OPTIONS", "")
+            supp_opt = f"suppressions={supp_path}"
+            env["UBSAN_OPTIONS"] = f"{existing}:{supp_opt}" if existing else supp_opt
 
         # Preload instrumented DSOs so the AFL-built harness can resolve
         # __afl_area_ptr when Apache dlopen()s them at runtime.

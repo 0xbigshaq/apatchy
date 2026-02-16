@@ -102,12 +102,16 @@ def main():
                              help="AFL parallel mode: 'main' (-M) or 'secondary' (-S) instance")
     fuzz_parser.add_argument("--name", default=None,
                              help="AFL instance name for parallel mode (default: main01/sec01)")
+    fuzz_parser.add_argument("--suppress", default=None,
+                             help="UBSan suppression file (e.g. ubsan.supp). See configs/ for examples.")
 
     # Triage
     triage_parser = _sub(subparsers, "triage", help="Triage crashes")
     triage_parser.add_argument("crash_file", help="Path to crash file to triage")
     triage_parser.add_argument("--config", default="fuzz.conf", help="Httpd config file to use")
     triage_parser.add_argument("--no-color", action="store_true", help="Disable colored output for sanitizer reports")
+    triage_parser.add_argument("--suppress", default=None,
+                               help="UBSan suppression file (e.g. ubsan.supp). See configs/ for examples.")
 
     # Coverage
     coverage_parser = _sub(subparsers, "coverage", help="Generate coverage report")

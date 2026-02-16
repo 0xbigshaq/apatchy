@@ -1,0 +1,10 @@
+# UBSan suppression file for Apache HTTPD fuzzing.
+# Usage: fuzzer triage --suppress configs/ubsan.supp <crash>
+#        fuzzer fuzz    --suppress configs/ubsan.supp
+#
+# Format: <check-name>:<file-or-function-pattern>
+# See https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html#suppressing-errors-in-recompiled-code
+
+# apr_brigade_write passes NULL to memcpy when length is 0.
+# This is a nonnull-attribute violation but harmless (memcpy with n=0 is a no-op).
+nonnull-attribute:apr_brigade.c

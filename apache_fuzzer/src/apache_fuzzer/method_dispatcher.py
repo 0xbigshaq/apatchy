@@ -136,6 +136,7 @@ class MethodDispatcher:
             output_dir=getattr(args, 'output_dir', 'afl-output'),
             role=role,
             name=name,
+            suppress=getattr(args, 'suppress', None),
         )
 
     def _handle_triage(self, args: argparse.Namespace) -> None:
@@ -170,7 +171,11 @@ class MethodDispatcher:
         
         # Simpler approach: ConfigManager could have a current_config property.
         
-        self.report_manager.triage_crash(args.crash_file, harness_path, no_color=args.no_color)
+        self.report_manager.triage_crash(
+            args.crash_file, harness_path,
+            no_color=args.no_color,
+            suppress=getattr(args, 'suppress', None),
+        )
 
 
     def _get_mutator_manager(self) -> MutatorManager:

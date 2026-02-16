@@ -106,7 +106,8 @@ class FuzzManager:
     def start_fuzzer(self, harness_path: Path, engine: str = "afl",
                      mutator: Optional[str] = None, grammar: Optional[str] = None,
                      resume: bool = False, output_dir: str = "afl-output",
-                     role: Optional[str] = None, name: Optional[str] = None) -> None:
+                     role: Optional[str] = None, name: Optional[str] = None,
+                     suppress: Optional[str] = None) -> None:
         input_dir, out_dir = self.prepare_corpus(output_dir=output_dir)
 
         # Generate grammar-based seeds before starting the fuzzer
@@ -119,7 +120,7 @@ class FuzzManager:
 
         if engine == "afl":
             self._start_afl(harness_path, input_dir, out_dir, mutator=mutator,
-                            resume=resume, role=role, name=name)
+                            resume=resume, role=role, name=name, suppress=suppress)
         elif engine == "libfuzzer":
             self._start_libfuzzer(harness_path, input_dir)
         else:
@@ -175,7 +176,8 @@ class FuzzManager:
                    mutator: Optional[str] = None,
                    resume: bool = False,
                    role: Optional[str] = None,
-                   name: Optional[str] = None) -> None:
+                   name: Optional[str] = None,
+                   suppress: Optional[str] = None) -> None:
         # Resolve instance name for parallel mode
         if role and not name:
             name = "main01" if role == "main" else "sec01"
@@ -195,6 +197,17 @@ class FuzzManager:
         env["AFL_SKIP_CPUFREQ"] = "1"
         if resume:
             env["AFL_AUTORESUME"] = "1"
+
+        # Apply UBSan suppression file if provided.
+        if suppress:
+            supp_path = Path(suppress).resolve()
+            if not supp_path.exists():
+                self.logger.error(f"Suppression file not found: {supp_path}")
+                return
+            self.logger.info(f"Using UBSan suppression file: {supp_path}")
+            existing = env.get("UBSAN_OPTIONS", "")
+            supp_opt = f"suppressions={supp_path}"
+            env["UBSAN_OPTIONS"] = f"{existing}:{supp_opt}" if existing else supp_opt
 
         # When switching from solo to parallel, migrate the default/ corpus
         if role == "main" and resume:
