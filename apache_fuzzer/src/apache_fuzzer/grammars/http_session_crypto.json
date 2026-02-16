@@ -24,6 +24,7 @@
 
 	"<COOKIE_HEADER>": [
 		["Cookie: session=", "<COOKIE_VALUE>", "\r\n"],
+		["Cookie2: session=", "<COOKIE_VALUE>", "\r\n"],
 		["Cookie: session=", "<COOKIE_VALUE>", "\r\n", "X-Session-Save: ", "<SESSION_KV>", "\r\n"],
 		["Cookie: session=", "<COOKIE_VALUE>", "; other=val\r\n"],
 		["X-Session-Save: ", "<SESSION_KV>", "\r\n"]
