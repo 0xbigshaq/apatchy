@@ -6,7 +6,14 @@
 	"<METHOD>": [["GET"], ["POST"], ["HEAD"], ["PUT"], ["DELETE"]],
 
 	"<PATH>": [
-		["/"],
+		["/a"],
+		["/b"],
+		["/c"],
+		["/d"],
+		["/e"],
+		["/f"],
+		["/g"],
+		["/h"],
 		["/index.html"],
 		["/", "<PATH_WORD>"],
 		["/", "<PATH_WORD>", "/", "<PATH_WORD>"]
