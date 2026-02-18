@@ -18,6 +18,8 @@
 		["/j"],
 		["/k"],
 		["/l"],
+		["/m"],
+		["/n"],
 		["/index.html"],
 		["/", "<PATH_WORD>"],
 		["/", "<PATH_WORD>", "/", "<PATH_WORD>"]
@@ -34,11 +36,28 @@
 	],
 
 	"<COOKIE_HEADER>": [
-		["Cookie: session=", "<COOKIE_VALUE>", "\r\n"],
-		["Cookie2: session=", "<COOKIE_VALUE>", "\r\n"],
-		["Cookie: session=", "<COOKIE_VALUE>", "\r\n", "X-Session-Save: ", "<SESSION_KV>", "\r\n"],
-		["Cookie: session=", "<COOKIE_VALUE>", "; other=val\r\n"],
+		["Cookie: ", "<COOKIE_NAME>", "=", "<COOKIE_VALUE>", "\r\n"],
+		["Cookie2: ", "<COOKIE_NAME>", "=", "<COOKIE_VALUE>", "\r\n"],
+		["Cookie: ", "<COOKIE_NAME>", "=", "<COOKIE_VALUE>", "\r\n", "X-Session-Save: ", "<SESSION_KV>", "\r\n"],
+		["Cookie: ", "<COOKIE_NAME>", "=", "<COOKIE_VALUE>", "; other=val\r\n"],
 		["X-Session-Save: ", "<SESSION_KV>", "\r\n"]
+	],
+
+	"<COOKIE_NAME>": [
+		["session_crypto"],
+		["session_plain"],
+		["session_ovr"],
+		["session_filter"],
+		["session_expiry"],
+		["session_auth"],
+		["session2_rfc2965"],
+		["session_dual"],
+		["session2_dual"],
+		["session_strip"],
+		["session_empty"],
+		["session2_empty"],
+		["session_pf"],
+		["session_alt"]
 	],
 
 	"<COOKIE_VALUE>": [

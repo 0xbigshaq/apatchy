@@ -1,0 +1,5 @@
+# Passphrases for SessionCryptoPassphraseFile testing
+# First line is used for encryption, all lines tried for decryption
+fuzzing_test_key_1234567890abcdef
+old_key_that_should_still_decrypt
+another_rotated_passphrase_key_99
