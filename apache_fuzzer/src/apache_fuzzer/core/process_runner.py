@@ -1,3 +1,9 @@
+"""Thin wrapper around :func:`subprocess.run` with logging.
+
+Provides a single :meth:`ProcessRunner.run_command` static method used
+throughout the framework to execute external processes.
+"""
+
 import subprocess
 import shlex
 from pathlib import Path
@@ -6,7 +12,9 @@ from apache_fuzzer.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+
 class ProcessRunner:
+    """Execute shell commands with automatic logging."""
     @staticmethod
     def run_command(
         command: Union[str, List[str]], 

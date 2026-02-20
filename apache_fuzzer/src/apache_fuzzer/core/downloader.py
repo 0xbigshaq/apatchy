@@ -1,3 +1,10 @@
+"""Download and extract Apache HTTPD source and its bundled dependencies.
+
+Handles fetching the HTTPD tarball from the Apache mirror (with archive
+fallback), plus APR, APR-Util, and Expat which are placed into
+``srclib/`` for a ``--with-included-apr`` build.
+"""
+
 import os
 import requests
 import tarfile
@@ -8,13 +15,29 @@ from apache_fuzzer.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+
 class Downloader:
+    """Fetch and unpack Apache HTTPD, APR, APR-Util, and Expat."""
+
     def __init__(self) -> None:
         self.mirror = Config.APACHE_MIRROR
         self.archive = Config.APACHE_ARCHIVE
         self.work_dir = Config.WORK_DIR
 
     def download_apache(self, version: Optional[str] = None) -> Path:
+        """Download Apache HTTPD and its bundled dependencies.
+
+        Parameters
+        ----------
+        version : str, optional
+            Version to download (e.g. ``"2.4.62"``).  Defaults to
+            :attr:`Config.DEFAULT_APACHE_VERSION`.
+
+        Returns
+        -------
+        Path
+            Directory containing the extracted source tree.
+        """
         if not version:
             version = Config.DEFAULT_APACHE_VERSION
         

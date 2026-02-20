@@ -74,3 +74,15 @@ apache_fuzzer/dev/
 # Copied harness source in working dir root
 /fuzz_harness.c
 apache_fuzzer/out-*
+apache_fuzzer/afl-out-*
+out-*.txt
+
+# Sphinx build output
+docs/api/_build/
+
+# Obsidian vault config
+docs/.obsidian/
+
+# Binary / reference files
+*.pdf
+*.bin

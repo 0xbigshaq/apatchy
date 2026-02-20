@@ -1,3 +1,10 @@
+"""Isolated developer harness projects.
+
+:class:`DevManager` lets users create self-contained harness projects
+under ``dev/<name>/``, each with its own ``harness.c``, seed corpus,
+and ``compile_commands.json`` for IDE integration.
+"""
+
 import json
 import os
 import shutil

@@ -1,3 +1,11 @@
+"""Build external Apache modules as shared objects (``.so`` DSOs).
+
+:class:`ModuleManager` compiles C source files from the bundled
+``external_modules/`` directory with the same sanitizer flags as the
+main Apache build, producing ``.so`` files that Apache can ``LoadModule``
+at runtime.
+"""
+
 import shutil
 import subprocess
 from pathlib import Path

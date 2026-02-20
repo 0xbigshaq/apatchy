@@ -1,3 +1,11 @@
+"""High-level build orchestration for Apache HTTPD and fuzzing harnesses.
+
+:class:`BuildManager` ties together :class:`~apache_fuzzer.managers.config_manager.ConfigManager`
+(compiler/flag selection) and :class:`~apache_fuzzer.core.harness.HarnessBuilder`
+(harness compilation) behind the ``configure``, ``compile``, and ``build``
+CLI commands.
+"""
+
 import os
 import shutil
 import subprocess
@@ -10,11 +18,15 @@ from apache_fuzzer.core.harness import HarnessBuilder
 
 logger = get_logger(__name__)
 
+
 def _bear_available() -> bool:
-    """Check if the bear CLI tool is installed."""
+    """Check if the ``bear`` CLI tool is installed."""
     return shutil.which("bear") is not None
 
+
 class BuildManager:
+    """Orchestrate Apache ``./configure``, ``make``, and harness builds."""
+
     def __init__(self, httpd_root: Path, config_manager: ConfigManager) -> None:
         self.httpd_root = httpd_root
         self.config_manager = config_manager

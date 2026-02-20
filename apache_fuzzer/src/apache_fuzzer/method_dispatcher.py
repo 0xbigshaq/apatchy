@@ -1,3 +1,10 @@
+"""Command dispatcher that routes CLI sub-commands to the appropriate manager.
+
+The :class:`MethodDispatcher` acts as the glue between the argument parser
+(defined in :mod:`apache_fuzzer.main`) and the various manager classes that
+implement each workflow step (download, configure, build, fuzz, ...).
+"""
+
 import argparse
 from pathlib import Path
 from typing import Optional
@@ -17,9 +24,15 @@ from apache_fuzzer.managers.dev_manager import DevManager
 logger = get_logger(__name__)
 
 class MethodDispatcher:
+    """Route parsed CLI arguments to the correct manager method.
+
+    Managers are created lazily - only when the corresponding command
+    is invoked - because most of them require a resolved HTTPD source
+    tree or engine-specific configuration.
+    """
+
     def __init__(self) -> None:
         self.downloader = Downloader()
-        # Other managers require arguments, so they might be instantiated per command or lazily
         self.config_manager: Optional[ConfigManager] = None
         self.build_manager: Optional[BuildManager] = None
         self.fuzz_manager: Optional[FuzzManager] = None
@@ -28,6 +41,14 @@ class MethodDispatcher:
         self.toolchain_manager: Optional[ToolchainManager] = None
 
     def dispatch(self, args: argparse.Namespace) -> None:
+        """Inspect *args.command* and delegate to the matching handler.
+
+        Parameters
+        ----------
+        args : argparse.Namespace
+            The fully-parsed CLI arguments.  Must contain a ``command``
+            attribute that names the top-level sub-command.
+        """
         command = args.command
         logger.info(f"Dispatching command: {command}")
         

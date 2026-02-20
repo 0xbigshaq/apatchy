@@ -1,3 +1,11 @@
+"""Fuzzing session management for AFL++ and LibFuzzer.
+
+This module contains :class:`FuzzManager` which prepares the corpus,
+optionally generates grammar-based seeds, and launches the chosen
+fuzzing engine.  It also includes :class:`GrammarSeedGenerator` for
+expanding a JSON grammar into concrete seed inputs.
+"""
+
 import json
 import random
 from pathlib import Path
@@ -11,7 +19,7 @@ logger = get_logger(__name__)
 
 
 class GrammarSeedGenerator:
-    """Walks a JSON grammar to produce concrete byte strings."""
+    """Walk a JSON grammar (keyed by non-terminal symbols) to produce concrete byte strings."""
 
     def __init__(self, grammar: Dict[str, List[List[str]]], max_depth: int = 12) -> None:
         self.grammar = grammar
@@ -49,6 +57,8 @@ class GrammarSeedGenerator:
 
 
 class FuzzManager:
+    """Prepare corpus, generate seeds, and launch AFL++ or LibFuzzer."""
+
     def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
         self.logger = logger

@@ -1,3 +1,10 @@
+"""AFL++ grammar-mutator and custom-mutator management.
+
+:class:`MutatorManager` handles cloning the AFL++ grammar-mutator
+repository, building per-grammar ``.so`` libraries, and compiling
+simple C custom mutators.
+"""
+
 import os
 import shutil
 import subprocess

@@ -1,3 +1,9 @@
+"""CLI entry point for the ``fuzzer`` command.
+
+Defines all argparse sub-commands and delegates to
+:class:`~apache_fuzzer.method_dispatcher.MethodDispatcher`.
+"""
+
 import argparse
 import sys
 import argcomplete
@@ -61,6 +67,7 @@ def _sub(subparsers, name, **kwargs):
 
 
 def main():
+    """Parse CLI arguments and dispatch to :class:`MethodDispatcher`."""
     parser = argparse.ArgumentParser(
         description="Apache HTTPD Fuzzing Framework",
         add_help=False,

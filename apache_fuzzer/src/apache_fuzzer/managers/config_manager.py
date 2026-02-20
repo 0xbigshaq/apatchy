@@ -1,10 +1,20 @@
+"""Compiler-flag generation and httpd config-file resolution.
+
+:class:`ConfigManager` decides which compiler (``afl-clang-fast`` vs
+``clang``) and which flags (``-fsanitize=address``, coverage, etc.)
+should be used for a given build, and resolves the runtime
+``fuzz.conf`` config file path.
+"""
+
 from pathlib import Path
 from typing import Dict, Optional
 from apache_fuzzer.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+
 class ConfigManager:
+    """Generate ``CFLAGS``/``LDFLAGS`` and resolve httpd config paths."""
     def __init__(self, build_mode: str = "fuzz", engine: str = "afl", config_name: str = "fuzz.conf", asan: bool = False, ubsan: bool = False, intsan: bool = False, truncsan: bool = False) -> None:
         self.build_mode = build_mode
         self.engine = engine

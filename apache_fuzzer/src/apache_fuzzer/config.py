@@ -1,7 +1,22 @@
+"""Global configuration constants for the apache-fuzzer framework.
+
+This module centralises every path, URL, and default value that
+the rest of the package needs.  All values are class-level
+attributes on :class:`Config` so they can be referenced without
+instantiation (e.g. ``Config.WORK_DIR``).
+"""
+
 import os
 from pathlib import Path
 
+
 class Config:
+    """Central configuration store for the fuzzer.
+
+    All attributes are **class-level** - there is no need to create an
+    instance.  Paths that depend on the current working directory are
+    resolved once at import time.
+    """
     PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.resolve()
     APACHE_MIRROR = "https://dlcdn.apache.org/httpd"
     APACHE_ARCHIVE = "https://archive.apache.org/dist/httpd"
@@ -27,4 +42,17 @@ class Config:
     
     @classmethod
     def get_apache_dir(cls, version: str) -> Path:
+        """Return the expected source directory for a given Apache version.
+
+        Parameters
+        ----------
+        version : str
+            Apache HTTPD version string, e.g. ``"2.4.62"``.
+
+        Returns
+        -------
+        Path
+            Absolute path to the ``httpd-<version>`` directory inside
+            :attr:`WORK_DIR`.
+        """
         return cls.WORK_DIR / f"httpd-{version}"

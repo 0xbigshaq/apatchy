@@ -1,3 +1,12 @@
+"""Coverage-report generation and crash triage.
+
+:class:`ReportManager` drives the full coverage pipeline - building
+a coverage-instrumented harness, replaying the AFL corpus, merging
+profraw data, and producing an HTML report via ``llvm-cov``.  It also
+provides :meth:`~ReportManager.triage_crash` for reproducing
+individual crash inputs.
+"""
+
 import glob
 import os
 import shutil
@@ -14,6 +23,8 @@ logger = get_logger(__name__)
 
 
 class ReportManager:
+    """Generate LLVM-based coverage reports and triage crash inputs."""
+
     def __init__(self, httpd_root: Path, config_manager: ConfigManager) -> None:
         self.httpd_root = httpd_root
         self.config_manager = config_manager

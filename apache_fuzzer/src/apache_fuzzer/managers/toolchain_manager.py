@@ -1,3 +1,10 @@
+"""Toolchain dependency checking, AFL++ setup, and LLVM detection.
+
+:class:`ToolchainManager` inspects the local system for required build
+tools, libraries, and fuzzing infrastructure.  It can also clone and
+build AFL++ and download matching LLVM packages automatically.
+"""
+
 import os
 import re
 import shutil
@@ -16,6 +23,7 @@ logger = get_logger(__name__)
 
 @dataclass
 class DepStatus:
+    """Result of a single dependency check (used by :meth:`ToolchainManager.check`)."""
     name: str
     category: str
     found: bool

@@ -1,3 +1,10 @@
+"""Build, link, and manage fuzzing harness binaries.
+
+:class:`HarnessBuilder` compiles ``fuzz_harness.c`` against the Apache
+build tree and links it with all statically-built modules, producing a
+self-contained binary for AFL++, LibFuzzer, or standalone execution.
+"""
+
 import os
 import re
 import shutil
@@ -8,7 +15,7 @@ from apache_fuzzer.core.process_runner import ProcessRunner
 
 logger = get_logger(__name__)
 
-# Compiler selection per build mode
+#: Compiler selection per build mode.
 COMPILERS = {
     "afl": "afl-clang-fast",
     "libfuzzer": "clang",
@@ -16,7 +23,16 @@ COMPILERS = {
     "coverage": "clang",
 }
 
+
 class HarnessBuilder:
+    """Compile and link a fuzzing harness against an Apache build tree.
+
+    Parameters
+    ----------
+    httpd_root : Path
+        Root of the configured/compiled Apache HTTPD source tree.
+    """
+
     def __init__(self, httpd_root):
         self.httpd_root = httpd_root
         self.logger = logger
@@ -76,6 +92,24 @@ class HarnessBuilder:
         return dest
 
     def build(self, mode="standalone", cflags="", ldflags="", harness_name=None, cc=None, bear=False):
+        """Compile and link the harness for the given fuzzing engine.
+
+        Parameters
+        ----------
+        mode : str
+            One of ``"afl"``, ``"libfuzzer"``, ``"standalone"``, or
+            ``"coverage"``.
+        cflags : str
+            Extra compiler flags.
+        ldflags : str
+            Extra linker flags.
+        harness_name : str, optional
+            Name of a bundled harness to copy before building.
+        cc : str, optional
+            Override the compiler (defaults to :data:`COMPILERS` lookup).
+        bear : bool
+            Wrap compilation with ``bear`` for ``compile_commands.json``.
+        """
         output_name = f"fuzz_harness_{mode}"
         if cc is None:
             cc = COMPILERS.get(mode, "clang")
