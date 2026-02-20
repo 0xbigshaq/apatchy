@@ -197,6 +197,9 @@ def main():
     try:
         dispatcher = MethodDispatcher()
         dispatcher.dispatch(args)
+    except KeyboardInterrupt:
+        print()
+        sys.exit(130)
     except Exception as e:
         logger.exception("An error occurred during execution")
         sys.exit(1)
