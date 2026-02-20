@@ -440,30 +440,42 @@ class MethodDispatcher:
             console.print(table)
 
     def _handle_docs(self, args: argparse.Namespace) -> None:
-        docs_dir = Config.PROJECT_ROOT.parent / "docs"
-        # If running from installed package, docs might be in a different location
-        # For now, assume development setup or correctly packaged data
-        if not docs_dir.exists():
-             # Try local docs dir relative to working directory or package
-             docs_dir = Path("docs")
-        
-        if not docs_dir.exists():
-            logger.error(f"Documentation directory not found at {docs_dir}")
+        import subprocess
+        import shutil
+
+        source_dir = Config.PROJECT_ROOT / "docs" / "api"
+        build_dir = source_dir / "_build" / "html"
+
+        if not source_dir.exists():
+            logger.error(f"Sphinx source directory not found at {source_dir}")
             return
 
-        from rich.console import Console
-        from rich.table import Table
-        console = Console()
+        sphinx = shutil.which("sphinx-build")
+        if sphinx is None:
+            logger.error("sphinx-build not found. Install with: pip install './framework[docs]'")
+            return
 
-        table = Table(title="Available Documentation")
-        table.add_column("File", style="cyan")
-        table.add_column("Description", style="magenta")
+        logger.info("Building Sphinx documentation...")
+        result = subprocess.run(
+            [sphinx, "-b", "html", str(source_dir), str(build_dir)],
+            cwd=str(Config.PROJECT_ROOT),
+        )
+        if result.returncode != 0:
+            logger.error("Sphinx build failed")
+            return
 
-        for doc in sorted(docs_dir.glob("*.md")):
-            table.add_row(doc.name, "Documentation file")
+        index = build_dir / "index.html"
+        logger.info(f"Documentation built at {index}")
 
-        console.print(table)
-        console.print("\n[bold]Use a markdown viewer to read these files.[/bold]")
+        if args.serve is not None:
+            import http.server
+            import functools
+
+            port = args.serve
+            handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(build_dir))
+            logger.info(f"Serving docs at http://localhost:{port}/ (Ctrl+C to stop)")
+            with http.server.HTTPServer(("localhost", port), handler) as server:
+                server.serve_forever()
 
     def _get_active_httpd(self) -> Optional[Path]:
         # reuse logic to find httpd directory

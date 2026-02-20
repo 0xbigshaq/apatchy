@@ -183,7 +183,9 @@ def main():
     _sub(dev_sub, "list", help="List dev harness projects")
 
     # Docs
-    _sub(subparsers, "docs", help="View documentation")
+    docs_parser = _sub(subparsers, "docs", help="Build and view Sphinx API documentation")
+    docs_parser.add_argument("--serve", nargs="?", const=8000, type=int, metavar="PORT",
+                             help="Serve docs via HTTP after building (default port: 8000)")
 
     argcomplete.autocomplete(parser)
     args = parser.parse_args()
