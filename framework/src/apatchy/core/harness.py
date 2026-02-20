@@ -153,8 +153,24 @@ class HarnessBuilder:
                  self.logger.error("fuzz_harness.c not found and no default harness available!")
                  raise FileNotFoundError("fuzz_harness.c not found")
 
+        # If the harness uses fuzz_common.h, copy companion files before compiling
+        has_fuzz_common = False
+        harness_text = Path("fuzz_harness.c").read_text()
+        if '"fuzz_common.h"' in harness_text:
+            for companion in ("fuzz_common.c", "fuzz_common.h"):
+                companion_src = Config.HARNESSES_DIR / companion
+                companion_dest = Path(companion)
+                if companion_src.exists() and not companion_dest.exists():
+                    shutil.copy(companion_src, companion_dest)
+                    self.logger.info(f"Copied companion: {companion}")
+            has_fuzz_common = True
+
         # Compile harness object
         self._compile_object("fuzz_harness.c", "fuzz_harness.lo", cflags, cc, bear=bear)
+
+        # Compile fuzz_common if needed
+        if has_fuzz_common:
+            self._compile_object("fuzz_common.c", "fuzz_common.lo", cflags, cc, bear=bear)
 
         # Compile buildmark.c (provides ap_get_server_built)
         buildmark_src = self.httpd_root / "server" / "buildmark.c"
@@ -184,7 +200,10 @@ class HarnessBuilder:
             ldflags = f"{ldflags} -no-pie"
 
         # Link everything
-        objects = ["fuzz_harness.lo", "buildmark.lo", "modules.lo"]
+        objects = ["fuzz_harness.lo"]
+        if has_fuzz_common:
+            objects.append("fuzz_common.lo")
+        objects.extend(["buildmark.lo", "modules.lo"])
         self._link_harness(output_name, objects, cflags, ldflags, cc, allow_muldefs, skip_afl_rt)
 
     @staticmethod
