@@ -713,6 +713,13 @@ static int fuzz_init(const char *confname, const char *server_root)
 
     apr_pool_destroy(ptemp);
 
+    /* Run child_init hooks - modules like mod_proxy initialize per-process
+     * state here (e.g. proxy worker connection pools). Without this,
+     * proxy workers are never marked PROXY_WORKER_INITIALIZED and all
+     * proxy requests fail with "disabled connection" (AH00940).
+     */
+    ap_run_child_init(g_pconf, g_server);
+
     /* Retrieve optional functions */
     ap_run_optional_fn_retrieve();
 
