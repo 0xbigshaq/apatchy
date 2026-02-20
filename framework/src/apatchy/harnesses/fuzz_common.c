@@ -189,6 +189,15 @@ static apr_status_t fuzz_insert_network_bucket(conn_rec *c, apr_bucket_brigade *
 {
     apr_bucket *b;
 
+    /* Only intercept the fuzz client connection.
+     * Let proxy backend connections use their real socket.
+     * This hook is RUN_FIRST with decline value AP_DECLINED -
+     * returning the wrong value stops the chain and prevents
+     * the core from inserting the real socket bucket. */
+    if (!apr_table_get(c->notes, "fuzz_client")) {
+        return AP_DECLINED;
+    }
+
     if (g_input_data && g_input_size > 0) {
         b = fuzz_bucket_create(g_input_data, g_input_size, c->bucket_alloc);
         APR_BRIGADE_INSERT_TAIL(bb, b);
@@ -333,6 +342,12 @@ static int fuzz_pre_connection(conn_rec *c, void *csd)
 {
     fuzz_net_rec *net;
     apr_socket_t *dummy_socket = NULL;
+
+    /* Only intercept connections we created (tagged in fuzz_one_input).
+     * Let proxy backend connections use normal socket I/O. */
+    if (!apr_table_get(c->notes, "fuzz_client")) {
+        return DECLINED;
+    }
 
     net = apr_pcalloc(c->pool, sizeof(*net));
     net->c = c;
@@ -636,6 +651,10 @@ int fuzz_one_input(const char *data, size_t size)
     c->client_ip = "127.0.0.1";
     c->local_host = "localhost";
     c->remote_host = "localhost";
+
+    /* Tag this as the fuzz client connection so fuzz_pre_connection
+     * only intercepts it, not proxy backend connections. */
+    apr_table_setn(c->notes, "fuzz_client", "1");
 
     ap_process_connection(c, NULL);
 
