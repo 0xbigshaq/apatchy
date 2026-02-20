@@ -230,7 +230,7 @@ class ReportManager:
 
         return built
 
-    def _build_coverage_harness(self, cc: str) -> Tuple[Path, Path]:
+    def _build_coverage_harness(self, cc: str, harness_name: str = None) -> Tuple[Path, Path]:
         """Build fuzz_harness_coverage with coverage instrumentation flags.
 
         Uses the separate coverage build tree so the AFL build is untouched.
@@ -252,7 +252,8 @@ class ReportManager:
 
         builder = HarnessBuilder(cov_root)
         self.logger.info("Building coverage-instrumented harness...")
-        builder.build(mode="coverage", cflags=cflags, ldflags=ldflags, cc=cc)
+        builder.build(mode="coverage", cflags=cflags, ldflags=ldflags, cc=cc,
+                      harness_name=harness_name)
 
         # The real binary is in .libs/ (libtool wrapper is in cwd)
         harness = self.work_dir / ".libs" / "fuzz_harness_coverage"
@@ -327,6 +328,7 @@ class ReportManager:
         afl_dir: str = "afl-output",
         config_name: str = "fuzz.conf",
         output_dir: str = "coverage-report",
+        harness_name: str = None,
     ) -> None:
         """Full coverage pipeline: build harness, replay corpus, merge, generate report."""
         # Detect LLVM toolchain (matched compiler + analysis tools)
@@ -343,7 +345,7 @@ class ReportManager:
 
         # Build coverage harness (uses separate -cov tree, AFL build untouched)
         try:
-            harness, cov_root = self._build_coverage_harness(cc)
+            harness, cov_root = self._build_coverage_harness(cc, harness_name=harness_name)
         except Exception as e:
             self.logger.error(f"Failed to build coverage harness: {e}")
             return

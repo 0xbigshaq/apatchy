@@ -364,6 +364,7 @@ class MethodDispatcher:
                 afl_dir=args.afl_dir,
                 config_name=args.config,
                 output_dir=args.output,
+                harness_name=getattr(args, "harness", None),
             )
         else:
             logger.error("No coverage sub-command specified. Use: report")

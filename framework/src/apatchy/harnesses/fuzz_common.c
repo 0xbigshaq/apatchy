@@ -665,3 +665,24 @@ int fuzz_one_input(const char *data, size_t size)
 
     return 0;
 }
+
+/* ----------------------------------------------------------------
+ * Coverage-safe exit
+ * ---------------------------------------------------------------- */
+
+/*
+ * Weak reference to LLVM's profile write function.  In coverage builds
+ * (compiled with -fprofile-instr-generate) this resolves to the real
+ * function; in all other builds it stays NULL.
+ */
+int __llvm_profile_write_file(void) __attribute__((weak));
+
+void fuzz_exit(int status)
+{
+    /* Flush LLVM coverage (.profraw) data before _exit(), because
+     * _exit() skips atexit handlers where LLVM normally writes it. */
+    if (__llvm_profile_write_file) {
+        __llvm_profile_write_file();
+    }
+    _exit(status);
+}

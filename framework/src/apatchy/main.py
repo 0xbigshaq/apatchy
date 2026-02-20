@@ -127,6 +127,7 @@ def main():
     coverage_report.add_argument("--afl-dir", default="afl-output", help="AFL output directory")
     coverage_report.add_argument("--config", default="fuzz.conf", help="Httpd config for corpus replay")
     coverage_report.add_argument("--output", default="coverage-report", help="Output directory for HTML report")
+    coverage_report.add_argument("--harness", default=None, help="Harness to use (e.g. full_pipeline)")
 
     # Grammar mutator
     grammar_parser = _sub(subparsers, "grammar", help="Manage AFL++ grammar mutators")

@@ -216,13 +216,30 @@ int main(int argc, const char * const argv[])
     }
 
     if (read_stdin_and_process() < 0) {
-        return 1;
+        fuzz_exit(1);
     }
 
-    apr_pool_destroy(g_pool);
-    apr_terminate();
-
-    return 0;
+    /* fuzz_init() calls ap_run_child_init() which some modules (e.g.
+     * mod_watchdog) use to spawn background threads.  Those threads sit
+     * in an infinite loop waiting for work signals that never arrive in
+     * the harness because there is no real MPM event loop driving them.
+     *
+     * The normal cleanup path - apr_pool_destroy() / apr_terminate() -
+     * tries to pthread_join() those threads, which blocks forever
+     * (main waits for threads, threads wait for work => deadlock).
+     *
+     * _exit() terminates the process immediately at the OS level,
+     * tearing down all threads and memory without going through the
+     * pool/APR cleanup.  This is safe here because the harness is a
+     * short-lived, single-request process with no persistent state to
+     * flush.
+     *
+     * TODO: can we fix this in a cleaner way?  Possible ideas:
+     *   - Selectively disable modules that spawn threads (mod_watchdog)
+     *   - Signal the background threads to shut down before cleanup
+     *   - Skip ap_run_child_init() and manually init only what we need
+     */
+    fuzz_exit(0);
 }
 
 #endif /* LIBFUZZER / AFL_FUZZ */

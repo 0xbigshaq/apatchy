@@ -31,4 +31,15 @@ int fuzz_one_input(const char *data, size_t size);
  */
 extern apr_pool_t *g_pool;
 
+/*
+ * Exit the harness process, flushing LLVM coverage data first.
+ *
+ * We must use _exit() instead of return/exit() because ap_run_child_init()
+ * spawns background threads (e.g. mod_watchdog) that deadlock during normal
+ * cleanup.  But _exit() skips atexit handlers, which LLVM uses to write
+ * .profraw coverage data.  fuzz_exit() calls __llvm_profile_write_file()
+ * (if linked) to flush coverage before _exit().
+ */
+void fuzz_exit(int status);
+
 #endif /* FUZZ_COMMON_H */
