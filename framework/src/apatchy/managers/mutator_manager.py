@@ -11,8 +11,8 @@ import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from apache_fuzzer.config import Config
-from apache_fuzzer.utils.logger import get_logger
+from apatchy.config import Config
+from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -93,12 +93,12 @@ class MutatorManager:
             )
 
         logger.info(f"Grammar mutator ready at {self.grammar_mutator_src}")
-        logger.info("Run 'fuzzer grammar build <name>' to build a grammar .so")
+        logger.info("Run 'apatchy grammar build <name>' to build a grammar .so")
 
     def build_grammar(self, grammar_name: str) -> Optional[Path]:
         """Build libgrammarmutator-<name>.so for the given grammar."""
         if not self.grammar_mutator_src.exists() or not any(self.grammar_mutator_src.iterdir()):
-            logger.error("Grammar mutator not set up. Run 'fuzzer grammar setup' first.")
+            logger.error("Grammar mutator not set up. Run 'apatchy grammar setup' first.")
             return None
 
         grammar_file = self._resolve_grammar_file(grammar_name)

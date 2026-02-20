@@ -1,5 +1,5 @@
 [project]
-name = "apache-fuzzer"
+name = "apatchy"
 version = "0.1.0"
 description = "A modular, Python-based fuzzing framework for Apache HTTPD"
 authors = [
@@ -13,10 +13,10 @@ dependencies = [
 requires-python = ">=3.8"
 
 [project.scripts]
-fuzzer = "apache_fuzzer.main:main"
+apatchy = "apatchy.main:main"
 
 [tool.setuptools.package-data]
-apache_fuzzer = ["grammars/*.json", "custom_mutators/*.c", "templates/*", "harnesses/*.c"]
+apatchy = ["grammars/*.json", "custom_mutators/*.c", "templates/*", "harnesses/*.c"]
 
 [build-system]
 requires = ["setuptools>=61.0"]

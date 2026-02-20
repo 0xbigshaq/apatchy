@@ -1,7 +1,7 @@
 """High-level build orchestration for Apache HTTPD and fuzzing harnesses.
 
-:class:`BuildManager` ties together :class:`~apache_fuzzer.managers.config_manager.ConfigManager`
-(compiler/flag selection) and :class:`~apache_fuzzer.core.harness.HarnessBuilder`
+:class:`BuildManager` ties together :class:`~apatchy.managers.config_manager.ConfigManager`
+(compiler/flag selection) and :class:`~apatchy.core.harness.HarnessBuilder`
 (harness compilation) behind the ``configure``, ``compile``, and ``build``
 CLI commands.
 """
@@ -10,11 +10,11 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from apache_fuzzer.utils.logger import get_logger
-from apache_fuzzer.utils.build_tree import AlternateBuildTree
-from apache_fuzzer.core.process_runner import ProcessRunner
-from apache_fuzzer.managers.config_manager import ConfigManager
-from apache_fuzzer.core.harness import HarnessBuilder
+from apatchy.utils.logger import get_logger
+from apatchy.utils.build_tree import AlternateBuildTree
+from apatchy.core.process_runner import ProcessRunner
+from apatchy.managers.config_manager import ConfigManager
+from apatchy.core.harness import HarnessBuilder
 
 logger = get_logger(__name__)
 

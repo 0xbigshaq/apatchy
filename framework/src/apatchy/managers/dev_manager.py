@@ -11,11 +11,11 @@ import shutil
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from apache_fuzzer.config import Config
-from apache_fuzzer.core.harness import HarnessBuilder
-from apache_fuzzer.managers.config_manager import ConfigManager
-from apache_fuzzer.utils.build_tree import AlternateBuildTree
-from apache_fuzzer.utils.logger import get_logger
+from apatchy.config import Config
+from apatchy.core.harness import HarnessBuilder
+from apatchy.managers.config_manager import ConfigManager
+from apatchy.utils.build_tree import AlternateBuildTree
+from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

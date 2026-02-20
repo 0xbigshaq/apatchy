@@ -8,7 +8,7 @@ import subprocess
 import shlex
 from pathlib import Path
 from typing import Optional, List, Union, Dict, Any
-from apache_fuzzer.utils.logger import get_logger
+from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

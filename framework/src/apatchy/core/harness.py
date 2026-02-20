@@ -9,9 +9,9 @@ import os
 import re
 import shutil
 from pathlib import Path
-from apache_fuzzer.utils.logger import get_logger
-from apache_fuzzer.config import Config
-from apache_fuzzer.core.process_runner import ProcessRunner
+from apatchy.utils.logger import get_logger
+from apatchy.config import Config
+from apatchy.core.process_runner import ProcessRunner
 
 logger = get_logger(__name__)
 
@@ -190,7 +190,7 @@ class HarnessBuilder:
     @staticmethod
     def _find_afl_compiler_rt() -> str:
         """Locate afl-compiler-rt.o needed to link AFL-instrumented objects."""
-        # Toolchain-local copy (from `fuzzer setup afl`)
+        # Toolchain-local copy (from `apatchy setup afl`)
         local = Config.TOOLCHAIN_DIR / "aflplusplus" / "afl-compiler-rt.o"
         if local.exists():
             return str(local)

@@ -10,9 +10,9 @@ import json
 import random
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-from apache_fuzzer.utils.logger import get_logger
-from apache_fuzzer.core.process_runner import ProcessRunner
-from apache_fuzzer.managers.config_manager import ConfigManager
+from apatchy.utils.logger import get_logger
+from apatchy.core.process_runner import ProcessRunner
+from apatchy.managers.config_manager import ConfigManager
 import os
 
 logger = get_logger(__name__)

@@ -11,8 +11,8 @@ import re
 import shutil
 from pathlib import Path
 
-from apache_fuzzer.utils.logger import get_logger
-from apache_fuzzer.core.process_runner import ProcessRunner
+from apatchy.utils.logger import get_logger
+from apatchy.core.process_runner import ProcessRunner
 
 logger = get_logger(__name__)
 
@@ -39,7 +39,7 @@ class AlternateBuildTree:
             shutil.rmtree(self.alt_root)
             self._ensure_tree()
 
-        # Staleness detection: if user re-ran `fuzzer configure`, rebuild.
+        # Staleness detection: if user re-ran `apatchy configure`, rebuild.
         hash_file = self.alt_root / ".afl_config_hash"
         current_hash = self.afl_config_hash(self.httpd_root)
         if hash_file.exists():

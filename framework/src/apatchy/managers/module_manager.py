@@ -11,8 +11,8 @@ import subprocess
 from pathlib import Path
 from typing import List, Optional
 
-from apache_fuzzer.config import Config
-from apache_fuzzer.utils.logger import get_logger
+from apatchy.config import Config
+from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

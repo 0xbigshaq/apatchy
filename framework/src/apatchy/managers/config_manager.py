@@ -8,7 +8,7 @@ should be used for a given build, and resolves the runtime
 
 from pathlib import Path
 from typing import Dict, Optional
-from apache_fuzzer.utils.logger import get_logger
+from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

@@ -1,4 +1,4 @@
-# Apache HTTPD source (downloaded via `fuzzer download`)
+# Apache HTTPD source (downloaded via `apatchy download`)
 httpd-*/
 
 # IDE and OS files
@@ -19,12 +19,12 @@ __pycache__/
 venv/
 .venv/
 
-# Toolchain (built locally via `fuzzer setup`)
+# Toolchain (built locally via `apatchy setup`)
 toolchain/
 grammar_mutator/
 
 # Downloaded Apache source inside project dir
-apache_fuzzer/httpd-*/
+framework/httpd-*/
 
 # Build artifacts
 *.o
@@ -47,14 +47,14 @@ afl-output/
 afl-pwn-*/
 afl-cov-report-*/
 
-# Generated grammar seeds (created by `fuzzer fuzz --grammar`)
-apache_fuzzer/afl-input/grammar_*.txt
+# Generated grammar seeds (created by `apatchy fuzz --grammar`)
+framework/afl-input/grammar_*.txt
 
-# Built external modules (created by `fuzzer module build`)
-apache_fuzzer/modules/
+# Built external modules (created by `apatchy module build`)
+framework/modules/
 
 # Runtime Apache config files (e.g. mime.types)
-apache_fuzzer/conf/
+framework/conf/
 
 # Debug / configure logs
 *.log
@@ -68,13 +68,13 @@ toolchain.config
 coverage-report*/
 cov-*/
 
-# Dev harness projects (user-specific, created by `fuzzer dev init`)
-apache_fuzzer/dev/
+# Dev harness projects (user-specific, created by `apatchy dev init`)
+framework/dev/
 
 # Copied harness source in working dir root
 /fuzz_harness.c
-apache_fuzzer/out-*
-apache_fuzzer/afl-out-*
+framework/out-*
+framework/afl-out-*
 out-*.txt
 
 # Sphinx build output

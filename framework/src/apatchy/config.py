@@ -1,4 +1,4 @@
-"""Global configuration constants for the apache-fuzzer framework.
+"""Global configuration constants for the apatchy framework.
 
 This module centralises every path, URL, and default value that
 the rest of the package needs.  All values are class-level
@@ -23,7 +23,7 @@ class Config:
     
     # Directories
     WORK_DIR = Path(os.getcwd())
-    SRC_DIR = PROJECT_ROOT / "src" / "apache_fuzzer"
+    SRC_DIR = PROJECT_ROOT / "src" / "apatchy"
     TOOLCHAIN_DIR = WORK_DIR / "toolchain"
     
     # Defaults

@@ -1,15 +1,15 @@
-"""CLI entry point for the ``fuzzer`` command.
+"""CLI entry point for the ``apatchy`` command.
 
 Defines all argparse sub-commands and delegates to
-:class:`~apache_fuzzer.method_dispatcher.MethodDispatcher`.
+:class:`~apatchy.method_dispatcher.MethodDispatcher`.
 """
 
 import argparse
 import sys
 import argcomplete
-from apache_fuzzer.utils.logger import get_logger
-from apache_fuzzer.method_dispatcher import MethodDispatcher
-from apache_fuzzer.config import Config
+from apatchy.utils.logger import get_logger
+from apatchy.method_dispatcher import MethodDispatcher
+from apatchy.config import Config
 
 logger = get_logger(__name__)
 

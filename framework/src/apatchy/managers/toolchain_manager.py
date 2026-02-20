@@ -14,9 +14,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from apache_fuzzer.config import Config
-from apache_fuzzer.core import toolchain_config
-from apache_fuzzer.utils.logger import get_logger
+from apatchy.config import Config
+from apatchy.core import toolchain_config
+from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -52,8 +52,8 @@ class ToolchainManager:
         deps.append(self._check_binary("libtool", "Build", "apt install libtool"))
 
         # Fuzzing tools
-        deps.append(self._check_binary("afl-fuzz", "Fuzzing", "fuzzer setup afl"))
-        deps.append(self._check_binary("afl-clang-fast", "Fuzzing", "fuzzer setup afl"))
+        deps.append(self._check_binary("afl-fuzz", "Fuzzing", "apatchy setup afl"))
+        deps.append(self._check_binary("afl-clang-fast", "Fuzzing", "apatchy setup afl"))
 
         # Coverage tools (version-matched to clang)
         clang_ver = self._detect_clang_major_version()

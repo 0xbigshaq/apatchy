@@ -13,11 +13,11 @@ import shutil
 import subprocess
 from pathlib import Path
 from typing import List, Optional, Tuple
-from apache_fuzzer.utils.logger import get_logger
-from apache_fuzzer.utils.build_tree import AlternateBuildTree
-from apache_fuzzer.core.process_runner import ProcessRunner
-from apache_fuzzer.managers.config_manager import ConfigManager
-from apache_fuzzer.core.harness import HarnessBuilder
+from apatchy.utils.logger import get_logger
+from apatchy.utils.build_tree import AlternateBuildTree
+from apatchy.core.process_runner import ProcessRunner
+from apatchy.managers.config_manager import ConfigManager
+from apatchy.core.harness import HarnessBuilder
 
 logger = get_logger(__name__)
 
@@ -184,7 +184,7 @@ class ReportManager:
         coverage flags, and places them in <work_dir>/modules/ (overwriting
         the AFL-instrumented version).  Returns the list of built .so paths.
         """
-        from apache_fuzzer.config import Config
+        from apatchy.config import Config
 
         modules_dir = self.work_dir / "modules"
         if not Config.EXTERNAL_MODULES_DIR.exists():

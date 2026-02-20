@@ -1,25 +1,25 @@
 """Command dispatcher that routes CLI sub-commands to the appropriate manager.
 
 The :class:`MethodDispatcher` acts as the glue between the argument parser
-(defined in :mod:`apache_fuzzer.main`) and the various manager classes that
+(defined in :mod:`apatchy.main`) and the various manager classes that
 implement each workflow step (download, configure, build, fuzz, ...).
 """
 
 import argparse
 from pathlib import Path
 from typing import Optional
-from apache_fuzzer.utils.logger import get_logger
-from apache_fuzzer.config import Config
-from apache_fuzzer.core.downloader import Downloader
-from apache_fuzzer.managers.config_manager import ConfigManager
-from apache_fuzzer.managers.build_manager import BuildManager
-from apache_fuzzer.managers.fuzz_manager import FuzzManager
-from apache_fuzzer.managers.report_manager import ReportManager
-from apache_fuzzer.managers.mutator_manager import MutatorManager
-from apache_fuzzer.managers.toolchain_manager import ToolchainManager
-from apache_fuzzer.managers.module_manager import ModuleManager
-from apache_fuzzer.managers.dev_manager import DevManager
-# from apache_fuzzer.core.harness import HarnessBuilder # Used inside BuildManager
+from apatchy.utils.logger import get_logger
+from apatchy.config import Config
+from apatchy.core.downloader import Downloader
+from apatchy.managers.config_manager import ConfigManager
+from apatchy.managers.build_manager import BuildManager
+from apatchy.managers.fuzz_manager import FuzzManager
+from apatchy.managers.report_manager import ReportManager
+from apatchy.managers.mutator_manager import MutatorManager
+from apatchy.managers.toolchain_manager import ToolchainManager
+from apatchy.managers.module_manager import ModuleManager
+from apatchy.managers.dev_manager import DevManager
+# from apatchy.core.harness import HarnessBuilder # Used inside BuildManager
 
 logger = get_logger(__name__)
 
@@ -145,7 +145,7 @@ class MethodDispatcher:
             # Fall back to the libtool wrapper (works for non-AFL engines)
             harness_path = Config.WORK_DIR / f"fuzz_harness_{args.engine}"
         if not harness_path.exists():
-            logger.error(f"Harness not found: {harness_path}. Run 'fuzzer build {args.engine}' first.")
+            logger.error(f"Harness not found: {harness_path}. Run 'apatchy build {args.engine}' first.")
             return
 
         self.fuzz_manager.start_fuzzer(
@@ -183,7 +183,7 @@ class MethodDispatcher:
                 break
 
         if not harness_path:
-            logger.error("No harness binary found. Run 'fuzzer build standalone' or 'fuzzer build afl' first.")
+            logger.error("No harness binary found. Run 'apatchy build standalone' or 'apatchy build afl' first.")
             return
 
         # We need to tell the config manager which config to use if it's not default?
@@ -324,7 +324,7 @@ class MethodDispatcher:
     def _handle_harness(self, args: argparse.Namespace) -> None:
         from rich.console import Console
         from rich.table import Table
-        from apache_fuzzer.core.harness import HarnessBuilder
+        from apatchy.core.harness import HarnessBuilder
         console = Console()
 
         action = getattr(args, "action", None)
@@ -418,7 +418,7 @@ class MethodDispatcher:
             try:
                 project_dir = dm.init_project(args.name)
                 console.print(f"[green]Created dev project:[/green] {project_dir}")
-                console.print(f"[dim]Edit {project_dir / 'harness.c'} then run: fuzzer dev build {args.name}[/dim]")
+                console.print(f"[dim]Edit {project_dir / 'harness.c'} then run: apatchy dev build {args.name}[/dim]")
             except FileExistsError as e:
                 logger.error(str(e))
 
@@ -428,7 +428,7 @@ class MethodDispatcher:
         elif action == "list":
             projects = dm.list_projects()
             if not projects:
-                console.print("[yellow]No dev projects found. Run 'fuzzer dev init <name>' to create one.[/yellow]")
+                console.print("[yellow]No dev projects found. Run 'apatchy dev init <name>' to create one.[/yellow]")
                 return
             table = Table(title="Dev Harness Projects")
             table.add_column("Name", style="cyan")
@@ -440,7 +440,7 @@ class MethodDispatcher:
             console.print(table)
 
     def _handle_docs(self, args: argparse.Namespace) -> None:
-        docs_dir = Config.PROJECT_ROOT / "apache_fuzzer" / "docs"
+        docs_dir = Config.PROJECT_ROOT.parent / "docs"
         # If running from installed package, docs might be in a different location
         # For now, assume development setup or correctly packaged data
         if not docs_dir.exists():
