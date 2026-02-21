@@ -1,3 +1,3 @@
-GET /a HTTP/1.1
+GET /c/aaaaa?lmaooo=eeee HTTP/1.1
 Host: localhost
 

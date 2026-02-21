@@ -1,16 +1,18 @@
 /*
  * @description: Multi-request pipeline harness - processes multiple requests per fuzz input
  *
- * Like full_pipeline, but splits fuzz input on null bytes (\x00) and
+ * Like full_pipeline, but splits fuzz input on \r\n\r\n boundaries and
  * processes each segment as a separate connection. This exercises
  * cross-connection state: sessions, connection cleanup, per-conn isolation.
  *
- * Input format: request1\x00request2\x00request3
- * (within each segment, HTTP pipelining works normally)
+ * Input format: request1\r\n\r\nrequest2\r\n\r\nrequest3
+ * Each \r\n\r\n serves double duty as the HTTP header terminator and the
+ * segment boundary, so the format is just concatenated HTTP requests.
  *
  * See fuzz_common.c for shared infrastructure.
  */
 
+#define _GNU_SOURCE  /* memmem() */
 #include "fuzz_common.h"
 
 #include "httpd.h"
@@ -37,11 +39,11 @@ static int fuzz_multi_input(const char *data, size_t size)
     int count = 0;
 
     while (p < end && count < MAX_REQUESTS_PER_INPUT) {
-        const char *sep = memchr(p, '\0', end - p);
+        const char *sep = memmem(p, end - p, "\r\n\r\n", 4);
         size_t seg_len;
 
         if (sep) {
-            seg_len = sep - p;
+            seg_len = (sep + 4) - p;  /* include \r\n\r\n in segment */
         } else {
             seg_len = end - p;
         }
@@ -51,7 +53,7 @@ static int fuzz_multi_input(const char *data, size_t size)
             count++;
         }
 
-        p += seg_len + 1;
+        p += seg_len;
     }
 
     return 0;
