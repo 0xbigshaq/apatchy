@@ -71,8 +71,11 @@ cov-*/
 # Dev harness projects (user-specific, created by `apatchy dev init`)
 framework/dev/
 
-# Copied harness source in working dir root
+# Copied harness sources (build artifacts from `apatchy build`)
 /fuzz_harness.c
+framework/fuzz_harness.c
+framework/fuzz_common.c
+framework/fuzz_common.h
 framework/out-*
 framework/afl-out-*
 out-*.txt
