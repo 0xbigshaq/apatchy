@@ -27,7 +27,16 @@
 
 	"<VERSION>": [["HTTP/0.9"], ["HTTP/1.0"], ["HTTP/1.1"], ["HTTP/2.0"], ["HTTP/3.0"]],
 	
-	"<HEADERS>": [[], ["<HEADER>", "\r\n", "<HEADERS>"]],
+	"<HEADERS>": [
+		[],
+		["<HEADER>"],
+		["<HEADER>", "\r\n", "<HEADER>"],
+		["<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>"],
+		["<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>"],
+		["<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>"],
+		["<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>"],
+		["<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>"]
+	],
 	
 	"<HEADER>": [["<HEADER_FIELD>", ": ", "<ANY>"]],
 	

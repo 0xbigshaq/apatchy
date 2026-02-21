@@ -120,13 +120,17 @@ class FuzzManager:
                      suppress: Optional[str] = None) -> None:
         input_dir, out_dir = self.prepare_corpus(output_dir=output_dir)
 
-        # Generate grammar-based seeds before starting the fuzzer
+        # Generate grammar-based seeds before starting the fuzzer (skip if
+        # seeds already exist to avoid races with parallel instances).
         if grammar:
             grammar_path = Path(grammar).resolve()
             if not grammar_path.exists():
                 self.logger.error(f"Grammar file not found: {grammar_path}")
                 return
-            self.generate_grammar_seeds(grammar_path, input_dir)
+            if not list(input_dir.glob("grammar_*.txt")):
+                self.generate_grammar_seeds(grammar_path, input_dir)
+            else:
+                self.logger.info(f"Grammar seeds already exist in {input_dir}, skipping generation")
 
         if engine == "afl":
             self._start_afl(harness_path, input_dir, out_dir, mutator=mutator,
@@ -231,6 +235,7 @@ class FuzzManager:
                 self.logger.error(f"Mutator library not found: {mutator_path}")
                 return
             env["AFL_CUSTOM_MUTATOR_LIBRARY"] = str(mutator_path)
+            env["AFL_CUSTOM_MUTATOR_ONLY"] = "1" # FIXME: i need to re-think about this hack
             self.logger.info(f"Using custom mutator: {mutator_path}")
 
         # Set LD_LIBRARY_PATH for APR/APR-Util shared libraries

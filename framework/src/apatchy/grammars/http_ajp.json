@@ -1,0 +1,112 @@
+{
+	"<A>": [["<START_LINE>", "\r\n", "<HEADERS>", "<BODY>"]],
+
+	"<START_LINE>": [["<METHOD>", " ", "<URI>", " ", "<VERSION>"]],
+
+	"<METHOD>": [["GET"], ["HEAD"], ["POST"], ["PUT"], ["DELETE"], ["OPTIONS"], ["TRACE"], ["PROPFIND"], ["PROPPATCH"], ["MKCOL"], ["COPY"], ["MOVE"], ["LOCK"], ["UNLOCK"], ["ACL"], ["REPORT"], ["VERSION-CONTROL"], ["CHECKIN"], ["CHECKOUT"], ["UNCHECKOUT"], ["SEARCH"], ["MKWORKSPACE"], ["UPDATE"], ["LABEL"], ["MERGE"], ["BASELINE-CONTROL"], ["MKACTIVITY"]],
+
+	"<URI>": [["<AJP_LOC>"], ["<AJP_LOC>", "<PATH>"], ["<AJP_LOC>", "<PATH>", "<QUERY>"], ["<AJP_LOC>", "<PATH>", "<QUERY>", "<FRAGMENT>"]],
+
+	"<AJP_LOC>": [["/ajp"], ["/ajp-secret"], ["/ajp-balanced"]],
+
+	"<PATH>": [["/"], ["/", "<PATH_SEG>"], ["/", "<PATH_SEG>", "/", "<PATH_SEG>"], ["/", "<PATH_SEG>", "/", "<PATH_SEG>", "/", "<PATH_SEG>"]],
+
+	"<PATH_SEG>": [["index.html"], ["index.jsp"], ["WEB-INF"], ["META-INF"], ["status"], ["admin"], ["manager"], [".."], ["."], ["%2e%2e"], ["%00"], ["<WORD>"]],
+
+	"<QUERY>": [["?", "<WORD>", "=", "<WORD>"], ["?", "<WORD>", "=", "<WORD>", "&", "<WORD>", "=", "<WORD>"]],
+
+	"<FRAGMENT>": [["#", "<WORD>"]],
+
+	"<VERSION>": [["HTTP/1.0"], ["HTTP/1.1"]],
+
+	"<HEADERS>": [
+		["\r\n"],
+		["<HEADER>", "\r\n\r\n"],
+		["<HEADER>", "\r\n", "<HEADER>", "\r\n\r\n"],
+		["<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n\r\n"],
+		["<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n\r\n"],
+		["<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n\r\n"],
+		["<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n\r\n"],
+		["<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n\r\n"]
+	],
+
+	"<HEADER>": [["<AJP_CODED_HEADER>"], ["<OTHER_HEADER>"]],
+
+	"<AJP_CODED_HEADER>": [
+		["Accept: ", "<ACCEPT_VAL>"],
+		["Accept-Charset: ", "<CHARSET_VAL>"],
+		["Accept-Encoding: ", "<ENCODING_VAL>"],
+		["Accept-Language: ", "<LANG_VAL>"],
+		["Authorization: ", "<AUTH_VAL>"],
+		["Connection: ", "<CONN_VAL>"],
+		["Content-Type: ", "<CTYPE_VAL>"],
+		["Content-Length: ", "<LENGTH_VAL>"],
+		["Cookie: ", "<COOKIE_VAL>"],
+		["Cookie2: ", "<COOKIE_VAL>"],
+		["Host: ", "<HOST_VAL>"],
+		["Pragma: ", "<PRAGMA_VAL>"],
+		["Referer: ", "<REFERER_VAL>"],
+		["User-Agent: ", "<UA_VAL>"]
+	],
+
+	"<OTHER_HEADER>": [
+		["Transfer-Encoding: ", "<TE_VAL>"],
+		["X-Forwarded-For: ", "<IP_VAL>"],
+		["X-Forwarded-Host: ", "<HOST_VAL>"],
+		["X-Forwarded-Proto: ", "<PROTO_VAL>"],
+		["Expect: ", "100-continue"],
+		["If-Modified-Since: ", "<DATE>"],
+		["If-None-Match: ", "<ETAG_VAL>"],
+		["Range: ", "bytes=", "<DIGIT>", "-", "<DIGIT>"],
+		["Max-Forwards: ", "<DIGIT>"],
+		["Via: ", "1.1 ", "<WORD>"]
+	],
+
+	"<ACCEPT_VAL>": [["*/*"], ["text/html"], ["application/json"], ["text/xml"], ["text/html, application/xhtml+xml, */*;q=0.8"]],
+
+	"<CHARSET_VAL>": [["utf-8"], ["iso-8859-1"], ["*"]],
+
+	"<ENCODING_VAL>": [["gzip"], ["deflate"], ["br"], ["identity"], ["gzip, deflate, br"]],
+
+	"<LANG_VAL>": [["en"], ["en-US"], ["*"], ["en-US,en;q=0.9"]],
+
+	"<AUTH_VAL>": [["Basic dGVzdDp0ZXN0"], ["Basic "], ["Basic AAAA"], ["Digest username=\"admin\""], ["Bearer token123"]],
+
+	"<CONN_VAL>": [["keep-alive"], ["close"], ["upgrade"], ["Keep-Alive, Upgrade"]],
+
+	"<CTYPE_VAL>": [["text/plain"], ["text/html"], ["application/x-www-form-urlencoded"], ["application/json"], ["multipart/form-data; boundary=----fuzzboundary"], ["application/xml"], ["text/xml"]],
+
+	"<LENGTH_VAL>": [["0"], ["1"], ["10"], ["100"], ["4096"], ["8186"], ["8192"], ["65535"], ["-1"], ["999999999"]],
+
+	"<COOKIE_VAL>": [["JSESSIONID=", "<WORD>"], ["session=", "<WORD>"], ["JSESSIONID=", "<WORD>", ".node1"], ["a=b; c=d"]],
+
+	"<HOST_VAL>": [["localhost"], ["localhost:8009"], ["localhost:8080"], ["127.0.0.1"], ["127.0.0.1:8009"], ["[::1]"], ["[::1]:8009"]],
+
+	"<PRAGMA_VAL>": [["no-cache"]],
+
+	"<REFERER_VAL>": [["http://localhost/"], ["http://localhost:8080/ajp/"], ["http://evil.com/"]],
+
+	"<UA_VAL>": [["Mozilla/5.0"], ["curl/7.68.0"], ["Apache-HttpClient"], ["<WORD>"]],
+
+	"<TE_VAL>": [["chunked"], ["identity"], ["chunked, identity"]],
+
+	"<IP_VAL>": [["127.0.0.1"], ["192.168.1.1"], ["10.0.0.1"], ["::1"], ["<WORD>"]],
+
+	"<PROTO_VAL>": [["http"], ["https"]],
+
+	"<ETAG_VAL>": [["\"", "<WORD>", "\""], ["W/\"", "<WORD>", "\""], ["*"]],
+
+	"<DATE>": [["Sat, 29 Oct 1994 19:43:31 GMT"], ["Thu, 01 Jan 1970 00:00:00 GMT"]],
+
+	"<BODY>": [[], ["<WORD>", "=", "<WORD>"], ["<WORD>", "=", "<WORD>", "&", "<WORD>", "=", "<WORD>"], ["{\"", "<WORD>", "\":\"", "<WORD>", "\"}"], ["<CHUNK_BODY>"]],
+
+	"<CHUNK_BODY>": [["4\r\ntest\r\n0\r\n\r\n"], ["a\r\n0123456789\r\n0\r\n\r\n"]],
+
+	"<WORD>": [["test"], ["admin"], ["root"], ["fuzz"], ["null"], ["undefined"], ["<script>"], ["AAAAAAAAAAAAAAAA"], ["foo"], ["bar"], ["%00"], ["%0d%0a"], ["../.."], ["jvmRoute"], ["<CHAR>"]],
+
+	"<DIGIT>": [["0"], ["1"], ["10"], ["100"], ["1024"], ["8192"], ["65535"]],
+
+	"<ANY>": [[], ["<DATE>"], ["<CHAR>"], ["<HOST_VAL>"], ["<URI>"], ["<WORD>"]],
+
+	"<CHAR>": [["0"], ["1"], ["2"], ["3"], ["4"], ["5"], ["6"], ["7"], ["8"], ["9"], ["a"], ["b"], ["c"], ["d"], ["e"], ["f"], ["g"], ["h"], ["i"], ["j"], ["k"], ["l"], ["m"], ["n"], ["o"], ["p"], ["q"], ["r"], ["s"], ["t"], ["u"], ["v"], ["w"], ["x"], ["y"], ["z"], ["A"], ["B"], ["C"], ["D"], ["E"], ["F"], ["G"], ["H"], ["I"], ["J"], ["K"], ["L"], ["M"], ["N"], ["O"], ["P"], ["Q"], ["R"], ["S"], ["T"], ["U"], ["V"], ["W"], ["X"], ["Y"], ["Z"]]
+}
