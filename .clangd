@@ -1,0 +1,17 @@
+# .clangd
+If:
+  PathMatch: framework/src/apatchy/harnesses/.*
+CompileFlags:
+  CompilationDatabase: framework/src/apatchy/harnesses/
+
+---
+If:
+  PathMatch: framework/src/apatchy/harnesses/.*
+CompileFlags:
+  CompilationDatabase: framework/
+
+---
+If:
+  PathMatch: framework/httpd-2.4.62-standalone/.*
+CompileFlags:
+  CompilationDatabase: framework/httpd-2.4.62-standalone/
