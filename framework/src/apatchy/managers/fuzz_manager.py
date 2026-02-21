@@ -200,13 +200,13 @@ class FuzzManager:
         self.logger.info(f"Starting AFL++{mode_label}...")
 
         config_path = self.config_manager.get_httpd_config()
-        if not config_path:
-            self.logger.error("Cannot start fuzzer: httpd config not found")
-            return
 
         env = os.environ.copy()
-        env["FUZZ_CONF"] = str(config_path)
-        env["FUZZ_ROOT"] = str(self.work_dir)
+        if config_path:
+            env["FUZZ_CONF"] = str(config_path)
+            env["FUZZ_ROOT"] = str(self.work_dir)
+        else:
+            self.logger.info("No httpd config found - harness will run without Apache pipeline")
         env["AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES"] = "1"
         env["AFL_SKIP_CPUFREQ"] = "1"
         if resume:
