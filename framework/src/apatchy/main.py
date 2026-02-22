@@ -122,6 +122,8 @@ def main():
     triage_parser.add_argument("crash_file", help="Path to crash file to triage")
     triage_parser.add_argument("--config", default="fuzz.conf", help="Httpd config file to use")
     triage_parser.add_argument("--no-color", action="store_true", help="Disable colored output for sanitizer reports")
+    triage_parser.add_argument("--timeout", type=int, default=30,
+                               help="Timeout in seconds for the harness process (default: 30)")
     triage_parser.add_argument("--suppress", default=None,
                                help="UBSan suppression file (e.g. ubsan.supp). See configs/ for examples.")
 

@@ -442,7 +442,16 @@ class ReportManager:
         self.logger.info("Coverage report complete. AFL build is untouched.")
 
     def triage_crash(self, crash_file: Path, harness_binary: Path,
-                     no_color: bool = False, suppress: Optional[str] = None) -> None:
+                     no_color: bool = False, suppress: Optional[str] = None,
+                     timeout: int = 30) -> None:
+        """Replay *crash_file* through *harness_binary* and print the
+        sanitizer output.
+
+        *suppress* is an optional path to a UBSan runtime suppression
+        file (passed via ``UBSAN_OPTIONS=suppressions=``).  *timeout*
+        controls how long the harness is allowed to run before being
+        killed.
+        """
         self.logger.info(f"Triaging crash: {crash_file}")
 
         config_path = self.config_manager.get_httpd_config()
@@ -511,7 +520,7 @@ class ReportManager:
             result = subprocess.run(
                 cmd, env=env, input=crash_data,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                timeout=30,
+                timeout=timeout,
             )
 
             self.logger.info("Crash Output (Stderr):")
@@ -522,6 +531,6 @@ class ReportManager:
                 print(result.stdout.decode("utf-8", errors="replace"))
 
         except subprocess.TimeoutExpired:
-            self.logger.error("Triage timed out (30s)")
+            self.logger.error(f"Triage timed out ({timeout}s)")
         except Exception as e:
             self.logger.error(f"Failed to triage crash: {e}")

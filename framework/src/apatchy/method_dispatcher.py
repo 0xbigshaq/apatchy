@@ -196,6 +196,7 @@ class MethodDispatcher:
             args.crash_file, harness_path,
             no_color=args.no_color,
             suppress=getattr(args, 'suppress', None),
+            timeout=args.timeout,
         )
 
 

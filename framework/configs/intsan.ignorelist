@@ -1,0 +1,8 @@
+# Compile-time ignorelist for unsigned-integer-overflow.
+# These APR files rely on unsigned wrapping by design.
+# Format: https://clang.llvm.org/docs/SanitizerSpecialCaseList.html
+
+[unsigned-integer-overflow]
+src:*/apr_hash.c
+src:*/sha2.c
+src:*/apr_thread_pool.c

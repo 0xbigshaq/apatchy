@@ -8,3 +8,45 @@
 # apr_brigade_write passes NULL to memcpy when length is 0.
 # This is a nonnull-attribute violation but harmless (memcpy with n=0 is a no-op).
 nonnull-attribute:apr_brigade.c
+
+# unsigned-integer-overflow is NOT a valid runtime suppression type.
+# Those false positives are handled at compile time via
+# configs/intsan.ignorelist (-fsanitize-ignorelist=).
+
+# $ clang -fsanitize=undefined -xc /dev/null '-###'
+# alignment
+# array-bounds
+# bool
+# builtin
+# enum
+# float-cast-overflow
+# function
+# integer-divide-by-zero
+# nonnull-attribute
+# null
+# pointer-overflow
+# return
+# returns-nonnull-attribute
+# shift-base
+# shift-exponent
+# signed-integer-overflow
+# unreachable
+# vla-bound
+# vptr"
+# "-fsanitize-recover=alignment
+# array-bounds
+# bool
+# builtin
+# enum
+# float-cast-overflow
+# function
+# integer-divide-by-zero
+# nonnull-attribute
+# null
+# pointer-overflow
+# returns-nonnull-attribute
+# shift-base
+# shift-exponent
+# signed-integer-overflow
+# vla-bound
+# vptr
