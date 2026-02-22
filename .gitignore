@@ -71,6 +71,7 @@ cov-*/
 
 # Pytest
 .pytest_cache/
+.test_cache/
 
 # Dev harness projects (user-specific, created by `apatchy dev init`)
 framework/dev/
