@@ -16,13 +16,12 @@ def _make_fuzz_manager(work_dir):
 
 
 def test_prepare_corpus_creates_dirs(tmp_path):
+    """prepare_corpus() creates input and output directories."""
     fm = _make_fuzz_manager(tmp_path)
     input_path, output_path = fm.prepare_corpus(
         input_dir=str(tmp_path / "input"),
         output_dir=str(tmp_path / "output"),
     )
-    # prepare_corpus uses self.work_dir / input_dir, but we passed absolute paths
-    # as the dir names - let's check the actual paths it creates
     assert input_path.exists()
     assert output_path.exists()
     assert input_path.is_dir()
@@ -30,6 +29,7 @@ def test_prepare_corpus_creates_dirs(tmp_path):
 
 
 def test_prepare_corpus_writes_default_seed(tmp_path):
+    """prepare_corpus() writes a default HTTP seed file."""
     fm = _make_fuzz_manager(tmp_path)
     input_path, _ = fm.prepare_corpus(
         input_dir="corpus-in",
@@ -43,9 +43,9 @@ def test_prepare_corpus_writes_default_seed(tmp_path):
 
 
 def test_prepare_corpus_skips_seed_if_not_empty(tmp_path):
+    """prepare_corpus() skips seed creation when input dir has files."""
     fm = _make_fuzz_manager(tmp_path)
 
-    # Pre-create input dir with a file
     input_dir = tmp_path / "corpus-in"
     input_dir.mkdir()
     (input_dir / "existing_seed.txt").write_bytes(b"POST /foo")
@@ -60,15 +60,16 @@ def test_prepare_corpus_skips_seed_if_not_empty(tmp_path):
 
 
 def test_prepare_corpus_idempotent(tmp_path):
+    """Calling prepare_corpus() twice is a no-op."""
     fm = _make_fuzz_manager(tmp_path)
     p1, _ = fm.prepare_corpus(input_dir="in", output_dir="out")
     p2, _ = fm.prepare_corpus(input_dir="in", output_dir="out")
     assert p1 == p2
-    # Still only one seed
     assert len(list(p1.iterdir())) == 1
 
 
 def test_generate_grammar_seeds(tmp_path):
+    """generate_grammar_seeds() writes grammar-based seed files."""
     fm = _make_fuzz_manager(tmp_path)
 
     grammar = {
@@ -89,9 +90,9 @@ def test_generate_grammar_seeds(tmp_path):
 
 
 def test_generate_grammar_seeds_deduplicates(tmp_path):
+    """generate_grammar_seeds() deduplicates identical outputs."""
     fm = _make_fuzz_manager(tmp_path)
 
-    # Grammar with only one possible output
     grammar = {
         "<A>": [["only_one"]],
     }
@@ -103,11 +104,11 @@ def test_generate_grammar_seeds_deduplicates(tmp_path):
     input_dir.mkdir()
 
     written = fm.generate_grammar_seeds(grammar_file, input_dir, count=10)
-    # Can only produce 1 unique seed
     assert written == 1
 
 
 def test_generate_grammar_seeds_missing_start(tmp_path):
+    """generate_grammar_seeds() returns 0 when grammar has no <A> symbol."""
     fm = _make_fuzz_manager(tmp_path)
 
     grammar = {
@@ -125,6 +126,7 @@ def test_generate_grammar_seeds_missing_start(tmp_path):
 
 
 def test_generate_grammar_seeds_bad_json(tmp_path):
+    """generate_grammar_seeds() returns 0 for invalid JSON."""
     fm = _make_fuzz_manager(tmp_path)
 
     grammar_file = tmp_path / "bad.json"

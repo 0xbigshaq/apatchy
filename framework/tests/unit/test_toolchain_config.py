@@ -12,6 +12,7 @@ from apatchy.core import toolchain_config
 
 @patch.object(toolchain_config, "_config_path")
 def test_load_creates_sections(mock_path, tmp_path):
+    """load() creates all expected sections."""
     mock_path.return_value = tmp_path / "toolchain.config"
     cp = toolchain_config.load()
     for section in toolchain_config.SECTIONS:
@@ -20,9 +21,9 @@ def test_load_creates_sections(mock_path, tmp_path):
 
 @patch.object(toolchain_config, "_config_path")
 def test_load_missing_file(mock_path, tmp_path):
+    """load() handles missing file gracefully."""
     mock_path.return_value = tmp_path / "nonexistent.config"
     cp = toolchain_config.load()
-    # Should return config with default sections, not raise
     assert isinstance(cp, configparser.ConfigParser)
     for section in toolchain_config.SECTIONS:
         assert cp.has_section(section)
@@ -30,6 +31,7 @@ def test_load_missing_file(mock_path, tmp_path):
 
 @patch.object(toolchain_config, "_config_path")
 def test_save_and_load_roundtrip(mock_path, tmp_path):
+    """save() then load() preserves data."""
     config_file = tmp_path / "toolchain.config"
     mock_path.return_value = config_file
 
@@ -38,7 +40,6 @@ def test_save_and_load_roundtrip(mock_path, tmp_path):
     cp.set("fuzzing", "afl-fuzz", "/usr/bin/afl-fuzz")
     toolchain_config.save(cp)
 
-    # Reload and verify
     cp2 = toolchain_config.load()
     assert cp2.get("build", "cc") == "/usr/bin/clang"
     assert cp2.get("fuzzing", "afl-fuzz") == "/usr/bin/afl-fuzz"
@@ -46,6 +47,7 @@ def test_save_and_load_roundtrip(mock_path, tmp_path):
 
 @patch.object(toolchain_config, "_config_path")
 def test_save_writes_header(mock_path, tmp_path):
+    """save() writes the auto-generated header comment."""
     config_file = tmp_path / "toolchain.config"
     mock_path.return_value = config_file
 
@@ -58,10 +60,10 @@ def test_save_writes_header(mock_path, tmp_path):
 
 @patch.object(toolchain_config, "_config_path")
 def test_resolve_tool_from_config(mock_path, tmp_path):
+    """resolve_tool() returns path stored in config."""
     config_file = tmp_path / "toolchain.config"
     mock_path.return_value = config_file
 
-    # Create a real file to satisfy _path_valid
     fake_tool = tmp_path / "my-clang"
     fake_tool.touch()
 
@@ -75,10 +77,10 @@ def test_resolve_tool_from_config(mock_path, tmp_path):
 
 @patch.object(toolchain_config, "_config_path")
 def test_resolve_tool_falls_back_to_path(mock_path, tmp_path):
+    """resolve_tool() falls back to shutil.which() on PATH."""
     config_file = tmp_path / "toolchain.config"
     mock_path.return_value = config_file
 
-    # "python3" should be on PATH in any test environment
     result = toolchain_config.resolve_tool("python3")
     assert result is not None
     assert "python3" in result
@@ -86,6 +88,7 @@ def test_resolve_tool_falls_back_to_path(mock_path, tmp_path):
 
 @patch.object(toolchain_config, "_config_path")
 def test_resolve_tool_not_found(mock_path, tmp_path):
+    """resolve_tool() returns None for nonexistent tool."""
     config_file = tmp_path / "toolchain.config"
     mock_path.return_value = config_file
 
@@ -95,7 +98,7 @@ def test_resolve_tool_not_found(mock_path, tmp_path):
 
 @patch.object(toolchain_config, "_config_path")
 def test_resolve_tool_invalid_path_in_config(mock_path, tmp_path):
-    """Config has a path that no longer exists - should fall back to PATH."""
+    """Stale config path falls back to PATH lookup."""
     config_file = tmp_path / "toolchain.config"
     mock_path.return_value = config_file
 
@@ -103,18 +106,16 @@ def test_resolve_tool_invalid_path_in_config(mock_path, tmp_path):
     cp.set("build", "cc", "/nonexistent/path/clang")
     toolchain_config.save(cp)
 
-    # Should skip the invalid config entry and try PATH
     result = toolchain_config.resolve_tool("cc", section="build")
-    # cc might or might not be on PATH, just check it didn't return the bad path
     assert result != "/nonexistent/path/clang"
 
 
 @patch.object(toolchain_config, "_config_path")
 def test_update_section_merges(mock_path, tmp_path):
+    """update_section() preserves existing valid entries."""
     config_file = tmp_path / "toolchain.config"
     mock_path.return_value = config_file
 
-    # Create real files so _path_valid returns True
     tool_a = tmp_path / "tool_a"
     tool_a.touch()
     tool_b = tmp_path / "tool_b"
@@ -122,12 +123,10 @@ def test_update_section_merges(mock_path, tmp_path):
     tool_c = tmp_path / "tool_c"
     tool_c.touch()
 
-    # Set initial value
     cp = toolchain_config.load()
     cp.set("build", "cc", str(tool_a))
     toolchain_config.save(cp)
 
-    # update_section should preserve existing valid "cc" and add "ld"
     toolchain_config.update_section("build", {
         "cc": str(tool_b),
         "ld": str(tool_c),
@@ -140,6 +139,7 @@ def test_update_section_merges(mock_path, tmp_path):
 
 @patch.object(toolchain_config, "_config_path")
 def test_force_update_section_overwrites(mock_path, tmp_path):
+    """force_update_section() overwrites existing entries."""
     config_file = tmp_path / "toolchain.config"
     mock_path.return_value = config_file
 
@@ -162,6 +162,7 @@ def test_force_update_section_overwrites(mock_path, tmp_path):
 
 @patch.object(toolchain_config, "_config_path")
 def test_update_section_creates_section(mock_path, tmp_path):
+    """update_section() creates a new section if needed."""
     config_file = tmp_path / "toolchain.config"
     mock_path.return_value = config_file
 

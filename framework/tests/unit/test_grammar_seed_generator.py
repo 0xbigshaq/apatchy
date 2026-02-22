@@ -4,10 +4,10 @@ from apatchy.managers.fuzz_manager import GrammarSeedGenerator
 
 
 def test_simple_terminal(sample_grammar):
+    """Simple grammar expands to 'greeting target' pair."""
     gen = GrammarSeedGenerator(sample_grammar)
     result = gen.generate()
     assert isinstance(result, bytes)
-    # Should be one of: "hello world", "hello there", "hi world", "hi there"
     text = result.decode("latin-1")
     assert text.split()[0] in ("hello", "hi")
     assert text.split()[1] in ("world", "there")
@@ -28,6 +28,7 @@ def test_deterministic_with_seed(sample_grammar):
 
 
 def test_generates_bytes(sample_grammar):
+    """generate() returns bytes, not str."""
     gen = GrammarSeedGenerator(sample_grammar)
     result = gen.generate()
     assert isinstance(result, bytes)
@@ -37,19 +38,17 @@ def test_deduplication(sample_grammar):
     """Multiple generations produce varied output (not all identical)."""
     gen = GrammarSeedGenerator(sample_grammar)
     results = {gen.generate() for _ in range(20)}
-    # With 4 possible outputs, we should get more than 1 unique
     assert len(results) > 1
 
 
 def test_recursive_grammar_bounded():
-    """Recursive grammar doesn't blow up - max_depth cuts it off."""
+    """Recursive grammar terminates via max_depth."""
     grammar = {
         "<A>": [["<A>", "x"], ["y"]],
     }
     gen = GrammarSeedGenerator(grammar, max_depth=5)
     result = gen.generate()
     assert isinstance(result, bytes)
-    # Should terminate and contain at least one terminal
     assert b"y" in result or b"x" in result
 
 
@@ -62,29 +61,30 @@ def test_max_depth_produces_terminal():
     gen = GrammarSeedGenerator(grammar, max_depth=2)
     result = gen.generate()
     assert isinstance(result, bytes)
-    # Should not run forever
 
 
 def test_single_terminal_grammar():
+    """Grammar with one terminal produces that terminal."""
     grammar = {
         "<A>": [["hello"]],
     }
     gen = GrammarSeedGenerator(grammar)
-    result = gen.generate()
-    assert result == b"hello"
+    assert gen.generate() == b"hello"
 
 
 def test_multi_production_grammar():
+    """Grammar with multiple productions covers all of them."""
     grammar = {
         "<A>": [["GET"], ["POST"], ["HEAD"]],
     }
     gen = GrammarSeedGenerator(grammar)
     results = {gen.generate() for _ in range(30)}
     assert results.issubset({b"GET", b"POST", b"HEAD"})
-    assert len(results) > 1  # should hit at least 2 of 3
+    assert len(results) > 1
 
 
 def test_concatenation():
+    """Multi-symbol production concatenates terminals."""
     grammar = {
         "<A>": [["a", "b", "c"]],
     }
@@ -93,11 +93,10 @@ def test_concatenation():
 
 
 def test_empty_grammar_no_start():
-    """Grammar without <A> start symbol - generate() tries to expand it."""
+    """Missing <A> start symbol is treated as a terminal."""
     grammar = {
         "<B>": [["hello"]],
     }
     gen = GrammarSeedGenerator(grammar)
-    # <A> is not in grammar, so it's treated as a terminal
     result = gen.generate()
     assert result == b"<A>"
