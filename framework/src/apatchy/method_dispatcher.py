@@ -94,8 +94,9 @@ class MethodDispatcher:
         if not httpd_root:
             return
 
+        verbose = getattr(args, 'verbose', False)
         self.config_manager = ConfigManager(build_mode=args.mode, asan=getattr(args, 'asan', False), ubsan=getattr(args, 'ubsan', False), intsan=getattr(args, 'intsan', False), truncsan=getattr(args, 'truncsan', False))
-        self.build_manager = BuildManager(httpd_root, self.config_manager)
+        self.build_manager = BuildManager(httpd_root, self.config_manager, verbose=verbose)
         self.build_manager.configure_httpd()
 
     def _handle_compile(self, args: argparse.Namespace) -> None:
@@ -103,24 +104,19 @@ class MethodDispatcher:
         if not httpd_root:
             return
 
-        # We need a ConfigManager to know if we are in ASan/Coverage mode
-        # But compile command might not know the mode if it wasn't passed
-        # Ideally, we read the last used config or args.mode if provided
-        # For now, instantiating a default one or requiring arguments
+        verbose = getattr(args, 'verbose', False)
         self.config_manager = ConfigManager() # Defaults
-        self.build_manager = BuildManager(httpd_root, self.config_manager)
+        self.build_manager = BuildManager(httpd_root, self.config_manager, verbose=verbose)
         self.build_manager.compile_httpd(bear=getattr(args, 'bear', False))
 
     def _handle_build(self, args: argparse.Namespace) -> None:
         httpd_root = self._get_active_httpd()
         if not httpd_root:
             return
-        
-        # Build harness
-        # We need to pass the engine type to the harness builder
-        # BuildManager needs to be updated to accept engine
+
+        verbose = getattr(args, 'verbose', False)
         self.config_manager = ConfigManager()
-        self.build_manager = BuildManager(httpd_root, self.config_manager)
+        self.build_manager = BuildManager(httpd_root, self.config_manager, verbose=verbose)
         self.build_manager.build_harness(
             mode=args.engine,
             harness_name=getattr(args, 'harness', None),

@@ -33,10 +33,10 @@ class HarnessBuilder:
         Root of the configured/compiled Apache HTTPD source tree.
     """
 
-    def __init__(self, httpd_root):
+    def __init__(self, httpd_root, verbose: bool = False):
         self.httpd_root = httpd_root
         self.logger = logger
-        self.runner = ProcessRunner()
+        self.runner = ProcessRunner(verbose=verbose)
         self.libtool = self.httpd_root / "srclib" / "apr" / "libtool"
 
     @staticmethod
@@ -260,7 +260,8 @@ class HarnessBuilder:
         ]
         if bear:
             cmd = ["bear", "--force-wrapper", "--append", "--"] + cmd
-        self.runner.run_command(cmd)
+        src_name = Path(src).name
+        self.runner.run_build(cmd, label=f"Compiling {src_name}")
 
     def _parse_config_vars(self):
         """Parse config_vars.mk from the Apache build to extract linker flags."""
@@ -361,4 +362,4 @@ class HarnessBuilder:
             *system_libs,
             "-luuid", "-lcrypt", "-lpthread",
         ]
-        self.runner.run_command(cmd)
+        self.runner.run_build(cmd, label="Linking harness")

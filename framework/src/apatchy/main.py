@@ -73,6 +73,10 @@ def main():
         add_help=False,
     )
     _add_help(parser)
+    parser.add_argument(
+        '-v', '--verbose', action='store_true', default=False,
+        help='Show full build output instead of the scrolling panel',
+    )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Download

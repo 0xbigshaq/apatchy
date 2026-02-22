@@ -27,12 +27,13 @@ def _bear_available() -> bool:
 class BuildManager:
     """Orchestrate Apache ``./configure``, ``make``, and harness builds."""
 
-    def __init__(self, httpd_root: Path, config_manager: ConfigManager) -> None:
+    def __init__(self, httpd_root: Path, config_manager: ConfigManager, verbose: bool = False) -> None:
         self.httpd_root = httpd_root
         self.config_manager = config_manager
+        self.verbose = verbose
         self.logger = logger
-        self.runner = ProcessRunner()
-        self.harness_builder = HarnessBuilder(httpd_root)
+        self.runner = ProcessRunner(verbose=verbose)
+        self.harness_builder = HarnessBuilder(httpd_root, verbose=verbose)
 
     def configure_httpd(self) -> None:
         """
@@ -118,26 +119,27 @@ class BuildManager:
             f"CFLAGS={cflags}",
             f"LDFLAGS={ldflags}"
         ])
-        
-        self.runner.run_command(configure_cmd, cwd=self.httpd_root)
+
+        self.runner.run_build(configure_cmd, label="Configuring Apache", cwd=self.httpd_root)
 
     def compile_httpd(self, jobs: int = 4, clean: bool = True, bear: bool = False) -> None:
         if clean:
             self.logger.info("Cleaning previous build...")
-            self.runner.run_command(["make", "clean"], cwd=self.httpd_root)
+            self.runner.run_build(["make", "clean"], label="Cleaning build", cwd=self.httpd_root)
 
         if bear:
             if not _bear_available():
                 self.logger.error("bear not found in PATH. Install it: apt install bear")
                 raise FileNotFoundError("bear not found in PATH")
             self.logger.info(f"Compiling Apache with {jobs} jobs (bear enabled)...")
-            self.runner.run_command(
+            self.runner.run_build(
                 ["bear", "--force-wrapper", "--", "make", f"-j{jobs}"],
+                label="Compiling Apache",
                 cwd=self.httpd_root,
             )
         else:
             self.logger.info(f"Compiling Apache with {jobs} jobs...")
-            self.runner.run_command(["make", f"-j{jobs}"], cwd=self.httpd_root)
+            self.runner.run_build(["make", f"-j{jobs}"], label="Compiling Apache", cwd=self.httpd_root)
 
     def build_harness(self, mode: str = "standalone", engine: str = "standalone", harness_name: str = None, bear: bool = False) -> None:
         self.logger.info(f"Building harness for engine: {mode}")
