@@ -1,13 +1,13 @@
 """Compiler-flag generation and httpd config-file resolution.
 
 :class:`ConfigManager` decides which compiler (``afl-clang-fast`` vs
-``clang``) and which flags (``-fsanitize=address``, coverage, etc.)
-should be used for a given build, and resolves the runtime
-``fuzz.conf`` config file path.
+``clang``) and which sanitizer/coverage flags should be used for a
+given build, and resolves the runtime ``fuzz.conf`` config file path.
 """
 
 from pathlib import Path
 from typing import Dict, Optional
+from apatchy.compat import get_compat_flags
 from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -26,10 +26,17 @@ class ConfigManager:
         self.logger = logger
         self.httpd_config_path: Optional[Path] = None
 
-    def generate_build_config(self) -> Dict[str, str]:
-        """
-        Generates CFLAGS and LDFLAGS based on the build mode.
-        ASan is an independent flag that can be combined with any mode.
+    def generate_build_config(self, httpd_version: Optional[str] = None) -> Dict[str, str]:
+        """Generate ``CFLAGS`` and ``LDFLAGS`` based on the build mode.
+
+        Sanitizer flags (ASan, UBSan, IntSan, TruncSan) are orthogonal
+        and can be combined with any mode.  When *httpd_version* is
+        provided, version-specific compatibility flags from
+        :mod:`apatchy.compat` are appended automatically.
+
+        When ``intsan`` is enabled, a compile-time ignorelist
+        (``configs/intsan.ignorelist``) is applied automatically to
+        suppress false positives in APR internals.
         """
         cflags = ["-g", "-O0", "-fno-omit-frame-pointer"]
         ldflags = []
@@ -66,15 +73,32 @@ class ConfigManager:
 
         if self.intsan:
             self.logger.info("Enabling unsigned-integer-overflow sanitizer")
-            self.logger.warning("--intsan is noisy on Apache internals (hash, crypto). Consider using it only for targeted module auditing.")
             cflags.append("-fsanitize=unsigned-integer-overflow")
             ldflags.append("-fsanitize=unsigned-integer-overflow")
+            ignorelist = self._resolve_ignorelist("intsan.ignorelist")
+            if ignorelist:
+                self.logger.info(f"Applying intsan ignorelist: {ignorelist}")
+                cflags.append(f"-fsanitize-ignorelist={ignorelist}")
+            else:
+                self.logger.warning(
+                    "--intsan is noisy on Apache internals (hash, crypto). "
+                    "Ignorelist not found at configs/intsan.ignorelist."
+                )
 
         if self.truncsan:
             self.logger.info("Enabling implicit-unsigned-integer-truncation sanitizer")
             self.logger.warning("--truncsan is noisy on Apache internals. Consider using it only for targeted module auditing.")
             cflags.append("-fsanitize=implicit-unsigned-integer-truncation")
             ldflags.append("-fsanitize=implicit-unsigned-integer-truncation")
+
+        # Apply version-specific compatibility flags when the HTTPD
+        # version is known (see apatchy.compat for the registry).
+        if httpd_version:
+            compat = get_compat_flags(httpd_version)
+            for entry_id in compat.applied_ids:
+                self.logger.info(f"Applying compat fix: {entry_id}")
+            cflags.extend(compat.cflags)
+            ldflags.extend(compat.ldflags)
 
         result = {
             "CFLAGS": " ".join(cflags),
@@ -103,6 +127,21 @@ class ConfigManager:
             return user_config_path.resolve()
 
         self.logger.warning(f"Config file '{config_name}' not found")
+        return None
+
+    def _resolve_ignorelist(self, filename: str) -> Optional[Path]:
+        """Locate a sanitizer ignorelist file in the configs directory."""
+        # Try relative to cwd
+        candidate = Path("configs") / filename
+        if candidate.exists():
+            return candidate.resolve()
+
+        # Fall back to the package configs directory
+        from apatchy.config import Config
+        candidate = Config.PROJECT_ROOT / "framework" / "configs" / filename
+        if candidate.exists():
+            return candidate.resolve()
+
         return None
 
     def validate_configuration(self) -> None:

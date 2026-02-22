@@ -10,6 +10,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
+from apatchy.compat import extract_version_from_path, get_compat_flags
 from apatchy.utils.logger import get_logger
 from apatchy.utils.build_tree import AlternateBuildTree
 from apatchy.core.process_runner import ProcessRunner
@@ -39,7 +40,8 @@ class BuildManager:
         """
         Runs ./configure with optimised flags.
         """
-        config = self.config_manager.generate_build_config()
+        httpd_version = extract_version_from_path(self.httpd_root)
+        config = self.config_manager.generate_build_config(httpd_version=httpd_version)
         cflags = config["CFLAGS"]
         ldflags = config["LDFLAGS"]
         
@@ -110,6 +112,14 @@ class BuildManager:
             else:
                 self.logger.warning("Expat not found. apr-util configure might fail.")
 
+        # Apply version-specific configure arguments from the compat
+        # registry (e.g. extra --with-* or --disable-* flags).
+        if httpd_version:
+            compat = get_compat_flags(httpd_version)
+            for arg in compat.configure_args:
+                self.logger.info(f"Adding compat configure arg: {arg}")
+            configure_cmd.extend(compat.configure_args)
+
         cc = config.get("CC")
         if cc:
             self.logger.info(f"Using CC: {cc}")
@@ -155,7 +165,8 @@ class BuildManager:
         # Note: 'mode' arg here comes from CLI (e.g. 'afl', 'libfuzzer')
         # 'engine' arg is redundancy, can clean up
 
-        config = self.config_manager.generate_build_config()
+        httpd_version = extract_version_from_path(self.httpd_root)
+        config = self.config_manager.generate_build_config(httpd_version=httpd_version)
         cflags = config["CFLAGS"]
         ldflags = config["LDFLAGS"]
 

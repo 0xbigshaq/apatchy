@@ -81,6 +81,31 @@ def test_intsan():
     assert "-fsanitize=unsigned-integer-overflow" in result["LDFLAGS"]
 
 
+def test_intsan_with_ignorelist(tmp_path, monkeypatch):
+    """IntSan applies -fsanitize-ignorelist when ignorelist file exists."""
+    ignorelist = tmp_path / "configs" / "intsan.ignorelist"
+    ignorelist.parent.mkdir()
+    ignorelist.write_text("[unsigned-integer-overflow]\nsrc:*/apr_hash.c\n")
+    monkeypatch.chdir(tmp_path)
+
+    cm = ConfigManager(build_mode="fuzz", intsan=True)
+    result = cm.generate_build_config()
+    assert "-fsanitize=unsigned-integer-overflow" in result["CFLAGS"]
+    assert f"-fsanitize-ignorelist={ignorelist.resolve()}" in result["CFLAGS"]
+
+
+def test_intsan_without_ignorelist(tmp_path, monkeypatch):
+    """IntSan works without ignorelist (just no ignorelist flag)."""
+    monkeypatch.chdir(tmp_path)
+    from apatchy.config import Config
+    monkeypatch.setattr(Config, "PROJECT_ROOT", tmp_path)
+
+    cm = ConfigManager(build_mode="fuzz", intsan=True)
+    result = cm.generate_build_config()
+    assert "-fsanitize=unsigned-integer-overflow" in result["CFLAGS"]
+    assert "-fsanitize-ignorelist" not in result["CFLAGS"]
+
+
 def test_truncsan():
     """TruncSan flag adds -fsanitize=implicit-unsigned-integer-truncation."""
     cm = ConfigManager(build_mode="fuzz", truncsan=True)
