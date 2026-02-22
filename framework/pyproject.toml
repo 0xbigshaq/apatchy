@@ -14,12 +14,21 @@ requires-python = ">=3.8"
 
 [project.optional-dependencies]
 docs = ["sphinx", "sphinx-autodoc-typehints"]
+test = ["pytest", "pytest-cov"]
 
 [project.scripts]
 apatchy = "apatchy.main:main"
 
 [tool.setuptools.package-data]
 apatchy = ["grammars/*.json", "custom_mutators/*.c", "templates/*", "harnesses/*.c"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+    "integration: requires real Apache source (download, compile, link)",
+    "slow: tests that take more than a few seconds",
+]
 
 [build-system]
 requires = ["setuptools>=61.0"]
