@@ -513,9 +513,10 @@ class MethodDispatcher:
             import functools
 
             port = args.serve
+            bind = getattr(args, 'bind', 'localhost')
             handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(build_dir))
-            logger.info(f"Serving docs at http://localhost:{port}/ (Ctrl+C to stop)")
-            with http.server.HTTPServer(("localhost", port), handler) as server:
+            logger.info(f"Serving docs at http://{bind}:{port}/ (Ctrl+C to stop)")
+            with http.server.HTTPServer((bind, port), handler) as server:
                 server.serve_forever()
 
     def _get_active_httpd(self) -> Optional[Path]:

@@ -203,6 +203,8 @@ def main():
     docs_parser = _sub(subparsers, "docs", help="Build and view Sphinx API documentation")
     docs_parser.add_argument("--serve", nargs="?", const=8000, type=int, metavar="PORT",
                              help="Serve docs via HTTP after building (default port: 8000)")
+    docs_parser.add_argument("--bind", default="localhost", metavar="ADDR",
+                             help="Address to bind the HTTP server to (default: localhost)")
 
     argcomplete.autocomplete(parser)
     args = parser.parse_args()
