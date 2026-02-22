@@ -13,7 +13,7 @@ dependencies = [
 requires-python = ">=3.8"
 
 [project.optional-dependencies]
-docs = ["sphinx", "sphinx-autodoc-typehints", "sphinx-rtd-theme"]
+docs = ["sphinx", "sphinx-autodoc-typehints", "sphinx-rtd-theme", "myst-parser", "sphinxcontrib-mermaid"]
 test = ["pytest", "pytest-cov"]
 
 [project.scripts]

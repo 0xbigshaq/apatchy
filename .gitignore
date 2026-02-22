@@ -86,6 +86,7 @@ framework/afl-out-*
 out-*.txt
 
 # Sphinx build output
+docs/_build/
 docs/api/_build/
 
 # Obsidian vault config
