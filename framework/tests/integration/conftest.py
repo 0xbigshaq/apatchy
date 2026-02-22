@@ -12,10 +12,23 @@ import pytest
 
 from apatchy.config import Config
 
-APACHE_VERSIONS = [
+_ALL_VERSIONS = [
     "2.4.62",
     "2.4.63",
 ]
+
+def _get_versions():
+    """Return the list of Apache versions to test.
+
+    If APATCHY_TEST_VERSIONS is set (comma-separated), use only those.
+    Otherwise test all versions in _ALL_VERSIONS.
+    """
+    env = os.environ.get("APATCHY_TEST_VERSIONS")
+    if env:
+        return [v.strip() for v in env.split(",") if v.strip()]
+    return _ALL_VERSIONS
+
+APACHE_VERSIONS = _get_versions()
 
 
 def _require_tool(name):

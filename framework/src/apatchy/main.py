@@ -188,6 +188,17 @@ def main():
                            help="Fuzzing engine (default: standalone)")
     _sub(dev_sub, "list", help="List dev harness projects")
 
+    # Test
+    test_parser = _sub(subparsers, "test", help="Run the test suite")
+    test_parser.add_argument("scope", nargs="?", choices=["unit", "integration"],
+                             default=None, help="Run only unit or integration tests (default: all)")
+    test_parser.add_argument("-k", dest="filter_expr", default=None,
+                             help="pytest -k filter expression")
+    test_parser.add_argument("--version", dest="apache_version", default=None,
+                             help="Apache version(s) for integration tests (comma-separated, e.g. '2.4.62')")
+    test_parser.add_argument("--cov", action="store_true",
+                             help="Enable coverage reporting")
+
     # Docs
     docs_parser = _sub(subparsers, "docs", help="Build and view Sphinx API documentation")
     docs_parser.add_argument("--serve", nargs="?", const=8000, type=int, metavar="PORT",

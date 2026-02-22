@@ -6,6 +6,7 @@ implement each workflow step (download, configure, build, fuzz, ...).
 """
 
 import argparse
+import os
 from pathlib import Path
 from typing import Optional
 from apatchy.utils.logger import get_logger
@@ -78,6 +79,8 @@ class MethodDispatcher:
             self._handle_module(args)
         elif command == "dev":
             self._handle_dev(args)
+        elif command == "test":
+            self._handle_test(args)
         elif command == "docs":
             self._handle_docs(args)
         else:
@@ -436,6 +439,41 @@ class MethodDispatcher:
             for p in projects:
                 table.add_row(p["name"], p["path"], p["built"] or "(not built)", p["compdb"])
             console.print(table)
+
+    def _handle_test(self, args: argparse.Namespace) -> None:
+        import subprocess
+        import sys
+
+        tests_dir = Config.PROJECT_ROOT / "framework" / "tests"
+        if not tests_dir.exists():
+            logger.error(f"Tests directory not found at {tests_dir}")
+            return
+
+        cmd = [sys.executable, "-m", "pytest", "-v"]
+
+        scope = getattr(args, "scope", None)
+        if scope == "unit":
+            cmd.append(str(tests_dir / "unit"))
+        elif scope == "integration":
+            cmd.append(str(tests_dir / "integration"))
+        else:
+            cmd.append(str(tests_dir))
+
+        filter_expr = getattr(args, "filter_expr", None)
+        if filter_expr:
+            cmd.extend(["-k", filter_expr])
+
+        if getattr(args, "cov", False):
+            cmd.extend(["--cov=apatchy", "--cov-report=term-missing"])
+
+        env = os.environ.copy()
+        apache_version = getattr(args, "apache_version", None)
+        if apache_version:
+            env["APATCHY_TEST_VERSIONS"] = apache_version
+
+        logger.info(f"Running: {' '.join(cmd)}")
+        result = subprocess.run(cmd, cwd=str(Config.PROJECT_ROOT / "framework"), env=env)
+        raise SystemExit(result.returncode)
 
     def _handle_docs(self, args: argparse.Namespace) -> None:
         import subprocess
