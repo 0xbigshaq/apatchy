@@ -3,16 +3,24 @@ import json
 import pytest
 
 
-def pytest_itemcollected(item):
-    """Use the test's docstring as the display name in -v output."""
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_protocol(item, nextitem):
+    """Swap the nodeid to the docstring label for the duration of the test run.
+
+    The swap happens after collection (so VSCode sees original nodeids)
+    but before any terminal output for the test (so -v shows docstrings).
+    The original nodeid is restored after the test finishes.
+    """
+    original = item._nodeid
     doc = getattr(item.function, "__doc__", None)
     if doc:
         label = doc.strip().split("\n")[0]
-        # Preserve parametrize suffix like [2.4.62]
         params = ""
-        if "[" in item.nodeid:
-            params = " " + item.nodeid[item.nodeid.rindex("["):]
-        item._nodeid = item.nodeid.split("::")[0] + " :: " + label + params
+        if "[" in original:
+            params = " " + original[original.rindex("["):]
+        item._nodeid = original.split("::")[0] + " :: " + label + params
+    yield
+    item._nodeid = original
 
 
 @pytest.fixture(scope="session")
