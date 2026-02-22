@@ -187,10 +187,9 @@ class HarnessBuilder:
         allow_muldefs = mode in ("afl", "libfuzzer", "standalone")
 
         # Coverage mode uses a separate Apache tree without AFL
-        # instrumentation, so afl-compiler-rt.o is unnecessary and harmful
-        # (it hooks dlopen and aborts when OpenSSL is loaded by
-        # mod_session_crypto).  Standalone links against the existing
-        # (possibly AFL-instrumented) tree and needs the runtime.
+        # instrumentation, so afl-compiler-rt.o is unnecessary and harmful.
+        # Standalone links against the existing (possibly AFL-instrumented)
+        # tree and needs the runtime.
         skip_afl_rt = mode == "coverage"
 
         # When linking non-AFL compilers against AFL-instrumented Apache

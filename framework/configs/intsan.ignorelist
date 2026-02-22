@@ -6,3 +6,4 @@
 src:*/apr_hash.c
 src:*/sha2.c
 src:*/apr_thread_pool.c
+src:*/apr_md5.c

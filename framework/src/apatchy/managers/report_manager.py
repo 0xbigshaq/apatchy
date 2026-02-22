@@ -141,27 +141,61 @@ class ReportManager:
 
         return instances
 
-    def _get_ld_library_path(self, httpd_root: Optional[Path] = None) -> str:
-        """Build LD_LIBRARY_PATH for APR/APR-Util .libs directories.
+    @staticmethod
+    def _find_llvm_symbolizer() -> Optional[str]:
+        """Locate ``llvm-symbolizer`` on the system.
 
-        Args:
-            httpd_root: Explicit httpd root to use. Falls back to self.httpd_root.
+        Many distros only ship versioned binaries (e.g.
+        ``llvm-symbolizer-14``) without an unversioned symlink.  The
+        sanitizer runtimes default to searching ``$PATH`` for the plain
+        name, so if it isn't there, stack-trace symbolization silently
+        fails (or hangs).  We try the unversioned name first, then
+        try to match the compiler version (``afl-clang-fast --version``),
+        then fall back to the lowest available version for maximum
+        compatibility.
         """
-        root = httpd_root or self.httpd_root
-        srclib = root / "srclib"
-        if srclib.exists():
-            lib_paths = [
-                str(srclib / "apr" / ".libs"),
-                str(srclib / "apr-util" / ".libs"),
-                # APR-Util's DSO loader searches LD_LIBRARY_PATH for crypto
-                # drivers (apr_crypto_openssl-1.so).  Include the in-tree
-                # build directory so it finds the coverage-rebuilt driver
-                # instead of a stale AFL-instrumented installed copy.
-                str(srclib / "apr-util" / "crypto" / ".libs"),
-            ]
-            existing = os.environ.get("LD_LIBRARY_PATH", "")
-            return ":".join(lib_paths + ([existing] if existing else []))
-        return os.environ.get("LD_LIBRARY_PATH", "")
+        plain = shutil.which("llvm-symbolizer")
+        if plain:
+            return plain
+
+        # Determine which clang version afl-clang-fast uses so we can
+        # pick a matching symbolizer (avoids DWARF compat issues).
+        compiler_ver: Optional[int] = None
+        try:
+            out = subprocess.check_output(
+                ["afl-clang-fast", "--version"],
+                stderr=subprocess.DEVNULL, text=True, timeout=5,
+            )
+            import re
+            m = re.search(r"clang version (\d+)", out)
+            if m:
+                compiler_ver = int(m.group(1))
+        except (OSError, subprocess.SubprocessError):
+            pass
+
+        # Scan PATH for versioned variants.
+        candidates: dict[int, str] = {}
+        for d in os.environ.get("PATH", "").split(":"):
+            try:
+                entries = os.listdir(d)
+            except OSError:
+                continue
+            for name in entries:
+                if name.startswith("llvm-symbolizer-"):
+                    suffix = name.split("-")[-1]
+                    try:
+                        ver = int(suffix)
+                    except ValueError:
+                        continue
+                    candidates.setdefault(ver, os.path.join(d, name))
+
+        if not candidates:
+            return None
+
+        # Prefer the version matching the compiler, else lowest available.
+        if compiler_ver and compiler_ver in candidates:
+            return candidates[compiler_ver]
+        return candidates[min(candidates)]
 
     def _ensure_coverage_build(self, cc: str) -> Path:
         """Ensure the separate coverage tree is configured and compiled.
@@ -243,7 +277,9 @@ class ReportManager:
         ldflags = build_config.get("LDFLAGS", "")
 
         # Skip harness rebuild if it's already newer than the coverage libs
-        harness = self.work_dir / ".libs" / "fuzz_harness_coverage"
+        harness = self.work_dir / "fuzz_harness_coverage"
+        if not harness.exists():
+            harness = self.work_dir / ".libs" / "fuzz_harness_coverage"
         libmain = cov_root / "server" / "libmain.la"
         if harness.exists() and libmain.exists():
             if harness.stat().st_mtime > libmain.stat().st_mtime:
@@ -255,10 +291,11 @@ class ReportManager:
         builder.build(mode="coverage", cflags=cflags, ldflags=ldflags, cc=cc,
                       harness_name=harness_name)
 
-        # The real binary is in .libs/ (libtool wrapper is in cwd)
-        harness = self.work_dir / ".libs" / "fuzz_harness_coverage"
+        # With static APR (--disable-shared), the binary is in cwd.
+        # Fall back to .libs/ for older shared-library builds.
+        harness = self.work_dir / "fuzz_harness_coverage"
         if not harness.exists():
-            harness = self.work_dir / "fuzz_harness_coverage"
+            harness = self.work_dir / ".libs" / "fuzz_harness_coverage"
         if not harness.exists():
             raise FileNotFoundError("Failed to build fuzz_harness_coverage")
 
@@ -274,7 +311,6 @@ class ReportManager:
         # Set env vars for LIBFUZZER/AFL entry points (kept for compatibility)
         env["FUZZ_CONF"] = str(config_path)
         env["FUZZ_ROOT"] = str(self.work_dir)
-        env["LD_LIBRARY_PATH"] = self._get_ld_library_path(httpd_root)
 
         # The standalone entry point (used by coverage builds) reads -f/-d
         # command-line args, not FUZZ_CONF/FUZZ_ROOT env vars.
@@ -471,7 +507,14 @@ class ReportManager:
         env = os.environ.copy()
         env["FUZZ_CONF"] = str(config_path)
         env["FUZZ_ROOT"] = str(self.work_dir)
-        env["LD_LIBRARY_PATH"] = self._get_ld_library_path()
+
+        # Resolve llvm-symbolizer so sanitizer runtimes can print stack
+        # traces.  Many distros only ship versioned binaries
+        # (llvm-symbolizer-13, -14, ...) without an unversioned symlink.
+        symbolizer = self._find_llvm_symbolizer()
+        if symbolizer:
+            env["ASAN_SYMBOLIZER_PATH"] = symbolizer
+            self.logger.debug(f"Using symbolizer: {symbolizer}")
 
         # Force sanitizer color output through the pipe (they default to
         # auto which disables color when stderr is not a TTY).
@@ -480,29 +523,27 @@ class ReportManager:
             existing = env.get(var, "")
             env[var] = f"{existing}:color={color_val}" if existing else f"color={color_val}"
 
+        # Ask UBSan to print full stack traces so triage output includes
+        # the call chain leading to the error.
+        existing = env.get("UBSAN_OPTIONS", "")
+        env["UBSAN_OPTIONS"] = f"{existing}:print_stacktrace=1"
+
         # Apply UBSan suppression file if provided.
         if supp_path:
             existing = env.get("UBSAN_OPTIONS", "")
             supp_opt = f"suppressions={supp_path}"
             env["UBSAN_OPTIONS"] = f"{existing}:{supp_opt}" if existing else supp_opt
 
-        # Preload instrumented DSOs so the AFL-built harness can resolve
-        # __afl_area_ptr when Apache dlopen()s them at runtime.
-        preload = []
-        crypto_so = self.httpd_root / "srclib" / "apr-util" / "crypto" / ".libs" / "apr_crypto_openssl-1.so"
-        if crypto_so.exists():
-            preload.append(str(crypto_so))
+        # Preload external modules (.so) so the harness can dlopen() them.
+        # The crypto driver is statically linked (--disable-util-dso), so
+        # no LD_PRELOAD or LD_LIBRARY_PATH is needed for APR/APR-Util.
         modules_dir = self.work_dir / "modules"
         if modules_dir.exists():
-            preload.extend(str(so) for so in sorted(modules_dir.glob("*.so")))
-        if preload:
-            existing = env.get("LD_PRELOAD", "")
-            combined = ":".join(preload)
-            env["LD_PRELOAD"] = f"{combined}:{existing}" if existing else combined
-
-        # NOTE: LD_PRELOAD is inherited by child processes, but the harness
-        # calls unsetenv("LD_PRELOAD") early so that ASan's llvm-symbolizer
-        # subprocess doesn't inherit the AFL-instrumented crypto DSO.
+            preload = [str(so) for so in sorted(modules_dir.glob("*.so"))]
+            if preload:
+                existing = env.get("LD_PRELOAD", "")
+                combined = ":".join(preload)
+                env["LD_PRELOAD"] = f"{combined}:{existing}" if existing else combined
 
         # Build command with both env vars (AFL entry point) and
         # command-line args (standalone entry point) for config/root.

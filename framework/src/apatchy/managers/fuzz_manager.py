@@ -238,28 +238,13 @@ class FuzzManager:
             env["AFL_CUSTOM_MUTATOR_ONLY"] = "1" # FIXME: i need to re-think about this hack
             self.logger.info(f"Using custom mutator: {mutator_path}")
 
-        # Set LD_LIBRARY_PATH for APR/APR-Util shared libraries
-        httpd_dirs = [d for d in self.work_dir.glob("httpd-*") if not d.name.endswith(("-cov", "-standalone"))]
-        if httpd_dirs:
-            srclib = httpd_dirs[0] / "srclib"
-            crypto_libs = srclib / "apr-util" / "crypto" / ".libs"
-            lib_paths = [
-                str(srclib / "apr" / ".libs"),
-                str(srclib / "apr-util" / ".libs"),
-                str(crypto_libs),
-            ]
-            existing = env.get("LD_LIBRARY_PATH", "")
-            env["LD_LIBRARY_PATH"] = ":".join(lib_paths + ([existing] if existing else []))
-
-            # Preload instrumented DSOs so AFL++ sees them before the
-            # forkserver starts (avoids "instrumented dlopen()" error).
-            preload = []
-            crypto_so = crypto_libs / "apr_crypto_openssl-1.so"
-            if crypto_so.exists():
-                preload.append(str(crypto_so))
-            modules_dir = self.work_dir / "modules"
-            if modules_dir.exists():
-                preload.extend(str(so) for so in sorted(modules_dir.glob("*.so")))
+        # Preload external modules (.so) so AFL++ instruments them.
+        # APR/APR-Util and the crypto driver are statically linked
+        # (--disable-util-dso), so no LD_LIBRARY_PATH or crypto
+        # preloading is needed.
+        modules_dir = self.work_dir / "modules"
+        if modules_dir.exists():
+            preload = [str(so) for so in sorted(modules_dir.glob("*.so"))]
             if preload:
                 env["AFL_PRELOAD"] = ":".join(preload)
 

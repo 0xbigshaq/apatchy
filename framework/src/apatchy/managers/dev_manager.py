@@ -122,7 +122,9 @@ class DevManager:
             # Check which engines have been built
             built = []
             for engine in ("afl", "libfuzzer", "standalone"):
-                binary = d / ".libs" / f"fuzz_harness_{engine}"
+                binary = d / f"fuzz_harness_{engine}"
+                if not binary.exists():
+                    binary = d / ".libs" / f"fuzz_harness_{engine}"
                 if binary.exists():
                     built.append(engine)
 

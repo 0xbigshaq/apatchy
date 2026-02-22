@@ -62,6 +62,8 @@ class BuildManager:
         configure_cmd = [
             "./configure",
             "--with-included-apr",
+            "--disable-shared",       # Static-only APR/APR-Util (no .so at runtime)
+            "--disable-util-dso",     # Static-link crypto/dbd/dbm drivers into libaprutil
             "--enable-mods-static=all",
             "--enable-maintainer-mode",
             "--enable-debugger-mode",

@@ -71,12 +71,6 @@ static int asan_saved_stderr_fd = -1;
 static void asan_save_stderr(void)
 {
     asan_saved_stderr_fd = dup(STDERR_FILENO);
-
-    /* Strip LD_PRELOAD so child processes (e.g. llvm-symbolizer spawned by
-     * ASan) don't inherit the AFL-instrumented DSOs, which would crash
-     * them with "undefined symbol: __afl_area_ptr".  The DSOs are already
-     * mapped into our address space from exec-time preloading. */
-    unsetenv("LD_PRELOAD");
 }
 
 static void asan_restore_stderr_and_signals(void)
