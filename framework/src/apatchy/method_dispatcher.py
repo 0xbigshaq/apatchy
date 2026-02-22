@@ -479,7 +479,7 @@ class MethodDispatcher:
         import subprocess
         import shutil
 
-        source_dir = Config.PROJECT_ROOT / "docs" / "api"
+        source_dir = Config.PROJECT_ROOT / "docs"
         build_dir = source_dir / "_build" / "html"
 
         if not source_dir.exists():
@@ -490,6 +490,11 @@ class MethodDispatcher:
         if sphinx is None:
             logger.error("sphinx-build not found. Install with: pip install './framework[docs]'")
             return
+
+        # Clean stale build artifacts before rebuilding
+        build_root = source_dir / "_build"
+        if build_root.exists():
+            shutil.rmtree(build_root)
 
         logger.info("Building Sphinx documentation...")
         result = subprocess.run(
