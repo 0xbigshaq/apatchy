@@ -122,7 +122,9 @@ class BuildManager:
 
         self.runner.run_build(configure_cmd, label="Configuring Apache", cwd=self.httpd_root)
 
-    def compile_httpd(self, jobs: int = 4, clean: bool = True, bear: bool = False) -> None:
+    def compile_httpd(self, jobs: int = None, clean: bool = True, bear: bool = False) -> None:
+        if jobs is None:
+            jobs = os.cpu_count() or 1
         if clean:
             self.logger.info("Cleaning previous build...")
             self.runner.run_build(["make", "clean"], label="Cleaning build", cwd=self.httpd_root)

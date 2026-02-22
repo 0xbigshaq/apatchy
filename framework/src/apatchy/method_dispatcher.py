@@ -107,7 +107,8 @@ class MethodDispatcher:
         verbose = getattr(args, 'verbose', False)
         self.config_manager = ConfigManager() # Defaults
         self.build_manager = BuildManager(httpd_root, self.config_manager, verbose=verbose)
-        self.build_manager.compile_httpd(bear=getattr(args, 'bear', False))
+        jobs = getattr(args, 'jobs', None)
+        self.build_manager.compile_httpd(jobs=jobs, bear=getattr(args, 'bear', False))
 
     def _handle_build(self, args: argparse.Namespace) -> None:
         httpd_root = self._get_active_httpd()

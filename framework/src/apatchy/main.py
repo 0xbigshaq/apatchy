@@ -93,6 +93,7 @@ def main():
 
     # Compile
     compile_parser = _sub(subparsers, "compile", help="Compile Apache")
+    compile_parser.add_argument("-j", "--jobs", type=int, default=None, help="Number of parallel make jobs (default: nproc)")
     compile_parser.add_argument("--bear", action="store_true", help="Wrap make with bear to generate compile_commands.json")
 
     # Build Harness
