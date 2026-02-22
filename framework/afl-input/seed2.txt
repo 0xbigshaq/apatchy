@@ -1,5 +1,7 @@
-POST /index.html HTTP/1.1
-Host: localhost
-Content-Length: 3
+CHECKIN https://R:w@127.0.0.1:8080/w/#4 HTTP/1.0
+Access-Control-Request-Headers: 127.0.0.1:8080
+Accept-Language: 
+Max-Forwards: Sat, 29 Oct 1994 19:43:31 GMT
+If-Range: Sat, 29 Oct 1994 19:43:31 GMT
+Proxy-Authorization: Sat, 29 Oct 1994 19:43:31 GMT
 
-AAA

@@ -12,6 +12,6 @@ CompileFlags:
 
 ---
 If:
-  PathMatch: framework/httpd-2.4.62-standalone/.*
+  PathMatch: framework/httpd-2.4.52/.*
 CompileFlags:
-  CompilationDatabase: framework/httpd-2.4.62-standalone/
+  CompilationDatabase: framework/httpd-2.4.52/
