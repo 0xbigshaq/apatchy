@@ -147,7 +147,7 @@ class BuildManager:
                 raise FileNotFoundError("bear not found in PATH")
             self.logger.info(f"Compiling Apache with {jobs} jobs (bear enabled)...")
             self.runner.run_build(
-                ["bear", "--force-wrapper", "--", "make", f"-j{jobs}"],
+                ["bear", "--", "make", f"-j{jobs}"],
                 label="Compiling Apache",
                 cwd=self.httpd_root,
             )

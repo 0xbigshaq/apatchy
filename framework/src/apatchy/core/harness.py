@@ -258,7 +258,7 @@ class HarnessBuilder:
             "-c", src, "-o", dest
         ]
         if bear:
-            cmd = ["bear", "--force-wrapper", "--append", "--"] + cmd
+            cmd = ["bear", "--append", "--"] + cmd
         src_name = Path(src).name
         self.runner.run_build(cmd, label=f"Compiling {src_name}")
 
