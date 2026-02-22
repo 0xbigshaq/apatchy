@@ -159,6 +159,7 @@ class MethodDispatcher:
             role=role,
             name=name,
             suppress=getattr(args, 'suppress', None),
+            timeout=getattr(args, 'timeout', None),
         )
 
     def _handle_triage(self, args: argparse.Namespace) -> None:

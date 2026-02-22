@@ -114,6 +114,9 @@ def main():
                              help="AFL parallel mode: 'main' (-M) or 'secondary' (-S) instance")
     fuzz_parser.add_argument("--name", default=None,
                              help="AFL instance name for parallel mode (default: main01/sec01)")
+    fuzz_parser.add_argument("--timeout", type=int, default=None,
+                             help="Per-execution timeout in seconds (AFL -t flag). "
+                                  "Default: let AFL auto-calibrate.")
     fuzz_parser.add_argument("--suppress", default=None,
                              help="UBSan suppression file (e.g. ubsan.supp). See configs/ for examples.")
 

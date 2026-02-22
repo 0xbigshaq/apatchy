@@ -117,7 +117,8 @@ class FuzzManager:
                      mutator: Optional[str] = None, grammar: Optional[str] = None,
                      resume: bool = False, output_dir: str = "afl-output",
                      role: Optional[str] = None, name: Optional[str] = None,
-                     suppress: Optional[str] = None) -> None:
+                     suppress: Optional[str] = None,
+                     timeout: Optional[int] = None) -> None:
         input_dir, out_dir = self.prepare_corpus(output_dir=output_dir)
 
         # Generate grammar-based seeds before starting the fuzzer (skip if
@@ -134,7 +135,8 @@ class FuzzManager:
 
         if engine == "afl":
             self._start_afl(harness_path, input_dir, out_dir, mutator=mutator,
-                            resume=resume, role=role, name=name, suppress=suppress)
+                            resume=resume, role=role, name=name, suppress=suppress,
+                            timeout=timeout)
         elif engine == "libfuzzer":
             self._start_libfuzzer(harness_path, input_dir)
         else:
@@ -191,7 +193,8 @@ class FuzzManager:
                    resume: bool = False,
                    role: Optional[str] = None,
                    name: Optional[str] = None,
-                   suppress: Optional[str] = None) -> None:
+                   suppress: Optional[str] = None,
+                   timeout: Optional[int] = None) -> None:
         # Resolve instance name for parallel mode
         if role and not name:
             name = "main01" if role == "main" else "sec01"
@@ -249,6 +252,12 @@ class FuzzManager:
                 env["AFL_PRELOAD"] = ":".join(preload)
 
         cmd = ["afl-fuzz"]
+
+        # Per-execution timeout (converted to milliseconds for AFL's -t)
+        if timeout is not None:
+            timeout_ms = timeout * 1000
+            cmd += ["-t", str(timeout_ms)]
+            self.logger.info(f"Per-execution timeout: {timeout}s")
 
         # Parallel mode flags
         if role == "main":
