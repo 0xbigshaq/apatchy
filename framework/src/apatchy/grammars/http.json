@@ -1,7 +1,7 @@
 {
 	"<A>": [["<START_LINE>", "\r\n", "<HEADERS>", "<BODY>", "\r\n\r\n"]],
 	
-	"<START_LINE>": [["<METHOD>", " ", "<URI>", " ", "<VERSION>"]],
+	"<START_LINE>": [["<METHOD>", " ", "<PATH>", " ", "<VERSION>"]],
 	
 	"<METHOD>": [["GET"], ["HEAD"], ["POST"], ["PUT"], ["DELETE"], ["CONNECT"], ["OPTIONS"], ["TRACE"], ["PATCH"], ["ACL"], ["BASELINE-CONTROL"], ["BIND"], ["CHECKIN"], ["CHECKOUT"], ["COPY"], ["LABEL"], ["LINK"], ["LOCK"], ["MERGE"], ["MKACTIVITY"], ["MKCALENDAR"], ["MKCOL"], ["MKREDIRECTREF"], ["MKWORKSPACE"], ["MOVE"], ["ORDERPATCH"], ["PRI"], ["PROPFIND"], ["PROPPATCH"], ["REBIND"], ["REPORT"], ["SEARCH"], ["UNBIND"], ["UNCHECKOUT"], ["UNLINK"], ["UNLOCK"], ["UPDATE"], ["UPDATEREDIRECTREF"], ["VERSION-CONTROL"]],
 	
