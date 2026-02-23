@@ -7,3 +7,12 @@ src:*/apr_hash.c
 src:*/sha2.c
 src:*/apr_thread_pool.c
 src:*/apr_md5.c
+
+# proxy hash functions (ap_proxy_hashfunc) - intentional wrapping
+src:*/proxy_util.c
+
+# APR shared-memory hash (rshash) - intentional wrapping
+src:*/shmem/unix/shm.c
+
+# ap_cstr_casecmpn: 0 - 1 underflow when n=0
+src:*/server/util.c

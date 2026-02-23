@@ -9,9 +9,10 @@
 # This is a nonnull-attribute violation but harmless (memcpy with n=0 is a no-op).
 nonnull-attribute:apr_brigade.c
 
-# unsigned-integer-overflow is NOT a valid runtime suppression type.
-# Those false positives are handled at compile time via
-# configs/intsan.ignorelist (-fsanitize-ignorelist=).
+# Intentional unsigned wrapping in hash functions and string helpers.
+unsigned-integer-overflow:proxy_util.c
+unsigned-integer-overflow:shm.c
+unsigned-integer-overflow:util.c
 
 # $ clang -fsanitize=undefined -xc /dev/null '-###'
 # alignment

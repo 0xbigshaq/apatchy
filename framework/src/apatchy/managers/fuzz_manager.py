@@ -215,6 +215,9 @@ class FuzzManager:
         if resume:
             env["AFL_AUTORESUME"] = "1"
 
+        # Make UBSan abort on errors so AFL registers them as crashes.
+        ubsan_opts = ["halt_on_error=1"]
+
         # Apply UBSan suppression file if provided.
         if suppress:
             supp_path = Path(suppress).resolve()
@@ -222,9 +225,11 @@ class FuzzManager:
                 self.logger.error(f"Suppression file not found: {supp_path}")
                 return
             self.logger.info(f"Using UBSan suppression file: {supp_path}")
-            existing = env.get("UBSAN_OPTIONS", "")
-            supp_opt = f"suppressions={supp_path}"
-            env["UBSAN_OPTIONS"] = f"{existing}:{supp_opt}" if existing else supp_opt
+            ubsan_opts.append(f"suppressions={supp_path}")
+
+        existing = env.get("UBSAN_OPTIONS", "")
+        combined = ":".join(ubsan_opts)
+        env["UBSAN_OPTIONS"] = f"{existing}:{combined}" if existing else combined
 
         # When switching from solo to parallel, migrate the default/ corpus
         if role == "main" and resume:
