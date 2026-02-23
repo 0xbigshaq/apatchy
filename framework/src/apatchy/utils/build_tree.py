@@ -180,6 +180,15 @@ class AlternateBuildTree:
             patched = re.sub(
                 r'^(LDFLAGS\s*=).*$', rf'\1{ldflags}', patched, flags=re.MULTILINE,
             )
+            # Clear NOTEST_CFLAGS and EXTRA_CFLAGS - they carry -Werror and
+            # other strict flags from the original configure that may clash
+            # with a newer compiler version (e.g. clang-18 vs clang-14).
+            patched = re.sub(
+                r'^(NOTEST_CFLAGS\s*=).*$', r'\1', patched, flags=re.MULTILINE,
+            )
+            patched = re.sub(
+                r'^(EXTRA_CFLAGS\s*=).*$', r'\1', patched, flags=re.MULTILINE,
+            )
             if patched != text:
                 mk.write_text(patched)
                 logger.info(f"Patched build flags in {mk}")

@@ -207,7 +207,7 @@ class ReportManager:
             cc=cc,
             cflags="-g -O0 -fno-omit-frame-pointer"
             " -fprofile-instr-generate -fcoverage-mapping"
-            " -Wno-error=format",
+            " -Wno-error",
             ldflags="-fprofile-instr-generate -lcrypt -lm",
         )
 
