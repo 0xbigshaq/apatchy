@@ -17,7 +17,16 @@ logger = get_logger(__name__)
 class ConfigManager:
     """Generate ``CFLAGS``/``LDFLAGS`` and resolve httpd config paths."""
 
-    def __init__(self, build_mode: str = "fuzz", engine: str = "afl", config_name: str = "fuzz.conf", asan: bool = False, ubsan: bool = False, intsan: bool = False, truncsan: bool = False) -> None:
+    def __init__(
+        self,
+        build_mode: str = "fuzz",
+        engine: str = "afl",
+        config_name: str = "fuzz.conf",
+        asan: bool = False,
+        ubsan: bool = False,
+        intsan: bool = False,
+        truncsan: bool = False,
+    ) -> None:
         self.build_mode = build_mode
         self.engine = engine
         self.config_name = config_name
@@ -89,7 +98,9 @@ class ConfigManager:
 
         if self.truncsan:
             self.logger.info("Enabling implicit-unsigned-integer-truncation sanitizer")
-            self.logger.warning("--truncsan is noisy on Apache internals. Consider using it only for targeted module auditing.")
+            self.logger.warning(
+                "--truncsan is noisy on Apache internals. Consider using it only for targeted module auditing."
+            )
             cflags.append("-fsanitize=implicit-unsigned-integer-truncation")
             ldflags.append("-fsanitize=implicit-unsigned-integer-truncation")
 
@@ -140,6 +151,7 @@ class ConfigManager:
 
         # Fall back to the package configs directory
         from apatchy.config import Config
+
         candidate = Config.PROJECT_ROOT / "framework" / "configs" / filename
         if candidate.exists():
             return candidate.resolve()

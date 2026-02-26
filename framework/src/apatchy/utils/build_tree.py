@@ -45,15 +45,11 @@ class AlternateBuildTree:
         if hash_file.exists():
             saved_hash = hash_file.read_text().strip()
             if saved_hash != current_hash:
-                logger.info(
-                    f"AFL config changed since last {self.suffix} build - recreating..."
-                )
+                logger.info(f"AFL config changed since last {self.suffix} build - recreating...")
                 shutil.rmtree(self.alt_root)
                 self._ensure_tree()
         else:
-            logger.info(
-                f"Incomplete {self.suffix} tree (no build hash) - recreating..."
-            )
+            logger.info(f"Incomplete {self.suffix} tree (no build hash) - recreating...")
             shutil.rmtree(self.alt_root)
             self._ensure_tree()
 
@@ -69,7 +65,8 @@ class AlternateBuildTree:
         self.runner.run_command(["make", "clean"], cwd=self.alt_root)
         jobs = os.cpu_count() or 4
         make_cmd = [
-            "make", f"-j{jobs}",
+            "make",
+            f"-j{jobs}",
             f"CC={cc}",
             f"CFLAGS={cflags}",
         ]
@@ -113,8 +110,7 @@ class AlternateBuildTree:
         copying the tree we must rewrite these so ``make`` operates on the
         copy rather than the original.
         """
-        globs = ["Makefile", "*.mk", "config.status", "config.nice",
-                 "config.log", "libtool", "*.la"]
+        globs = ["Makefile", "*.mk", "config.status", "config.nice", "config.log", "libtool", "*.la"]
         for pattern in globs:
             for path in tree.rglob(pattern):
                 if not path.is_file():
@@ -148,13 +144,22 @@ class AlternateBuildTree:
                 continue
             text = lt.read_text()
             patched = re.sub(
-                r'^(CC=)".*"', rf'\1"{cc}"', text, flags=re.MULTILINE,
+                r'^(CC=)".*"',
+                rf'\1"{cc}"',
+                text,
+                flags=re.MULTILINE,
             )
             patched = re.sub(
-                r'^(LTCC=)".*"', rf'\1"{cc}"', patched, flags=re.MULTILINE,
+                r'^(LTCC=)".*"',
+                rf'\1"{cc}"',
+                patched,
+                flags=re.MULTILINE,
             )
             patched = re.sub(
-                r'^(LTCFLAGS=)".*"', rf'\1"{cflags}"', patched, flags=re.MULTILINE,
+                r'^(LTCFLAGS=)".*"',
+                rf'\1"{cflags}"',
+                patched,
+                flags=re.MULTILINE,
             )
             if patched != text:
                 lt.write_text(patched)
@@ -169,25 +174,43 @@ class AlternateBuildTree:
             except (UnicodeDecodeError, OSError):
                 continue
             patched = re.sub(
-                r'^(CC\s*=\s*).*$', rf'\1{cc}', text, flags=re.MULTILINE,
+                r"^(CC\s*=\s*).*$",
+                rf"\1{cc}",
+                text,
+                flags=re.MULTILINE,
             )
             patched = re.sub(
-                r'^(CPP\s*=\s*).*$', rf'\1{cc} -E', patched, flags=re.MULTILINE,
+                r"^(CPP\s*=\s*).*$",
+                rf"\1{cc} -E",
+                patched,
+                flags=re.MULTILINE,
             )
             patched = re.sub(
-                r'^(CFLAGS\s*=).*$', rf'\1{cflags}', patched, flags=re.MULTILINE,
+                r"^(CFLAGS\s*=).*$",
+                rf"\1{cflags}",
+                patched,
+                flags=re.MULTILINE,
             )
             patched = re.sub(
-                r'^(LDFLAGS\s*=).*$', rf'\1{ldflags}', patched, flags=re.MULTILINE,
+                r"^(LDFLAGS\s*=).*$",
+                rf"\1{ldflags}",
+                patched,
+                flags=re.MULTILINE,
             )
             # Clear NOTEST_CFLAGS and EXTRA_CFLAGS - they carry -Werror and
             # other strict flags from the original configure that may clash
             # with a newer compiler version (e.g. clang-18 vs clang-14).
             patched = re.sub(
-                r'^(NOTEST_CFLAGS\s*=).*$', r'\1', patched, flags=re.MULTILINE,
+                r"^(NOTEST_CFLAGS\s*=).*$",
+                r"\1",
+                patched,
+                flags=re.MULTILINE,
             )
             patched = re.sub(
-                r'^(EXTRA_CFLAGS\s*=).*$', r'\1', patched, flags=re.MULTILINE,
+                r"^(EXTRA_CFLAGS\s*=).*$",
+                r"\1",
+                patched,
+                flags=re.MULTILINE,
             )
             if patched != text:
                 mk.write_text(patched)
@@ -202,7 +225,10 @@ class AlternateBuildTree:
             except (UnicodeDecodeError, OSError):
                 continue
             patched = re.sub(
-                r'^(CPP\s*=\s*).*$', rf'\1{cc} -E', text, flags=re.MULTILINE,
+                r"^(CPP\s*=\s*).*$",
+                rf"\1{cc} -E",
+                text,
+                flags=re.MULTILINE,
             )
             if patched != text:
                 mf.write_text(patched)

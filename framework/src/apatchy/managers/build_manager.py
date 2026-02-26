@@ -92,8 +92,8 @@ class BuildManager:
         configure_cmd = [
             "./configure",
             "--with-included-apr",
-            "--disable-shared",       # Static-only APR/APR-Util (no .so at runtime)
-            "--disable-util-dso",     # Static-link crypto/dbd/dbm drivers into libaprutil
+            "--disable-shared",  # Static-only APR/APR-Util (no .so at runtime)
+            "--disable-util-dso",  # Static-link crypto/dbd/dbm drivers into libaprutil
             "--enable-mods-static=all",
             "--enable-maintainer-mode",
             "--enable-debugger-mode",
@@ -112,10 +112,10 @@ class BuildManager:
             configure_cmd.append("--enable-pool-debug=yes")
 
         if pcre_prefix:
-             self.logger.info(f"Using PCRE prefix: {pcre_prefix}")
-             configure_cmd.append(f"--with-pcre={pcre_prefix}")
+            self.logger.info(f"Using PCRE prefix: {pcre_prefix}")
+            configure_cmd.append(f"--with-pcre={pcre_prefix}")
         else:
-             self.logger.warning("pcre-config not found. Configure might fail if PCRE is not in standard paths.")
+            self.logger.warning("pcre-config not found. Configure might fail if PCRE is not in standard paths.")
 
         # Detect Expat
         expat_prefix = None
@@ -126,17 +126,19 @@ class BuildManager:
             # apr-util automatically uses bundled expat if present in xml/expat
         else:
             if shutil.which("pkg-config"):
-                 try:
-                     # We use subprocess directly here to avoid logging noise
-                     expat_prefix = subprocess.check_output(["pkg-config", "--variable=prefix", "expat"], text=True).strip()
-                 except subprocess.CalledProcessError:
-                     pass
+                try:
+                    # We use subprocess directly here to avoid logging noise
+                    expat_prefix = subprocess.check_output(
+                        ["pkg-config", "--variable=prefix", "expat"], text=True
+                    ).strip()
+                except subprocess.CalledProcessError:
+                    pass
 
             if not expat_prefix:
-                 if Path("/usr/include/expat.h").exists():
-                     expat_prefix = "/usr"
-                 elif Path("/usr/local/include/expat.h").exists():
-                     expat_prefix = "/usr/local"
+                if Path("/usr/include/expat.h").exists():
+                    expat_prefix = "/usr"
+                elif Path("/usr/local/include/expat.h").exists():
+                    expat_prefix = "/usr/local"
 
             if expat_prefix:
                 self.logger.info(f"Using Expat prefix: {expat_prefix}")
@@ -157,10 +159,7 @@ class BuildManager:
             self.logger.info(f"Using CC: {cc}")
             configure_cmd.append(f"CC={cc}")
 
-        configure_cmd.extend([
-            f"CFLAGS={cflags}",
-            f"LDFLAGS={ldflags}"
-        ])
+        configure_cmd.extend([f"CFLAGS={cflags}", f"LDFLAGS={ldflags}"])
 
         self.runner.run_build(configure_cmd, label="Configuring Apache", cwd=self.httpd_root)
 
@@ -186,7 +185,9 @@ class BuildManager:
             self.logger.info(f"Compiling Apache with {jobs} jobs...")
             self.runner.run_build(["make", f"-j{jobs}"], label="Compiling Apache", cwd=self.httpd_root)
 
-    def build_harness(self, mode: str = "standalone", engine: str = "standalone", harness_name: str = None, bear: bool = False) -> None:
+    def build_harness(
+        self, mode: str = "standalone", engine: str = "standalone", harness_name: str = None, bear: bool = False
+    ) -> None:
         self.logger.info(f"Building harness for engine: {mode}")
 
         if bear and not _bear_available():
@@ -208,11 +209,11 @@ class BuildManager:
         # the expensive separate tree rebuild while still producing a
         # binary that reads from stdin (for crash triage).
         if mode == "standalone":
-            self.harness_builder.build(mode=mode, cflags=cflags, ldflags=ldflags,
-                                      harness_name=harness_name, cc="clang", bear=bear)
+            self.harness_builder.build(
+                mode=mode, cflags=cflags, ldflags=ldflags, harness_name=harness_name, cc="clang", bear=bear
+            )
         else:
-            self.harness_builder.build(mode=mode, cflags=cflags, ldflags=ldflags,
-                                      harness_name=harness_name, bear=bear)
+            self.harness_builder.build(mode=mode, cflags=cflags, ldflags=ldflags, harness_name=harness_name, bear=bear)
 
         if bear:
             self._update_clangd()

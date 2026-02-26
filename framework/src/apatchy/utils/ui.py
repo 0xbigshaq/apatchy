@@ -24,7 +24,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 
 console = Console()
 
-_ANSI_RE = re.compile(r'\x1b\[[0-9;]*[A-Za-z]')
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 
 # All-spaces box - Panel keeps its fixed height but draws no visible border.
 _EMPTY_BOX = Box("    \n    \n    \n    \n    \n    \n    \n    \n")

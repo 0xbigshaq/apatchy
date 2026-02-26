@@ -48,7 +48,7 @@ class HarnessBuilder:
             try:
                 with open(path) as f:
                     for line in f:
-                        m = re.search(r'@description:\s*(.+)', line)
+                        m = re.search(r"@description:\s*(.+)", line)
                         if m:
                             desc = m.group(1).strip()
                             break
@@ -147,11 +147,11 @@ class HarnessBuilder:
             # Default to uri_parse harness
             default_harness = Config.HARNESSES_DIR / "uri_parse.c"
             if default_harness.exists():
-                 self.logger.info(f"Copying default harness from {default_harness}")
-                 shutil.copy(default_harness, src)
+                self.logger.info(f"Copying default harness from {default_harness}")
+                shutil.copy(default_harness, src)
             else:
-                 self.logger.error("fuzz_harness.c not found and no default harness available!")
-                 raise FileNotFoundError("fuzz_harness.c not found")
+                self.logger.error("fuzz_harness.c not found and no default harness available!")
+                raise FileNotFoundError("fuzz_harness.c not found")
 
         # If the harness uses fuzz_common.h, copy companion files before compiling
         has_fuzz_common = False
@@ -220,10 +220,13 @@ class HarnessBuilder:
         afl_cc = shutil.which("afl-clang-fast")
         if afl_cc:
             import subprocess
+
             try:
                 result = subprocess.run(
                     [afl_cc, "--print-runtime-dir"],
-                    capture_output=True, text=True, timeout=5,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
                 )
                 rt_dir = result.stdout.strip()
                 candidate = Path(rt_dir) / "afl-compiler-rt.o"
@@ -240,7 +243,7 @@ class HarnessBuilder:
             f"-I{self.httpd_root}/srclib/apr/include",
             f"-I{self.httpd_root}/srclib/apr-util/include",
             f"-I{self.httpd_root}/os/unix",
-            f"-I{self.httpd_root}/server"
+            f"-I{self.httpd_root}/server",
         ]
         modules_dir = self.httpd_root / "modules"
         if modules_dir.exists():
@@ -252,11 +255,7 @@ class HarnessBuilder:
     def _compile_object(self, src, dest, cflags, cc="clang", bear=False):
         includes = self.get_include_paths()
 
-        cmd = [
-            str(self.libtool), "--mode=compile", cc,
-            *cflags.split(), *includes,
-            "-c", src, "-o", dest
-        ]
+        cmd = [str(self.libtool), "--mode=compile", cc, *cflags.split(), *includes, "-c", src, "-o", dest]
         if bear:
             cmd = ["bear", "--append", "--"] + cmd
         src_name = Path(src).name
@@ -268,7 +267,7 @@ class HarnessBuilder:
         result = {}
         if config_vars.exists():
             for line in config_vars.read_text().splitlines():
-                m = re.match(r'^(\w+)\s*=\s*(.*)', line)
+                m = re.match(r"^(\w+)\s*=\s*(.*)", line)
                 if m:
                     result[m.group(1)] = m.group(2).strip()
         return result
@@ -348,10 +347,14 @@ class HarnessBuilder:
                 afl_rt = [rt]
 
         cmd = [
-            str(self.libtool), "--mode=link", cc,
+            str(self.libtool),
+            "--mode=link",
+            cc,
             *muldefs_flags,
-            *cflags.split(), *ldflags.split(),
-            "-o", output,
+            *cflags.split(),
+            *ldflags.split(),
+            "-o",
+            output,
             *objects,
             "-export-dynamic",
             *server_libs,
@@ -359,6 +362,8 @@ class HarnessBuilder:
             f"{self.httpd_root}/srclib/apr/libapr-1.la",
             *afl_rt,
             *system_libs,
-            "-luuid", "-lcrypt", "-lpthread",
+            "-luuid",
+            "-lcrypt",
+            "-lpthread",
         ]
         self.runner.run_build(cmd, label="Linking harness")

@@ -100,7 +100,9 @@ class DevManager:
         try:
             os.chdir(project_dir)
             harness_builder.build(
-                mode=engine, cflags=cflags, ldflags=ldflags,
+                mode=engine,
+                cflags=cflags,
+                ldflags=ldflags,
             )
         finally:
             os.chdir(original_cwd)
@@ -130,12 +132,14 @@ class DevManager:
 
             has_cdb = (d / "compile_commands.json").exists()
 
-            projects.append({
-                "name": d.name,
-                "path": str(d),
-                "built": ", ".join(built) if built else "",
-                "compdb": "yes" if has_cdb else "no",
-            })
+            projects.append(
+                {
+                    "name": d.name,
+                    "path": str(d),
+                    "built": ", ".join(built) if built else "",
+                    "compdb": "yes" if has_cdb else "no",
+                }
+            )
 
         return projects
 
@@ -148,10 +152,14 @@ class DevManager:
             "directory": str(project_dir.resolve()),
             "arguments": [
                 "clang",
-                "-g", "-O0", "-fno-omit-frame-pointer",
+                "-g",
+                "-O0",
+                "-fno-omit-frame-pointer",
                 *includes,
-                "-c", str(harness_src.resolve()),
-                "-o", str((project_dir / "harness.o").resolve()),
+                "-c",
+                str(harness_src.resolve()),
+                "-o",
+                str((project_dir / "harness.o").resolve()),
             ],
             "file": str(harness_src.resolve()),
         }

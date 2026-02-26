@@ -18,9 +18,6 @@ def get_logger(name: str) -> logging.Logger:
         Logger name, typically ``__name__`` of the calling module.
     """
     logging.basicConfig(
-        level="INFO",
-        format="%(message)s",
-        datefmt="[%X]",
-        handlers=[RichHandler(rich_tracebacks=True)]
+        level="INFO", format="%(message)s", datefmt="[%X]", handlers=[RichHandler(rich_tracebacks=True)]
     )
     return logging.getLogger(name)

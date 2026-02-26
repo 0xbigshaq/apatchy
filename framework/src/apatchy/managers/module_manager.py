@@ -31,11 +31,13 @@ class ModuleManager:
         for src in sorted(Config.EXTERNAL_MODULES_DIR.glob("*.c")):
             name = src.stem  # e.g. "mod_pwn"
             built_so = self.modules_out / f"{name}.so"
-            modules.append({
-                "name": name,
-                "source": str(src),
-                "built": str(built_so) if built_so.exists() else "",
-            })
+            modules.append(
+                {
+                    "name": name,
+                    "source": str(src),
+                    "built": str(built_so) if built_so.exists() else "",
+                }
+            )
         return modules
 
     def build_module(self, name: Optional[str] = None, cc: Optional[str] = None) -> None:
@@ -82,9 +84,7 @@ class ModuleManager:
 
         if cc is None:
             # Default: use afl-clang-fast for instrumented builds, fall back to clang/gcc
-            cc = (shutil.which("afl-clang-fast")
-                  or shutil.which("clang")
-                  or shutil.which("gcc"))
+            cc = shutil.which("afl-clang-fast") or shutil.which("clang") or shutil.which("gcc")
         else:
             cc = shutil.which(cc) or cc
 
@@ -112,10 +112,14 @@ class ModuleManager:
         sanitizer_flags = self._get_sanitizer_flags()
 
         cmd = [
-            cc, "-fPIC", "-shared",
-            "-g", "-O0",
+            cc,
+            "-fPIC",
+            "-shared",
+            "-g",
+            "-O0",
             *sanitizer_flags,
-            "-o", str(output),
+            "-o",
+            str(output),
             str(src),
             *includes,
         ]

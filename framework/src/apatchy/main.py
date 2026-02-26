@@ -50,20 +50,22 @@ class _VerboseHelpAction(argparse.Action):
 def _add_help(parser):
     """Add split -h (brief) and --help (verbose) to a parser."""
     parser.add_argument(
-        '-h', action=_ShortHelpAction,
+        "-h",
+        action=_ShortHelpAction,
         default=argparse.SUPPRESS,
-        help='show this help message and exit',
+        help="show this help message and exit",
     )
     parser.add_argument(
-        '--help', action=_VerboseHelpAction,
+        "--help",
+        action=_VerboseHelpAction,
         default=argparse.SUPPRESS,
-        help='show detailed help for all subcommands and exit',
+        help="show detailed help for all subcommands and exit",
     )
 
 
 def _sub(subparsers, name, **kwargs):
     """Create a subparser with split -h/--help support."""
-    kwargs['add_help'] = False
+    kwargs["add_help"] = False
     p = subparsers.add_parser(name, **kwargs)
     _add_help(p)
     return p
@@ -77,8 +79,11 @@ def main():
     )
     _add_help(parser)
     parser.add_argument(
-        '-v', '--verbose', action='store_true', default=False,
-        help='Show full build output instead of the scrolling panel',
+        "-v",
+        "--verbose",
+        action="store_true",
+        default=False,
+        help="Show full build output instead of the scrolling panel",
     )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
@@ -88,22 +93,40 @@ def main():
 
     # Configure
     configure_parser = _sub(subparsers, "configure", help="Configure Apache for fuzzing")
-    configure_parser.add_argument("--mode", choices=["fuzz", "coverage"], default="fuzz", help="Build mode (compiler selection)")
-    configure_parser.add_argument("--asan", action="store_true", help="Enable AddressSanitizer (can combine with any mode)")
-    configure_parser.add_argument("--ubsan", action="store_true", help="Enable UndefinedBehaviorSanitizer (can combine with any mode)")
-    configure_parser.add_argument("--intsan", action="store_true", help="Enable unsigned-integer-overflow sanitizer (can combine with any mode)")
-    configure_parser.add_argument("--truncsan", action="store_true", help="Enable implicit-unsigned-integer-truncation sanitizer (can combine with any mode)")
+    configure_parser.add_argument(
+        "--mode", choices=["fuzz", "coverage"], default="fuzz", help="Build mode (compiler selection)"
+    )
+    configure_parser.add_argument(
+        "--asan", action="store_true", help="Enable AddressSanitizer (can combine with any mode)"
+    )
+    configure_parser.add_argument(
+        "--ubsan", action="store_true", help="Enable UndefinedBehaviorSanitizer (can combine with any mode)"
+    )
+    configure_parser.add_argument(
+        "--intsan", action="store_true", help="Enable unsigned-integer-overflow sanitizer (can combine with any mode)"
+    )
+    configure_parser.add_argument(
+        "--truncsan",
+        action="store_true",
+        help="Enable implicit-unsigned-integer-truncation sanitizer (can combine with any mode)",
+    )
 
     # Compile
     compile_parser = _sub(subparsers, "compile", help="Compile Apache")
-    compile_parser.add_argument("-j", "--jobs", type=int, default=None, help="Number of parallel make jobs (default: nproc)")
-    compile_parser.add_argument("--bear", action="store_true", help="Wrap make with bear to generate compile_commands.json")
+    compile_parser.add_argument(
+        "-j", "--jobs", type=int, default=None, help="Number of parallel make jobs (default: nproc)"
+    )
+    compile_parser.add_argument(
+        "--bear", action="store_true", help="Wrap make with bear to generate compile_commands.json"
+    )
 
     # Build Harness
     build_parser = _sub(subparsers, "build", help="Build fuzzing harness")
     build_parser.add_argument("engine", choices=["afl", "libfuzzer", "standalone"], help="Fuzzing engine")
     build_parser.add_argument("--harness", help="Harness name to use (e.g. 'full_pipeline')")
-    build_parser.add_argument("--bear", action="store_true", help="Wrap compilation with bear to generate compile_commands.json")
+    build_parser.add_argument(
+        "--bear", action="store_true", help="Wrap compilation with bear to generate compile_commands.json"
+    )
 
     # Fuzz
     fuzz_parser = _sub(subparsers, "fuzz", help="Start fuzzing")
@@ -113,25 +136,34 @@ def main():
     fuzz_parser.add_argument("--grammar", "-g", help="Path to grammar file (sets GRAMMAR_FILE env var)")
     fuzz_parser.add_argument("--resume", action="store_true", help="Resume from existing AFL output directory")
     fuzz_parser.add_argument("--output-dir", default="afl-output", help="AFL output directory (default: afl-output)")
-    fuzz_parser.add_argument("--role", choices=["main", "secondary"], default=None,
-                             help="AFL parallel mode: 'main' (-M) or 'secondary' (-S) instance")
-    fuzz_parser.add_argument("--name", default=None,
-                             help="AFL instance name for parallel mode (default: main01/sec01)")
-    fuzz_parser.add_argument("--timeout", type=int, default=None,
-                             help="Per-execution timeout in seconds (AFL -t flag). "
-                                  "Default: let AFL auto-calibrate.")
-    fuzz_parser.add_argument("--suppress", default=None,
-                             help="UBSan suppression file (e.g. ubsan.supp). See configs/ for examples.")
+    fuzz_parser.add_argument(
+        "--role",
+        choices=["main", "secondary"],
+        default=None,
+        help="AFL parallel mode: 'main' (-M) or 'secondary' (-S) instance",
+    )
+    fuzz_parser.add_argument("--name", default=None, help="AFL instance name for parallel mode (default: main01/sec01)")
+    fuzz_parser.add_argument(
+        "--timeout",
+        type=int,
+        default=None,
+        help="Per-execution timeout in seconds (AFL -t flag). Default: let AFL auto-calibrate.",
+    )
+    fuzz_parser.add_argument(
+        "--suppress", default=None, help="UBSan suppression file (e.g. ubsan.supp). See configs/ for examples."
+    )
 
     # Triage
     triage_parser = _sub(subparsers, "triage", help="Triage crashes")
     triage_parser.add_argument("crash_file", help="Path to crash file to triage")
     triage_parser.add_argument("--config", default="fuzz.conf", help="Httpd config file to use")
     triage_parser.add_argument("--no-color", action="store_true", help="Disable colored output for sanitizer reports")
-    triage_parser.add_argument("--timeout", type=int, default=30,
-                               help="Timeout in seconds for the harness process (default: 30)")
-    triage_parser.add_argument("--suppress", default=None,
-                               help="UBSan suppression file (e.g. ubsan.supp). See configs/ for examples.")
+    triage_parser.add_argument(
+        "--timeout", type=int, default=30, help="Timeout in seconds for the harness process (default: 30)"
+    )
+    triage_parser.add_argument(
+        "--suppress", default=None, help="UBSan suppression file (e.g. ubsan.supp). See configs/ for examples."
+    )
 
     # Coverage
     coverage_parser = _sub(subparsers, "coverage", help="Generate coverage report")
@@ -161,7 +193,8 @@ def main():
     # Setup / toolchain
     setup_parser = _sub(subparsers, "setup", help="Manage toolchain and dependencies")
     setup_parser.add_argument(
-        "--standalone", action="store_true",
+        "--standalone",
+        action="store_true",
         help="Download tools into toolchain/ even if system copies exist",
     )
     setup_sub = setup_parser.add_subparsers(dest="action", help="Setup sub-commands")
@@ -191,28 +224,46 @@ def main():
     dev_init.add_argument("name", help="Project name (e.g. 'my_header_parse')")
     dev_build = _sub(dev_sub, "build", help="Build a dev harness project")
     dev_build.add_argument("name", help="Project name to build")
-    dev_build.add_argument("engine", nargs="?", default="standalone",
-                           choices=["afl", "libfuzzer", "standalone"],
-                           help="Fuzzing engine (default: standalone)")
+    dev_build.add_argument(
+        "engine",
+        nargs="?",
+        default="standalone",
+        choices=["afl", "libfuzzer", "standalone"],
+        help="Fuzzing engine (default: standalone)",
+    )
     _sub(dev_sub, "list", help="List dev harness projects")
 
     # Test
     test_parser = _sub(subparsers, "test", help="Run the test suite")
-    test_parser.add_argument("scope", nargs="?", choices=["unit", "integration"],
-                             default=None, help="Run only unit or integration tests (default: all)")
-    test_parser.add_argument("-k", dest="filter_expr", default=None,
-                             help="pytest -k filter expression")
-    test_parser.add_argument("--version", dest="apache_version", default=None,
-                             help="Apache version(s) for integration tests (comma-separated, e.g. '2.4.62')")
-    test_parser.add_argument("--cov", action="store_true",
-                             help="Enable coverage reporting")
+    test_parser.add_argument(
+        "scope",
+        nargs="?",
+        choices=["unit", "integration"],
+        default=None,
+        help="Run only unit or integration tests (default: all)",
+    )
+    test_parser.add_argument("-k", dest="filter_expr", default=None, help="pytest -k filter expression")
+    test_parser.add_argument(
+        "--version",
+        dest="apache_version",
+        default=None,
+        help="Apache version(s) for integration tests (comma-separated, e.g. '2.4.62')",
+    )
+    test_parser.add_argument("--cov", action="store_true", help="Enable coverage reporting")
 
     # Docs
     docs_parser = _sub(subparsers, "docs", help="Build and view Sphinx API documentation")
-    docs_parser.add_argument("--serve", nargs="?", const=8000, type=int, metavar="PORT",
-                             help="Serve docs via HTTP after building (default port: 8000)")
-    docs_parser.add_argument("--bind", default="localhost", metavar="ADDR",
-                             help="Address to bind the HTTP server to (default: localhost)")
+    docs_parser.add_argument(
+        "--serve",
+        nargs="?",
+        const=8000,
+        type=int,
+        metavar="PORT",
+        help="Serve docs via HTTP after building (default port: 8000)",
+    )
+    docs_parser.add_argument(
+        "--bind", default="localhost", metavar="ADDR", help="Address to bind the HTTP server to (default: localhost)"
+    )
 
     argcomplete.autocomplete(parser)
     args = parser.parse_args()
@@ -230,6 +281,7 @@ def main():
     except Exception:
         logger.exception("An error occurred during execution")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

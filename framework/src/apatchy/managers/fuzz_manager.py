@@ -75,13 +75,12 @@ class FuzzManager:
 
         # Create seed if empty
         if not any(input_path.iterdir()):
-             self.logger.info("Creating seed input...")
-             (input_path / "seed1.txt").write_bytes(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+            self.logger.info("Creating seed input...")
+            (input_path / "seed1.txt").write_bytes(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
 
         return input_path, output_path
 
-    def generate_grammar_seeds(self, grammar_path: Path, input_dir: Path,
-                                count: int = 50) -> int:
+    def generate_grammar_seeds(self, grammar_path: Path, input_dir: Path, count: int = 50) -> int:
         """Read a JSON grammar file and generate seed inputs into input_dir.
 
         Returns the number of seeds written.
@@ -114,12 +113,19 @@ class FuzzManager:
         self.logger.info(f"Generated {written} grammar-based seeds in {input_dir}")
         return written
 
-    def start_fuzzer(self, harness_path: Path, engine: str = "afl",
-                     mutator: Optional[str] = None, grammar: Optional[str] = None,
-                     resume: bool = False, output_dir: str = "afl-output",
-                     role: Optional[str] = None, name: Optional[str] = None,
-                     suppress: Optional[str] = None,
-                     timeout: Optional[int] = None) -> None:
+    def start_fuzzer(
+        self,
+        harness_path: Path,
+        engine: str = "afl",
+        mutator: Optional[str] = None,
+        grammar: Optional[str] = None,
+        resume: bool = False,
+        output_dir: str = "afl-output",
+        role: Optional[str] = None,
+        name: Optional[str] = None,
+        suppress: Optional[str] = None,
+        timeout: Optional[int] = None,
+    ) -> None:
         input_dir, out_dir = self.prepare_corpus(output_dir=output_dir)
 
         # Generate grammar-based seeds before starting the fuzzer (skip if
@@ -135,9 +141,17 @@ class FuzzManager:
                 self.logger.info(f"Grammar seeds already exist in {input_dir}, skipping generation")
 
         if engine == "afl":
-            self._start_afl(harness_path, input_dir, out_dir, mutator=mutator,
-                            resume=resume, role=role, name=name, suppress=suppress,
-                            timeout=timeout)
+            self._start_afl(
+                harness_path,
+                input_dir,
+                out_dir,
+                mutator=mutator,
+                resume=resume,
+                role=role,
+                name=name,
+                suppress=suppress,
+                timeout=timeout,
+            )
         elif engine == "libfuzzer":
             self._start_libfuzzer(harness_path, input_dir)
         else:
@@ -149,6 +163,7 @@ class FuzzManager:
         Returns True if migration was performed or not needed, False if the user aborted.
         """
         from rich.console import Console
+
         console = Console()
 
         default_dir = output_dir / "default"
@@ -189,13 +204,18 @@ class FuzzManager:
         self.logger.info(f"Renamed {default_dir.name}/ -> {instance_name}/")
         return True
 
-    def _start_afl(self, harness: Path, input_dir: Path, output_dir: Path,
-                   mutator: Optional[str] = None,
-                   resume: bool = False,
-                   role: Optional[str] = None,
-                   name: Optional[str] = None,
-                   suppress: Optional[str] = None,
-                   timeout: Optional[int] = None) -> None:
+    def _start_afl(
+        self,
+        harness: Path,
+        input_dir: Path,
+        output_dir: Path,
+        mutator: Optional[str] = None,
+        resume: bool = False,
+        role: Optional[str] = None,
+        name: Optional[str] = None,
+        suppress: Optional[str] = None,
+        timeout: Optional[int] = None,
+    ) -> None:
         # Resolve instance name for parallel mode
         if role and not name:
             name = "main01" if role == "main" else "sec01"
@@ -244,7 +264,7 @@ class FuzzManager:
                 self.logger.error(f"Mutator library not found: {mutator_path}")
                 return
             env["AFL_CUSTOM_MUTATOR_LIBRARY"] = str(mutator_path)
-            env["AFL_CUSTOM_MUTATOR_ONLY"] = "1" # FIXME: i need to re-think about this hack
+            env["AFL_CUSTOM_MUTATOR_ONLY"] = "1"  # FIXME: i need to re-think about this hack
             self.logger.info(f"Using custom mutator: {mutator_path}")
 
         # Preload external modules (.so) so AFL++ instruments them.
@@ -273,17 +293,19 @@ class FuzzManager:
 
         # cmd += ['-D'] # fuzzing strategy yields
         cmd += [
-            "-i", str(input_dir),
-            "-o", str(output_dir),
+            "-i",
+            str(input_dir),
+            "-o",
+            str(output_dir),
             "--",
             str(harness),
         ]
 
         try:
-             # Run without capturing output to let AFL show its UI
-             self.runner.run_command(cmd, env=env, check=True, capture_output=False)
+            # Run without capturing output to let AFL show its UI
+            self.runner.run_command(cmd, env=env, check=True, capture_output=False)
         except Exception:
-             self.logger.error("Failed to start AFL++. Is it installed?")
+            self.logger.error("Failed to start AFL++. Is it installed?")
 
     def _start_libfuzzer(self, harness: Path, corpus_dir: Path) -> None:
         self.logger.info("Starting LibFuzzer...")

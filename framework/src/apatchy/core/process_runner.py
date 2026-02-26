@@ -62,16 +62,25 @@ class ProcessRunner:
             from apatchy.utils.ui import run_stream_panel
 
             returncode, output = run_stream_panel(
-                command, cwd=str(cwd) if cwd else None, env=env, label=label,
+                command,
+                cwd=str(cwd) if cwd else None,
+                env=env,
+                label=label,
             )
             if check and returncode != 0:
                 logger.error(f"Command failed with exit code {returncode}")
                 logger.error(f"Output:\n{output}")
                 raise subprocess.CalledProcessError(
-                    returncode, command, output=output, stderr="",
+                    returncode,
+                    command,
+                    output=output,
+                    stderr="",
                 )
             return subprocess.CompletedProcess(
-                command, returncode, stdout=output, stderr="",
+                command,
+                returncode,
+                stdout=output,
+                stderr="",
             )
 
         try:

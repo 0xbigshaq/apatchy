@@ -30,9 +30,7 @@ class MutatorManager:
         self.work_dir = Config.WORK_DIR
         self.aflpp_dir = self.work_dir / "grammar_mutator"
         # The inner grammar_mutator submodule dir (where GNUmakefile lives)
-        self.grammar_mutator_src = (
-            self.aflpp_dir / "custom_mutators" / "grammar_mutator" / "grammar_mutator"
-        )
+        self.grammar_mutator_src = self.aflpp_dir / "custom_mutators" / "grammar_mutator" / "grammar_mutator"
         self.custom_mutators_out = self.work_dir / "custom_mutators"
 
 
@@ -63,9 +61,10 @@ class MutatorManager:
             logger.info("Initializing grammar_mutator submodule...")
             # Try submodule init first
             result = subprocess.run(
-                ["git", "submodule", "update", "--init",
-                 "custom_mutators/grammar_mutator/grammar_mutator"],
-                cwd=self.aflpp_dir, capture_output=True, text=True,
+                ["git", "submodule", "update", "--init", "custom_mutators/grammar_mutator/grammar_mutator"],
+                cwd=self.aflpp_dir,
+                capture_output=True,
+                text=True,
             )
             # If submodule init failed (e.g. shallow clone), clone directly
             if result.returncode != 0 or not any(self.grammar_mutator_src.iterdir()):
@@ -73,13 +72,13 @@ class MutatorManager:
                 if self.grammar_mutator_src.exists():
                     shutil.rmtree(self.grammar_mutator_src)
                 subprocess.run(
-                    ["git", "clone", self.GRAMMAR_MUTATOR_REPO,
-                     str(self.grammar_mutator_src)],
+                    ["git", "clone", self.GRAMMAR_MUTATOR_REPO, str(self.grammar_mutator_src)],
                     check=True,
                 )
                 subprocess.run(
                     ["git", "checkout", grammar_version],
-                    cwd=self.grammar_mutator_src, check=True,
+                    cwd=self.grammar_mutator_src,
+                    check=True,
                 )
 
         # 3. Download antlr4 jar if missing
@@ -135,7 +134,11 @@ class MutatorManager:
 
     def status(self) -> Dict[str, object]:
         """Return a dict describing what's set up and what's been built."""
-        src_ready = self.grammar_mutator_src.exists() and any(self.grammar_mutator_src.iterdir()) if self.grammar_mutator_src.exists() else False
+        src_ready = (
+            self.grammar_mutator_src.exists() and any(self.grammar_mutator_src.iterdir())
+            if self.grammar_mutator_src.exists()
+            else False
+        )
         info: Dict[str, object] = {
             "setup": src_ready,
             "grammar_mutator_dir": str(self.grammar_mutator_src),
@@ -148,9 +151,7 @@ class MutatorManager:
                 for p in self.grammar_mutator_src.glob("libgrammarmutator-*.so")
             ]
         if self.custom_mutators_out.exists():
-            info["built_custom_mutators"] = [
-                p.stem for p in self.custom_mutators_out.glob("*.so")
-            ]
+            info["built_custom_mutators"] = [p.stem for p in self.custom_mutators_out.glob("*.so")]
         return info
 
     def list_grammars(self) -> List[str]:
@@ -207,11 +208,13 @@ class MutatorManager:
         results: List[Dict[str, str]] = []
         for src in sorted(Config.CUSTOM_MUTATORS_DIR.glob("*.c")):
             built_path = self.custom_mutators_out / f"{src.stem}.so"
-            results.append({
-                "name": src.stem,
-                "source": str(src),
-                "built": str(built_path) if built_path.exists() else "",
-            })
+            results.append(
+                {
+                    "name": src.stem,
+                    "source": str(src),
+                    "built": str(built_path) if built_path.exists() else "",
+                }
+            )
         return results
 
 

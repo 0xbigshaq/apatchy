@@ -62,9 +62,9 @@ class Downloader:
                 logger.warning(f"Directory {target_dir} and dependencies already exist. Skipping download.")
                 return target_dir
             else:
-                 logger.warning(f"Directory {target_dir} exists but dependencies missing. Downloading dependencies...")
-                 self._download_dependencies(target_dir)
-                 return target_dir
+                logger.warning(f"Directory {target_dir} exists but dependencies missing. Downloading dependencies...")
+                self._download_dependencies(target_dir)
+                return target_dir
 
         tarball = f"httpd-{version}.tar.gz"
         url = f"{self.mirror}/{tarball}"
@@ -97,17 +97,13 @@ class Downloader:
         # APR
         if not (srclib / "apr").exists():
             self._download_and_extract(
-                "https://dlcdn.apache.org/apr/apr-1.7.6.tar.gz",
-                srclib / "apr",
-                strip_components=1
+                "https://dlcdn.apache.org/apr/apr-1.7.6.tar.gz", srclib / "apr", strip_components=1
             )
 
         # APR-Util
         if not (srclib / "apr-util").exists():
             self._download_and_extract(
-                "https://dlcdn.apache.org/apr/apr-util-1.6.3.tar.gz",
-                srclib / "apr-util",
-                strip_components=1
+                "https://dlcdn.apache.org/apr/apr-util-1.6.3.tar.gz", srclib / "apr-util", strip_components=1
             )
 
         # Expat (Bundled)
@@ -119,7 +115,7 @@ class Downloader:
             self._download_and_extract(
                 "https://github.com/libexpat/libexpat/releases/download/R_2_6_4/expat-2.6.4.tar.gz",
                 expat_dir,
-                strip_components=1
+                strip_components=1,
             )
 
     def _download_and_extract(self, url: str, target_dir: Path, strip_components: int = 0) -> None:
@@ -139,6 +135,7 @@ class Downloader:
             if extracted_path.exists() and extracted_path != target_dir:
                 if target_dir.exists():
                     import shutil
+
                     if target_dir.is_dir():
                         shutil.rmtree(target_dir)
                     else:
@@ -151,6 +148,6 @@ class Downloader:
     def _download_file(self, url: str, filename: str) -> None:
         with requests.get(url, stream=True) as r:
             r.raise_for_status()
-            with open(filename, 'wb') as f:
+            with open(filename, "wb") as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)

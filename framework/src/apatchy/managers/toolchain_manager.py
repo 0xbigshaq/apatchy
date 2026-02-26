@@ -59,39 +59,81 @@ class ToolchainManager:
         # Coverage tools (version-matched to clang)
         clang_ver = self._detect_clang_major_version()
         if clang_ver:
-            deps.append(self._check_binary(
-                f"llvm-profdata-{clang_ver}", "Coverage",
-                f"apt install llvm-{clang_ver}",
-                fallback="llvm-profdata",
-            ))
-            deps.append(self._check_binary(
-                f"llvm-cov-{clang_ver}", "Coverage",
-                f"apt install llvm-{clang_ver}",
-                fallback="llvm-cov",
-            ))
+            deps.append(
+                self._check_binary(
+                    f"llvm-profdata-{clang_ver}",
+                    "Coverage",
+                    f"apt install llvm-{clang_ver}",
+                    fallback="llvm-profdata",
+                )
+            )
+            deps.append(
+                self._check_binary(
+                    f"llvm-cov-{clang_ver}",
+                    "Coverage",
+                    f"apt install llvm-{clang_ver}",
+                    fallback="llvm-cov",
+                )
+            )
         else:
             deps.append(self._check_binary("llvm-profdata", "Coverage", "apt install llvm"))
             deps.append(self._check_binary("llvm-cov", "Coverage", "apt install llvm"))
 
         # System libraries
-        deps.append(self._check_pkg_or_config(
-            "libpcre2-dev", "Libraries", "pcre2-config", "libpcre2", "apt install libpcre2-dev",
-        ))
-        deps.append(self._check_pkg_or_config(
-            "zlib1g-dev", "Libraries", None, "zlib", "apt install zlib1g-dev",
-        ))
-        deps.append(self._check_pkg_or_config(
-            "libxml2-dev", "Libraries", "xml2-config", "libxml-2.0", "apt install libxml2-dev",
-        ))
-        deps.append(self._check_header_or_pkg(
-            "libexpat1-dev", "Libraries", "expat.h", "expat", "apt install libexpat1-dev",
-        ))
-        deps.append(self._check_header_or_pkg(
-            "uuid-dev", "Libraries", "uuid/uuid.h", "uuid", "apt install uuid-dev",
-        ))
-        deps.append(self._check_pkg_or_config(
-            "libssl-dev", "Libraries", None, "openssl", "apt install libssl-dev",
-        ))
+        deps.append(
+            self._check_pkg_or_config(
+                "libpcre2-dev",
+                "Libraries",
+                "pcre2-config",
+                "libpcre2",
+                "apt install libpcre2-dev",
+            )
+        )
+        deps.append(
+            self._check_pkg_or_config(
+                "zlib1g-dev",
+                "Libraries",
+                None,
+                "zlib",
+                "apt install zlib1g-dev",
+            )
+        )
+        deps.append(
+            self._check_pkg_or_config(
+                "libxml2-dev",
+                "Libraries",
+                "xml2-config",
+                "libxml-2.0",
+                "apt install libxml2-dev",
+            )
+        )
+        deps.append(
+            self._check_header_or_pkg(
+                "libexpat1-dev",
+                "Libraries",
+                "expat.h",
+                "expat",
+                "apt install libexpat1-dev",
+            )
+        )
+        deps.append(
+            self._check_header_or_pkg(
+                "uuid-dev",
+                "Libraries",
+                "uuid/uuid.h",
+                "uuid",
+                "apt install uuid-dev",
+            )
+        )
+        deps.append(
+            self._check_pkg_or_config(
+                "libssl-dev",
+                "Libraries",
+                None,
+                "openssl",
+                "apt install libssl-dev",
+            )
+        )
 
         # Persist discovered paths to toolchain.config
         self._write_deps_to_config(deps)
@@ -183,10 +225,7 @@ class ToolchainManager:
             if not targets:
                 logger.info("All LLVM tools already in toolchain directory.")
                 # Ensure config points to local copies
-                local_paths = {
-                    n: self._find_local_llvm_binary(llvm_dir, n)
-                    for n in tool_names
-                }
+                local_paths = {n: self._find_local_llvm_binary(llvm_dir, n) for n in tool_names}
                 local_paths = {n: p for n, p in local_paths.items() if p}
                 if local_paths:
                     toolchain_config.force_update_section("coverage", local_paths)
@@ -270,7 +309,11 @@ class ToolchainManager:
         return self._get_binary_version(clang, major_only=True)
 
     def _check_binary(
-        self, name: str, category: str, install_hint: str, fallback: Optional[str] = None,
+        self,
+        name: str,
+        category: str,
+        install_hint: str,
+        fallback: Optional[str] = None,
     ) -> DepStatus:
         """Check if a binary exists - config override, then PATH."""
         # Check toolchain.config first (respects user overrides)
@@ -304,7 +347,8 @@ class ToolchainManager:
         if shutil.which("pkg-config"):
             result = subprocess.run(
                 ["pkg-config", "--modversion", pkg_name],
-                capture_output=True, text=True,
+                capture_output=True,
+                text=True,
             )
             if result.returncode == 0:
                 version = result.stdout.strip()
@@ -325,7 +369,8 @@ class ToolchainManager:
         if shutil.which("pkg-config"):
             result = subprocess.run(
                 ["pkg-config", "--modversion", pkg_name],
-                capture_output=True, text=True,
+                capture_output=True,
+                text=True,
             )
             if result.returncode == 0:
                 version = result.stdout.strip()
@@ -356,10 +401,7 @@ class ToolchainManager:
         llvm_dir.mkdir(parents=True, exist_ok=True)
 
         # Deduplicate: map tool names to apt package names
-        pkg_names = list(set(
-            f"lld-{clang_ver}" if t.startswith("lld") else f"llvm-{clang_ver}"
-            for t in missing
-        ))
+        pkg_names = list(set(f"lld-{clang_ver}" if t.startswith("lld") else f"llvm-{clang_ver}" for t in missing))
 
         with tempfile.TemporaryDirectory() as tmpdir:
             for pkg in pkg_names:
@@ -367,7 +409,8 @@ class ToolchainManager:
                 result = subprocess.run(
                     ["apt-get", "download", pkg],
                     cwd=tmpdir,
-                    capture_output=True, text=True,
+                    capture_output=True,
+                    text=True,
                 )
                 if result.returncode != 0:
                     stderr = result.stderr.strip()
@@ -384,7 +427,8 @@ class ToolchainManager:
                     logger.info(f"Extracting {deb.name}...")
                     result = subprocess.run(
                         ["dpkg-deb", "-x", str(deb), str(llvm_dir)],
-                        capture_output=True, text=True,
+                        capture_output=True,
+                        text=True,
                     )
                     if result.returncode != 0:
                         logger.error(f"dpkg-deb failed: {result.stderr.strip()}")
@@ -415,8 +459,7 @@ class ToolchainManager:
     def _write_afl_paths(self) -> None:
         """Write AFL++ binary paths to toolchain.config [fuzzing] section."""
         entries = {}
-        for binary in ("afl-fuzz", "afl-clang-fast", "afl-clang-lto",
-                        "afl-gcc", "afl-showmap", "afl-cmin", "afl-tmin"):
+        for binary in ("afl-fuzz", "afl-clang-fast", "afl-clang-lto", "afl-gcc", "afl-showmap", "afl-cmin", "afl-tmin"):
             p = self.aflpp_dir / binary
             if p.exists():
                 entries[binary] = str(p)
@@ -455,13 +498,17 @@ class ToolchainManager:
 
     @staticmethod
     def _get_binary_version(
-        binary_path: str, flag: str = "--version", major_only: bool = False,
+        binary_path: str,
+        flag: str = "--version",
+        major_only: bool = False,
     ) -> Optional[str]:
         """Extract version string from a binary's --version output."""
         try:
             result = subprocess.run(
                 [binary_path, flag],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             output = result.stdout + result.stderr
             match = re.search(r"(\d+\.\d+[\.\d]*)", output)

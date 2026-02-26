@@ -36,9 +36,7 @@ class ReportManager:
     def _clang_major_version(cc: str) -> Optional[int]:
         """Return the LLVM major version of a clang binary, or None."""
         try:
-            result = subprocess.run(
-                [cc, "--version"], capture_output=True, text=True, timeout=5
-            )
+            result = subprocess.run([cc, "--version"], capture_output=True, text=True, timeout=5)
             for line in result.stdout.splitlines():
                 if "version" in line.lower():
                     for i, word in enumerate(line.split()):
@@ -82,8 +80,7 @@ class ReportManager:
             cov_colocated = Path(cc_dir) / cov_name
             if profdata_colocated.is_file() and cov_colocated.is_file():
                 self.logger.info(
-                    f"Using LLVM-{major} toolchain: {cc} ({cc_path}), "
-                    f"{profdata_colocated}, {cov_colocated}"
+                    f"Using LLVM-{major} toolchain: {cc} ({cc_path}), {profdata_colocated}, {cov_colocated}"
                 )
                 return str(profdata_colocated), str(cov_colocated), cc
 
@@ -91,15 +88,11 @@ class ReportManager:
             profdata_path = shutil.which(profdata_name)
             cov_path = shutil.which(cov_name)
             if profdata_path and cov_path:
-                self.logger.info(
-                    f"Using LLVM-{major} toolchain: {cc}, "
-                    f"{profdata_name}, {cov_name}"
-                )
+                self.logger.info(f"Using LLVM-{major} toolchain: {cc}, {profdata_name}, {cov_name}")
                 return profdata_name, cov_name, cc
 
         raise FileNotFoundError(
-            "No matched LLVM toolchain found. Install a complete set, e.g.: "
-            "apt install clang-14 llvm-14"
+            "No matched LLVM toolchain found. Install a complete set, e.g.: apt install clang-14 llvm-14"
         )
 
     def _find_afl_instances(self, afl_dir: str) -> List[Path]:
@@ -164,9 +157,12 @@ class ReportManager:
         try:
             out = subprocess.check_output(
                 ["afl-clang-fast", "--version"],
-                stderr=subprocess.DEVNULL, text=True, timeout=5,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                timeout=5,
             )
             import re
+
             m = re.search(r"clang version (\d+)", out)
             if m:
                 compiler_ver = int(m.group(1))
@@ -205,9 +201,7 @@ class ReportManager:
         tree = AlternateBuildTree(self.httpd_root, "-cov")
         return tree.ensure_build(
             cc=cc,
-            cflags="-g -O0 -fno-omit-frame-pointer"
-            " -fprofile-instr-generate -fcoverage-mapping"
-            " -Wno-error",
+            cflags="-g -O0 -fno-omit-frame-pointer -fprofile-instr-generate -fcoverage-mapping -Wno-error",
             ldflags="-fprofile-instr-generate -lcrypt -lm",
         )
 
@@ -248,10 +242,15 @@ class ReportManager:
             name = src.stem
             output = modules_dir / f"{name}.so"
             cmd = [
-                cc, "-fPIC", "-shared",
-                "-g", "-O0",
-                "-fprofile-instr-generate", "-fcoverage-mapping",
-                "-o", str(output),
+                cc,
+                "-fPIC",
+                "-shared",
+                "-g",
+                "-O0",
+                "-fprofile-instr-generate",
+                "-fcoverage-mapping",
+                "-o",
+                str(output),
                 str(src),
                 *includes,
             ]
@@ -288,8 +287,7 @@ class ReportManager:
 
         builder = HarnessBuilder(cov_root)
         self.logger.info("Building coverage-instrumented harness...")
-        builder.build(mode="coverage", cflags=cflags, ldflags=ldflags, cc=cc,
-                      harness_name=harness_name)
+        builder.build(mode="coverage", cflags=cflags, ldflags=ldflags, cc=cc, harness_name=harness_name)
 
         # With static APR (--disable-shared), the binary is in cwd.
         # Fall back to .libs/ for older shared-library builds.
@@ -303,8 +301,13 @@ class ReportManager:
         return harness, cov_root
 
     def _replay_corpus(
-        self, harness: Path, queue_dir: Path, prof_dir: Path, config_path: Path,
-        httpd_root: Optional[Path] = None, prof_offset: int = 0,
+        self,
+        harness: Path,
+        queue_dir: Path,
+        prof_dir: Path,
+        config_path: Path,
+        httpd_root: Optional[Path] = None,
+        prof_offset: int = 0,
     ) -> int:
         """Replay AFL queue through coverage harness, producing .profraw files."""
         env = os.environ.copy()
@@ -316,17 +319,17 @@ class ReportManager:
         # command-line args, not FUZZ_CONF/FUZZ_ROOT env vars.
         harness_cmd = [
             str(harness),
-            "-f", str(config_path),
-            "-d", str(self.work_dir),
+            "-f",
+            str(config_path),
+            "-d",
+            str(self.work_dir),
         ]
 
         # Collect test cases (AFL names them id:NNNNNN,...)
         test_cases = sorted(queue_dir.glob("id:*"))
         if not test_cases:
             # Fall back: try all files
-            test_cases = sorted(
-                f for f in queue_dir.iterdir() if f.is_file() and f.name != ".state"
-            )
+            test_cases = sorted(f for f in queue_dir.iterdir() if f.is_file() and f.name != ".state")
 
         if not test_cases:
             self.logger.error(f"No test cases found in {queue_dir}")
@@ -403,14 +406,16 @@ class ReportManager:
         for instance in instances:
             queue_dir = instance / "queue"
             self.logger.info(f"Replaying queue from {instance.name}/ ({len(list(queue_dir.iterdir()))} entries)...")
-            count += self._replay_corpus(harness, queue_dir, prof_dir, config_path,
-                                         httpd_root=cov_root, prof_offset=count)
+            count += self._replay_corpus(
+                harness, queue_dir, prof_dir, config_path, httpd_root=cov_root, prof_offset=count
+            )
 
             crashes_dir = instance / "crashes"
             if crashes_dir.is_dir() and any(crashes_dir.iterdir()):
                 self.logger.info(f"Replaying crashes from {instance.name}/...")
-                count += self._replay_corpus(harness, crashes_dir, prof_dir, config_path,
-                                             httpd_root=cov_root, prof_offset=count)
+                count += self._replay_corpus(
+                    harness, crashes_dir, prof_dir, config_path, httpd_root=cov_root, prof_offset=count
+                )
 
         if count == 0:
             self.logger.error("No test cases were replayed successfully")
@@ -425,9 +430,12 @@ class ReportManager:
         merged_profdata = Path(output_dir).resolve() / "merged.profdata"
         self.logger.info(f"Merging {len(profraw_files)} profraw files...")
         merge_cmd = [
-            profdata_bin, "merge", "-sparse",
+            profdata_bin,
+            "merge",
+            "-sparse",
             *[str(f) for f in profraw_files],
-            "-o", str(merged_profdata),
+            "-o",
+            str(merged_profdata),
         ]
         try:
             subprocess.run(merge_cmd, check=True, capture_output=True, text=True)
@@ -442,7 +450,8 @@ class ReportManager:
         self.logger.info("Generating HTML coverage report...")
         extra_objects = [f"--object={so}" for so in cov_modules]
         show_cmd = [
-            cov_bin, "show",
+            cov_bin,
+            "show",
             str(harness),
             *extra_objects,
             f"-instr-profile={merged_profdata}",
@@ -460,15 +469,14 @@ class ReportManager:
         # Print summary
         self.logger.info("Coverage summary:")
         report_cmd = [
-            cov_bin, "report",
+            cov_bin,
+            "report",
             str(harness),
             *extra_objects,
             f"-instr-profile={merged_profdata}",
         ]
         try:
-            result = subprocess.run(
-                report_cmd, check=True, capture_output=True, text=True
-            )
+            result = subprocess.run(report_cmd, check=True, capture_output=True, text=True)
             print(result.stdout)
         except subprocess.CalledProcessError as e:
             self.logger.error(f"llvm-cov report failed: {e.stderr}")
@@ -477,9 +485,14 @@ class ReportManager:
         self.logger.info(f"HTML report: {html_dir / 'index.html'}")
         self.logger.info("Coverage report complete. AFL build is untouched.")
 
-    def triage_crash(self, crash_file: Path, harness_binary: Path,
-                     no_color: bool = False, suppress: Optional[str] = None,
-                     timeout: int = 30) -> None:
+    def triage_crash(
+        self,
+        crash_file: Path,
+        harness_binary: Path,
+        no_color: bool = False,
+        suppress: Optional[str] = None,
+        timeout: int = 30,
+    ) -> None:
         """Replay *crash_file* through *harness_binary* and print the
         sanitizer output.
 
@@ -549,8 +562,10 @@ class ReportManager:
         # command-line args (standalone entry point) for config/root.
         cmd = [
             str(harness_binary),
-            "-f", str(config_path),
-            "-d", str(self.work_dir),
+            "-f",
+            str(config_path),
+            "-d",
+            str(self.work_dir),
         ]
 
         try:
@@ -559,8 +574,11 @@ class ReportManager:
             # We use subprocess directly because ProcessRunner doesn't
             # support binary stdin.
             result = subprocess.run(
-                cmd, env=env, input=crash_data,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                cmd,
+                env=env,
+                input=crash_data,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 timeout=timeout,
             )
 

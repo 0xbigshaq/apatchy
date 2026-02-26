@@ -26,6 +26,7 @@ from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+
 class MethodDispatcher:
     """Route parsed CLI arguments to the correct manager method.
 
@@ -99,8 +100,14 @@ class MethodDispatcher:
         if not httpd_root:
             return
 
-        verbose = getattr(args, 'verbose', False)
-        self.config_manager = ConfigManager(build_mode=args.mode, asan=getattr(args, 'asan', False), ubsan=getattr(args, 'ubsan', False), intsan=getattr(args, 'intsan', False), truncsan=getattr(args, 'truncsan', False))
+        verbose = getattr(args, "verbose", False)
+        self.config_manager = ConfigManager(
+            build_mode=args.mode,
+            asan=getattr(args, "asan", False),
+            ubsan=getattr(args, "ubsan", False),
+            intsan=getattr(args, "intsan", False),
+            truncsan=getattr(args, "truncsan", False),
+        )
         self.build_manager = BuildManager(httpd_root, self.config_manager, verbose=verbose)
         self.build_manager.configure_httpd()
 
@@ -109,29 +116,29 @@ class MethodDispatcher:
         if not httpd_root:
             return
 
-        verbose = getattr(args, 'verbose', False)
-        self.config_manager = ConfigManager() # Defaults
+        verbose = getattr(args, "verbose", False)
+        self.config_manager = ConfigManager()  # Defaults
         self.build_manager = BuildManager(httpd_root, self.config_manager, verbose=verbose)
-        jobs = getattr(args, 'jobs', None)
-        self.build_manager.compile_httpd(jobs=jobs, bear=getattr(args, 'bear', False))
+        jobs = getattr(args, "jobs", None)
+        self.build_manager.compile_httpd(jobs=jobs, bear=getattr(args, "bear", False))
 
     def _handle_build(self, args: argparse.Namespace) -> None:
         httpd_root = self._get_active_httpd()
         if not httpd_root:
             return
 
-        verbose = getattr(args, 'verbose', False)
+        verbose = getattr(args, "verbose", False)
         self.config_manager = ConfigManager()
         self.build_manager = BuildManager(httpd_root, self.config_manager, verbose=verbose)
         self.build_manager.build_harness(
             mode=args.engine,
-            harness_name=getattr(args, 'harness', None),
-            bear=getattr(args, 'bear', False),
+            harness_name=getattr(args, "harness", None),
+            bear=getattr(args, "bear", False),
         )
 
     def _handle_fuzz(self, args: argparse.Namespace) -> None:
-        role = getattr(args, 'role', None)
-        name = getattr(args, 'name', None)
+        role = getattr(args, "role", None)
+        name = getattr(args, "name", None)
 
         # --role and --name are AFL-only features
         if (role or name) and args.engine != "afl":
@@ -154,14 +161,14 @@ class MethodDispatcher:
         self.fuzz_manager.start_fuzzer(
             harness_path,
             engine=args.engine,
-            mutator=getattr(args, 'mutator', None),
-            grammar=getattr(args, 'grammar', None),
-            resume=getattr(args, 'resume', False),
-            output_dir=getattr(args, 'output_dir', 'afl-output'),
+            mutator=getattr(args, "mutator", None),
+            grammar=getattr(args, "grammar", None),
+            resume=getattr(args, "resume", False),
+            output_dir=getattr(args, "output_dir", "afl-output"),
             role=role,
             name=name,
-            suppress=getattr(args, 'suppress', None),
-            timeout=getattr(args, 'timeout', None),
+            suppress=getattr(args, "suppress", None),
+            timeout=getattr(args, "timeout", None),
         )
 
     def _handle_triage(self, args: argparse.Namespace) -> None:
@@ -169,7 +176,7 @@ class MethodDispatcher:
         if not httpd_root:
             return
 
-        self.config_manager = ConfigManager(config_name=args.config) # Defaults engine/mode
+        self.config_manager = ConfigManager(config_name=args.config)  # Defaults engine/mode
 
         self.report_manager = ReportManager(httpd_root, self.config_manager)
 
@@ -200,12 +207,12 @@ class MethodDispatcher:
         # Simpler approach: ConfigManager could have a current_config property.
 
         self.report_manager.triage_crash(
-            args.crash_file, harness_path,
+            args.crash_file,
+            harness_path,
             no_color=args.no_color,
-            suppress=getattr(args, 'suppress', None),
+            suppress=getattr(args, "suppress", None),
             timeout=args.timeout,
         )
-
 
     def _get_mutator_manager(self) -> MutatorManager:
         if self.mutator_manager is None:
@@ -220,6 +227,7 @@ class MethodDispatcher:
     def _handle_setup(self, args: argparse.Namespace) -> None:
         from rich.console import Console
         from rich.table import Table
+
         console = Console()
         tm = self._get_toolchain_manager()
 
@@ -262,6 +270,7 @@ class MethodDispatcher:
     def _handle_grammar(self, args: argparse.Namespace) -> None:
         from rich.console import Console
         from rich.table import Table
+
         console = Console()
         mm = self._get_mutator_manager()
 
@@ -305,6 +314,7 @@ class MethodDispatcher:
     def _handle_mutator(self, args: argparse.Namespace) -> None:
         from rich.console import Console
         from rich.table import Table
+
         console = Console()
         mm = self._get_mutator_manager()
 
@@ -334,6 +344,7 @@ class MethodDispatcher:
         from rich.table import Table
 
         from apatchy.core.harness import HarnessBuilder
+
         console = Console()
 
         action = getattr(args, "action", None)
@@ -381,6 +392,7 @@ class MethodDispatcher:
     def _handle_module(self, args: argparse.Namespace) -> None:
         from rich.console import Console
         from rich.table import Table
+
         console = Console()
 
         httpd_root = self._get_active_httpd()
@@ -412,6 +424,7 @@ class MethodDispatcher:
     def _handle_dev(self, args: argparse.Namespace) -> None:
         from rich.console import Console
         from rich.table import Table
+
         console = Console()
 
         httpd_root = self._get_active_httpd()
@@ -522,7 +535,7 @@ class MethodDispatcher:
             import http.server
 
             port = args.serve
-            bind = getattr(args, 'bind', 'localhost')
+            bind = getattr(args, "bind", "localhost")
             handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(build_dir))
             logger.info(f"Serving docs at http://{bind}:{port}/ (Ctrl+C to stop)")
             with http.server.HTTPServer((bind, port), handler) as server:
