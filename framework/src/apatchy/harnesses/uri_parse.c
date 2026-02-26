@@ -12,8 +12,10 @@
 #include "apr_uri.h"
 
 // Basic AFL/LibFuzzer entry point
-int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
-    if (size == 0) return 0;
+int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+{
+    if (size == 0)
+        return 0;
 
     // Initialize APR if needed (do once)
     static int initialized = 0;
@@ -64,12 +66,14 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 #define __AFL_LOOP(x) 1
 #endif
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
     uint8_t buf[1024 * 64]; // 64KB max input
 
     while (__AFL_LOOP(10000)) {
         ssize_t n = read(0, buf, sizeof(buf));
-        if (n <= 0) break;
+        if (n <= 0)
+            break;
         LLVMFuzzerTestOneInput(buf, (size_t)n);
     }
     return 0;

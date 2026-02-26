@@ -78,8 +78,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         const char *conf = getenv("FUZZ_CONF");
         const char *root = getenv("FUZZ_ROOT");
 
-        if (!conf) conf = "fuzz.conf";
-        if (!root) root = ".";
+        if (!conf)
+            conf = "fuzz.conf";
+        if (!root)
+            root = ".";
 
         if (fuzz_init(conf, root) < 0) {
             fprintf(stderr, "Fuzzer initialization failed\n");
@@ -96,16 +98,18 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 #elif defined(AFL_FUZZ)
 
 #ifdef __AFL_HAVE_MANUAL_CONTROL
-  __AFL_FUZZ_INIT();
+__AFL_FUZZ_INIT();
 #endif
 
-int main(int argc, const char * const argv[])
+int main(int argc, const char *const argv[])
 {
     const char *conf = getenv("FUZZ_CONF");
     const char *root = getenv("FUZZ_ROOT");
 
-    if (!conf) conf = "fuzz.conf";
-    if (!root) root = ".";
+    if (!conf)
+        conf = "fuzz.conf";
+    if (!root)
+        root = ".";
 
     apr_status_t rv = apr_app_initialize(&argc, &argv, NULL);
     if (rv != APR_SUCCESS) {
@@ -141,7 +145,7 @@ int main(int argc, const char * const argv[])
 
 #else /* Standalone */
 
-int main(int argc, const char * const argv[])
+int main(int argc, const char *const argv[])
 {
     apr_status_t rv;
     apr_pool_t *pcommands;

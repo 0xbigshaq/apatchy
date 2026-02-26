@@ -93,14 +93,14 @@ static void asan_restore_stderr_and_signals(void)
  * Global state
  * ---------------------------------------------------------------- */
 
-apr_pool_t *g_pool = NULL;          /* Exposed via fuzz_common.h */
+apr_pool_t *g_pool = NULL; /* Exposed via fuzz_common.h */
 static char *g_input_data = NULL;
 static apr_size_t g_input_size = 0;
 static apr_size_t g_input_offset = 0;
 
 /* Forward declarations */
-static apr_status_t fuzz_insert_network_bucket(conn_rec *c, apr_bucket_brigade *bb,
-                                                apr_socket_t *socket);
+static apr_status_t
+fuzz_insert_network_bucket(conn_rec *c, apr_bucket_brigade *bb, apr_socket_t *socket);
 static apr_status_t fuzz_output_filter(ap_filter_t *f, apr_bucket_brigade *bb);
 
 /* ----------------------------------------------------------------
@@ -114,8 +114,8 @@ typedef struct {
     apr_size_t offset;
 } fuzz_bucket_ctx;
 
-static apr_status_t fuzz_bucket_read(apr_bucket *b, const char **str,
-                                      apr_size_t *len, apr_read_type_e block)
+static apr_status_t
+fuzz_bucket_read(apr_bucket *b, const char **str, apr_size_t *len, apr_read_type_e block)
 {
     fuzz_bucket_ctx *ctx = b->data;
     apr_size_t remaining;
@@ -145,7 +145,9 @@ static void fuzz_bucket_destroy(void *data)
 }
 
 static const apr_bucket_type_t fuzz_bucket_type = {
-    "FUZZ", 5, APR_BUCKET_DATA,
+    "FUZZ",
+    5,
+    APR_BUCKET_DATA,
     fuzz_bucket_destroy,
     fuzz_bucket_read,
     apr_bucket_setaside_noop,
@@ -153,8 +155,7 @@ static const apr_bucket_type_t fuzz_bucket_type = {
     apr_bucket_shared_copy
 };
 
-static apr_bucket *fuzz_bucket_create(const char *data, apr_size_t length,
-                                       apr_bucket_alloc_t *list)
+static apr_bucket *fuzz_bucket_create(const char *data, apr_size_t length, apr_bucket_alloc_t *list)
 {
     apr_bucket *b = apr_bucket_alloc(sizeof(*b), list);
     fuzz_bucket_ctx *ctx = apr_bucket_alloc(sizeof(*ctx), list);
@@ -178,8 +179,8 @@ static apr_bucket *fuzz_bucket_create(const char *data, apr_size_t length,
  * insert_network_bucket hook - injects input data instead of socket
  * ---------------------------------------------------------------- */
 
-static apr_status_t fuzz_insert_network_bucket(conn_rec *c, apr_bucket_brigade *bb,
-                                                apr_socket_t *socket)
+static apr_status_t
+fuzz_insert_network_bucket(conn_rec *c, apr_bucket_brigade *bb, apr_socket_t *socket)
 {
     apr_bucket *b;
 
@@ -216,10 +217,7 @@ static apr_status_t fuzz_output_filter(ap_filter_t *f, apr_bucket_brigade *bb)
     const char *data;
     apr_size_t len;
 
-    for (b = APR_BRIGADE_FIRST(bb);
-         b != APR_BRIGADE_SENTINEL(bb);
-         b = APR_BUCKET_NEXT(b))
-    {
+    for (b = APR_BRIGADE_FIRST(bb); b != APR_BRIGADE_SENTINEL(bb); b = APR_BUCKET_NEXT(b)) {
         if (APR_BUCKET_IS_EOS(b)) {
             break;
         }
@@ -254,9 +252,10 @@ typedef struct {
     apr_bucket_brigade *bb;
 } fuzz_net_rec;
 
-static apr_status_t fuzz_input_filter(ap_filter_t *f, apr_bucket_brigade *bb,
-                                       ap_input_mode_t mode, apr_read_type_e block,
-                                       apr_off_t readbytes)
+static apr_status_t fuzz_input_filter(
+    ap_filter_t *f, apr_bucket_brigade *bb, ap_input_mode_t mode, apr_read_type_e block,
+    apr_off_t readbytes
+)
 {
     apr_bucket *b;
     fuzz_net_rec *net = f->ctx;
@@ -292,8 +291,7 @@ static apr_status_t fuzz_input_filter(ap_filter_t *f, apr_bucket_brigade *bb,
             rv = APR_SUCCESS;
         }
         return rv;
-    }
-    else if (mode == AP_MODE_READBYTES) {
+    } else if (mode == AP_MODE_READBYTES) {
         apr_status_t rv;
         if (readbytes > 0) {
             rv = apr_brigade_partition(net->bb, readbytes, &b);
@@ -303,11 +301,9 @@ static apr_status_t fuzz_input_filter(ap_filter_t *f, apr_bucket_brigade *bb,
         }
         APR_BRIGADE_CONCAT(bb, net->bb);
         return APR_SUCCESS;
-    }
-    else if (mode == AP_MODE_SPECULATIVE) {
+    } else if (mode == AP_MODE_SPECULATIVE) {
         apr_bucket *e;
-        for (e = APR_BRIGADE_FIRST(net->bb);
-             e != APR_BRIGADE_SENTINEL(net->bb);
+        for (e = APR_BRIGADE_FIRST(net->bb); e != APR_BRIGADE_SENTINEL(net->bb);
              e = APR_BUCKET_NEXT(e)) {
             apr_bucket *copy;
             if (apr_bucket_copy(e, &copy) != APR_SUCCESS) {
@@ -319,8 +315,7 @@ static apr_status_t fuzz_input_filter(ap_filter_t *f, apr_bucket_brigade *bb,
             }
         }
         return APR_SUCCESS;
-    }
-    else if (mode == AP_MODE_EXHAUSTIVE) {
+    } else if (mode == AP_MODE_EXHAUSTIVE) {
         APR_BRIGADE_CONCAT(bb, net->bb);
         return APR_SUCCESS;
     }
@@ -349,10 +344,10 @@ static int fuzz_pre_connection(conn_rec *c, void *csd)
     net->bb = apr_brigade_create(c->pool, c->bucket_alloc);
 
     /* Create a dummy socket so code expecting one doesn't crash */
-    if (apr_socket_create(&dummy_socket, APR_INET, SOCK_STREAM, APR_PROTO_TCP, c->pool) == APR_SUCCESS) {
+    if (apr_socket_create(&dummy_socket, APR_INET, SOCK_STREAM, APR_PROTO_TCP, c->pool) ==
+        APR_SUCCESS) {
         ap_set_core_module_config(c->conn_config, dummy_socket);
-    }
-    else {
+    } else {
         ap_set_core_module_config(c->conn_config, NULL);
     }
 
@@ -391,32 +386,27 @@ static apr_sockaddr_t *create_fake_sockaddr(apr_pool_t *p, const char *ip, apr_p
 
 static void fuzz_register_hooks(apr_pool_t *p)
 {
-    fuzz_input_filter_handle = ap_register_input_filter(
-        "FUZZ_INPUT", fuzz_input_filter, NULL, AP_FTYPE_NETWORK);
+    fuzz_input_filter_handle =
+        ap_register_input_filter("FUZZ_INPUT", fuzz_input_filter, NULL, AP_FTYPE_NETWORK);
 
-    fuzz_output_filter_handle = ap_register_output_filter(
-        "FUZZ_OUTPUT", fuzz_output_filter, NULL, AP_FTYPE_NETWORK - 1);
+    fuzz_output_filter_handle =
+        ap_register_output_filter("FUZZ_OUTPUT", fuzz_output_filter, NULL, AP_FTYPE_NETWORK - 1);
 
     ap_hook_pre_connection(fuzz_pre_connection, NULL, NULL, APR_HOOK_LAST);
 
-    ap_hook_insert_network_bucket(fuzz_insert_network_bucket, NULL, NULL,
-                                   APR_HOOK_FIRST);
+    ap_hook_insert_network_bucket(fuzz_insert_network_bucket, NULL, NULL, APR_HOOK_FIRST);
 }
 
 /* ----------------------------------------------------------------
  * Module declarations
  * ---------------------------------------------------------------- */
 
-module AP_MODULE_DECLARE_DATA fuzz_module = {
-    STANDARD20_MODULE_STUFF,
-    NULL, NULL, NULL, NULL, NULL,
-    fuzz_register_hooks
-};
+module AP_MODULE_DECLARE_DATA fuzz_module = {STANDARD20_MODULE_STUFF, NULL, NULL, NULL, NULL, NULL,
+                                             fuzz_register_hooks};
 
 /* Dummy mpm_event_module to satisfy the linker (referenced in modules.c) */
 module AP_MODULE_DECLARE_DATA mpm_event_module = {
-    STANDARD20_MODULE_STUFF,
-    NULL, NULL, NULL, NULL, NULL, NULL
+    STANDARD20_MODULE_STUFF, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
 /* ----------------------------------------------------------------
@@ -433,25 +423,57 @@ static int fuzz_mpm_run(apr_pool_t *pconf, apr_pool_t *plog, server_rec *s)
 static int fuzz_mpm_query(int query_code, int *result, apr_status_t *rv)
 {
     switch (query_code) {
-        case AP_MPMQ_MAX_DAEMON_USED:  *result = 1; break;
-        case AP_MPMQ_IS_THREADED:      *result = AP_MPMQ_NOT_SUPPORTED; break;
-        case AP_MPMQ_IS_FORKED:        *result = AP_MPMQ_NOT_SUPPORTED; break;
-        case AP_MPMQ_IS_ASYNC:         *result = 0; break;
-        case AP_MPMQ_HAS_SERF:         *result = 0; break;
-        case AP_MPMQ_HARD_LIMIT_DAEMONS: *result = 1; break;
-        case AP_MPMQ_HARD_LIMIT_THREADS: *result = 1; break;
-        case AP_MPMQ_MAX_THREADS:      *result = 0; break;
-        case AP_MPMQ_MIN_SPARE_DAEMONS: *result = 0; break;
-        case AP_MPMQ_MIN_SPARE_THREADS: *result = 0; break;
-        case AP_MPMQ_MAX_SPARE_DAEMONS: *result = 0; break;
-        case AP_MPMQ_MAX_SPARE_THREADS: *result = 0; break;
-        case AP_MPMQ_MAX_REQUESTS_DAEMON: *result = 0; break;
-        case AP_MPMQ_MAX_DAEMONS:      *result = 1; break;
-        case AP_MPMQ_MPM_STATE:        *result = AP_MPMQ_RUNNING; break;
-        case AP_MPMQ_GENERATION:       *result = 0; break;
-        default:
-            *rv = APR_ENOTIMPL;
-            return DECLINED;
+    case AP_MPMQ_MAX_DAEMON_USED:
+        *result = 1;
+        break;
+    case AP_MPMQ_IS_THREADED:
+        *result = AP_MPMQ_NOT_SUPPORTED;
+        break;
+    case AP_MPMQ_IS_FORKED:
+        *result = AP_MPMQ_NOT_SUPPORTED;
+        break;
+    case AP_MPMQ_IS_ASYNC:
+        *result = 0;
+        break;
+    case AP_MPMQ_HAS_SERF:
+        *result = 0;
+        break;
+    case AP_MPMQ_HARD_LIMIT_DAEMONS:
+        *result = 1;
+        break;
+    case AP_MPMQ_HARD_LIMIT_THREADS:
+        *result = 1;
+        break;
+    case AP_MPMQ_MAX_THREADS:
+        *result = 0;
+        break;
+    case AP_MPMQ_MIN_SPARE_DAEMONS:
+        *result = 0;
+        break;
+    case AP_MPMQ_MIN_SPARE_THREADS:
+        *result = 0;
+        break;
+    case AP_MPMQ_MAX_SPARE_DAEMONS:
+        *result = 0;
+        break;
+    case AP_MPMQ_MAX_SPARE_THREADS:
+        *result = 0;
+        break;
+    case AP_MPMQ_MAX_REQUESTS_DAEMON:
+        *result = 0;
+        break;
+    case AP_MPMQ_MAX_DAEMONS:
+        *result = 1;
+        break;
+    case AP_MPMQ_MPM_STATE:
+        *result = AP_MPMQ_RUNNING;
+        break;
+    case AP_MPMQ_GENERATION:
+        *result = 0;
+        break;
+    default:
+        *rv = APR_ENOTIMPL;
+        return DECLINED;
     }
     *rv = APR_SUCCESS;
     return OK;
@@ -508,7 +530,7 @@ int fuzz_init(const char *confname, const char *server_root)
     apr_pool_create(&process->pconf, g_pool);
     apr_pool_tag(process->pconf, "pconf");
     process->argc = 1;
-    process->argv = (const char * const[]){"fuzz_harness", NULL};
+    process->argv = (const char *const[]){"fuzz_harness", NULL};
     process->short_name = "fuzz_harness";
 
     ap_pglobal = g_pool;

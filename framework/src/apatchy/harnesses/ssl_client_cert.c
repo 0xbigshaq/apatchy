@@ -36,7 +36,7 @@
 #define BOOL unsigned int
 #endif
 #ifndef TRUE
-#define TRUE  1
+#define TRUE 1
 #endif
 #ifndef FALSE
 #define FALSE 0
@@ -58,7 +58,8 @@ static apr_pool_t *g_root_pool = NULL;
 static void fuzz_init_once(void)
 {
     static int done = 0;
-    if (done) return;
+    if (done)
+        return;
 
     apr_initialize();
     apr_pool_create(&g_root_pool, NULL);
@@ -76,7 +77,7 @@ static void exercise_cert(apr_pool_t *pool, X509 *cert)
 {
     /* --- Subject / Issuer DN ------------------------------------------ */
     X509_NAME *subject = X509_get_subject_name(cert);
-    X509_NAME *issuer  = X509_get_issuer_name(cert);
+    X509_NAME *issuer = X509_get_issuer_name(cert);
 
     if (subject) {
         /* mod_ssl calls X509_NAME_oneline in ssl_var_lookup_ssl_cert */
@@ -127,8 +128,7 @@ static void exercise_cert(apr_pool_t *pool, X509 *cert)
 
     /* --- Public key algorithm ----------------------------------------- */
     const ASN1_OBJECT *pk_obj = NULL;
-    X509_PUBKEY_get0_param((ASN1_OBJECT **)&pk_obj, NULL, 0, NULL,
-                           X509_get_X509_PUBKEY(cert));
+    X509_PUBKEY_get0_param((ASN1_OBJECT **)&pk_obj, NULL, 0, NULL, X509_get_X509_PUBKEY(cert));
 
     /* --- Extensions --------------------------------------------------- */
     int ext_count = X509_get_ext_count(cert);
@@ -146,9 +146,9 @@ static void exercise_cert(apr_pool_t *pool, X509 *cert)
 
     modssl_X509_getSAN(pool, cert, GEN_EMAIL, NULL, -1, &entries);
     entries = NULL;
-    modssl_X509_getSAN(pool, cert, GEN_DNS,   NULL, -1, &entries);
+    modssl_X509_getSAN(pool, cert, GEN_DNS, NULL, -1, &entries);
     entries = NULL;
-    modssl_X509_getSAN(pool, cert, GEN_URI,   NULL, -1, &entries);
+    modssl_X509_getSAN(pool, cert, GEN_URI, NULL, -1, &entries);
 
     /* otherName with known OID strings used by mod_ssl */
     entries = NULL;
@@ -185,7 +185,8 @@ static void exercise_cert(apr_pool_t *pool, X509 *cert)
 
 static int fuzz_one_cert(const uint8_t *data, size_t size)
 {
-    if (size == 0 || size > 65536) return 0;
+    if (size == 0 || size > 65536)
+        return 0;
 
     apr_pool_t *pool;
     apr_pool_create(&pool, g_root_pool);

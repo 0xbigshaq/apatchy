@@ -1,0 +1,22 @@
+---
+# clang-format configuration for apatchy harness C files.
+# Matches Apache HTTPD coding conventions.
+#
+# Requires clang-format 17+
+#
+# Usage:
+#   clang-format-17 -i src/apatchy/harnesses/*.c src/apatchy/harnesses/*.h
+
+BasedOnStyle: LLVM
+
+IndentWidth: 4
+UseTab: Never
+ColumnLimit: 100
+BreakBeforeBraces: Linux
+PointerAlignment: Right
+AlignAfterOpenBracket: BlockIndent
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+SortIncludes: false
+SpacesBeforeTrailingComments: 1
