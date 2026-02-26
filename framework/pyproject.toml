@@ -13,6 +13,7 @@ dependencies = [
 requires-python = ">=3.8"
 
 [project.optional-dependencies]
+dev = ["ruff"]
 docs = ["sphinx", "sphinx-autodoc-typehints", "sphinx-rtd-theme", "myst-parser", "sphinxcontrib-mermaid"]
 test = ["pytest", "pytest-cov"]
 
@@ -29,6 +30,35 @@ markers = [
     "integration: requires real Apache source (download, compile, link)",
     "slow: tests that take more than a few seconds",
 ]
+
+[tool.ruff]
+target-version = "py38"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort (import sorting)
+    "N",    # pep8-naming
+    "UP",   # pyupgrade (modernize syntax)
+    "B",    # flake8-bugbear (common bugs)
+    "SIM",  # flake8-simplify
+    "D",    # pydocstyle (docstring linting)
+]
+ignore = [
+    "D100",  # missing docstring in public module
+    "D104",  # missing docstring in public package
+    "D203",  # one-blank-line-before-class (conflicts with D211)
+    "D213",  # multi-line-summary-second-line (conflicts with D212)
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.isort]
+known-first-party = ["apatchy"]
 
 [build-system]
 requires = ["setuptools>=61.0"]
