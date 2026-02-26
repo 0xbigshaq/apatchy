@@ -5,6 +5,7 @@ consistent formatting across the framework.
 """
 
 import logging
+
 from rich.logging import RichHandler
 
 

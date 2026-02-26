@@ -10,7 +10,7 @@ import re
 import shutil
 import subprocess
 import tempfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -24,6 +24,7 @@ logger = get_logger(__name__)
 @dataclass
 class DepStatus:
     """Result of a single dependency check (used by :meth:`ToolchainManager.check`)."""
+
     name: str
     category: str
     found: bool

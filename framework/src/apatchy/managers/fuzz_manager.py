@@ -7,13 +7,14 @@ expanding a JSON grammar into concrete seed inputs.
 """
 
 import json
+import os
 import random
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-from apatchy.utils.logger import get_logger
+
 from apatchy.core.process_runner import ProcessRunner
 from apatchy.managers.config_manager import ConfigManager
-import os
+from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -270,7 +271,7 @@ class FuzzManager:
         elif role == "secondary":
             cmd += ["-S", name]
 
-        # cmd += ['-D'] # fuzzing strategy yields 
+        # cmd += ['-D'] # fuzzing strategy yields
         cmd += [
             "-i", str(input_dir),
             "-o", str(output_dir),

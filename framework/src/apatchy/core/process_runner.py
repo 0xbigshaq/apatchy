@@ -5,10 +5,11 @@ Provides :meth:`ProcessRunner.run_command` (direct execution) and
 used throughout the framework to execute external processes.
 """
 
-import subprocess
 import shlex
+import subprocess
 from pathlib import Path
-from typing import Optional, List, Union, Dict, Any
+from typing import Any, Dict, List, Optional, Union
+
 from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)

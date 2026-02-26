@@ -11,8 +11,8 @@ import re
 import shutil
 from pathlib import Path
 
-from apatchy.utils.logger import get_logger
 from apatchy.core.process_runner import ProcessRunner
+from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

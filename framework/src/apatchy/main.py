@@ -6,16 +6,18 @@ Defines all argparse sub-commands and delegates to
 
 import argparse
 import sys
+
 import argcomplete
-from apatchy.utils.logger import get_logger
+
 from apatchy.method_dispatcher import MethodDispatcher
-from apatchy.config import Config
+from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
 class _ShortHelpAction(argparse.Action):
     """Print brief help and exit (-h)."""
+
     def __init__(self, option_strings, dest=argparse.SUPPRESS, default=argparse.SUPPRESS, help=None):
         super().__init__(option_strings=option_strings, dest=dest, default=default, nargs=0, help=help)
 
@@ -26,6 +28,7 @@ class _ShortHelpAction(argparse.Action):
 
 class _VerboseHelpAction(argparse.Action):
     """Print extended help with all subcommand details (--help)."""
+
     def __init__(self, option_strings, dest=argparse.SUPPRESS, default=argparse.SUPPRESS, help=None):
         super().__init__(option_strings=option_strings, dest=dest, default=default, nargs=0, help=help)
 
@@ -224,7 +227,7 @@ def main():
     except KeyboardInterrupt:
         print()
         sys.exit(130)
-    except Exception as e:
+    except Exception:
         logger.exception("An error occurred during execution")
         sys.exit(1)
 

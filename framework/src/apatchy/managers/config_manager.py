@@ -7,6 +7,7 @@ given build, and resolves the runtime ``fuzz.conf`` config file path.
 
 from pathlib import Path
 from typing import Dict, Optional
+
 from apatchy.compat import get_compat_flags
 from apatchy.utils.logger import get_logger
 
@@ -15,6 +16,7 @@ logger = get_logger(__name__)
 
 class ConfigManager:
     """Generate ``CFLAGS``/``LDFLAGS`` and resolve httpd config paths."""
+
     def __init__(self, build_mode: str = "fuzz", engine: str = "afl", config_name: str = "fuzz.conf", asan: bool = False, ubsan: bool = False, intsan: bool = False, truncsan: bool = False) -> None:
         self.build_mode = build_mode
         self.engine = engine

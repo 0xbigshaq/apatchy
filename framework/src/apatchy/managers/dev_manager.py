@@ -9,7 +9,7 @@ import json
 import os
 import shutil
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from apatchy.config import Config
 from apatchy.core.harness import HarnessBuilder

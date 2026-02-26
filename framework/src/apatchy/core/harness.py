@@ -5,13 +5,13 @@ build tree and links it with all statically-built modules, producing a
 self-contained binary for AFL++, LibFuzzer, or standalone execution.
 """
 
-import os
 import re
 import shutil
 from pathlib import Path
-from apatchy.utils.logger import get_logger
+
 from apatchy.config import Config
 from apatchy.core.process_runner import ProcessRunner
+from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

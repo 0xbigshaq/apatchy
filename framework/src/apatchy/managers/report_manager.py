@@ -7,17 +7,17 @@ provides :meth:`~ReportManager.triage_crash` for reproducing
 individual crash inputs.
 """
 
-import glob
 import os
 import shutil
 import subprocess
 from pathlib import Path
 from typing import List, Optional, Tuple
-from apatchy.utils.logger import get_logger
-from apatchy.utils.build_tree import AlternateBuildTree
+
+from apatchy.core.harness import HarnessBuilder
 from apatchy.core.process_runner import ProcessRunner
 from apatchy.managers.config_manager import ConfigManager
-from apatchy.core.harness import HarnessBuilder
+from apatchy.utils.build_tree import AlternateBuildTree
+from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

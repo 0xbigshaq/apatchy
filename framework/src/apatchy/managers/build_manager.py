@@ -10,12 +10,12 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
+
 from apatchy.compat import extract_version_from_path, get_compat_flags
-from apatchy.utils.logger import get_logger
-from apatchy.utils.build_tree import AlternateBuildTree
+from apatchy.core.harness import HarnessBuilder
 from apatchy.core.process_runner import ProcessRunner
 from apatchy.managers.config_manager import ConfigManager
-from apatchy.core.harness import HarnessBuilder
+from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -74,14 +74,14 @@ class BuildManager:
         config = self.config_manager.generate_build_config(httpd_version=httpd_version)
         cflags = config["CFLAGS"]
         ldflags = config["LDFLAGS"]
-        
+
         self.logger.info(f"Configuring Apache in {self.httpd_root}")
         self.logger.info(f"CFLAGS: {cflags}")
-        
+
         # Detect PCRE
         pcre_prefix = None
         pcre_config = shutil.which("pcre-config") or shutil.which("pcre2-config")
-        
+
         if pcre_config:
             try:
                 # We use subprocess directly here to avoid logging noise
@@ -110,7 +110,7 @@ class BuildManager:
         if self.config_manager.asan:
             self.logger.info("Enabling APR pool debug mode for ASan")
             configure_cmd.append("--enable-pool-debug=yes")
-        
+
         if pcre_prefix:
              self.logger.info(f"Using PCRE prefix: {pcre_prefix}")
              configure_cmd.append(f"--with-pcre={pcre_prefix}")
@@ -120,7 +120,7 @@ class BuildManager:
         # Detect Expat
         expat_prefix = None
         bundled_expat = self.httpd_root / "srclib" / "apr-util" / "xml" / "expat"
-        
+
         if bundled_expat.exists():
             self.logger.info(f"Using bundled Expat in {bundled_expat}")
             # apr-util automatically uses bundled expat if present in xml/expat
@@ -131,7 +131,7 @@ class BuildManager:
                      expat_prefix = subprocess.check_output(["pkg-config", "--variable=prefix", "expat"], text=True).strip()
                  except subprocess.CalledProcessError:
                      pass
-            
+
             if not expat_prefix:
                  if Path("/usr/include/expat.h").exists():
                      expat_prefix = "/usr"

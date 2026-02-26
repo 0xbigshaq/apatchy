@@ -17,15 +17,16 @@ class Config:
     instance.  Paths that depend on the current working directory are
     resolved once at import time.
     """
+
     PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.resolve()
     APACHE_MIRROR = "https://dlcdn.apache.org/httpd"
     APACHE_ARCHIVE = "https://archive.apache.org/dist/httpd"
-    
+
     # Directories
     WORK_DIR = Path(os.getcwd())
     SRC_DIR = PROJECT_ROOT / "src" / "apatchy"
     TOOLCHAIN_DIR = WORK_DIR / "toolchain"
-    
+
     # Defaults
     DEFAULT_APACHE_VERSION = "2.4.62"
 
@@ -39,7 +40,7 @@ class Config:
     HARNESSES_DIR = Path(__file__).parent / "harnesses"
     EXTERNAL_MODULES_DIR = Path(__file__).parent / "external_modules"
     DEV_DIR = WORK_DIR / "dev"
-    
+
     @classmethod
     def get_apache_dir(cls, version: str) -> Path:
         """Return the expected source directory for a given Apache version.

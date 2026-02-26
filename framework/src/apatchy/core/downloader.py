@@ -6,10 +6,12 @@ fallback), plus APR, APR-Util, and Expat which are placed into
 """
 
 import os
-import requests
 import tarfile
 from pathlib import Path
 from typing import Optional
+
+import requests
+
 from apatchy.config import Config
 from apatchy.utils.logger import get_logger
 
@@ -40,7 +42,7 @@ class Downloader:
         """
         if not version:
             version = Config.DEFAULT_APACHE_VERSION
-        
+
         target_dir = self.work_dir / f"httpd-{version}"
 
         if target_dir.exists():
@@ -50,7 +52,7 @@ class Downloader:
                 deps_exist = False
             if not (target_dir / "srclib" / "apr-util").exists():
                 deps_exist = False
-            
+
             # Check Expat (inside apr-util)
             expat_dir = target_dir / "srclib" / "apr-util" / "xml" / "expat"
             if not expat_dir.exists():
@@ -66,7 +68,7 @@ class Downloader:
 
         tarball = f"httpd-{version}.tar.gz"
         url = f"{self.mirror}/{tarball}"
-        
+
         logger.info(f"Downloading Apache HTTPD {version} from {url}...")
         try:
             self._download_file(url, tarball)
@@ -79,19 +81,19 @@ class Downloader:
         logger.info("Extracting...")
         with tarfile.open(tarball, "r:gz") as tar:
             tar.extractall(path=self.work_dir)
-        
+
         os.remove(tarball)
-        
+
         # Download APR/APR-Util
         self._download_dependencies(target_dir)
-        
+
         logger.info(f"Apache HTTPD {version} downloaded to {target_dir}")
         return target_dir
 
     def _download_dependencies(self, httpd_root: Path) -> None:
         srclib = httpd_root / "srclib"
         srclib.mkdir(exist_ok=True)
-        
+
         # APR
         if not (srclib / "apr").exists():
             self._download_and_extract(
@@ -99,7 +101,7 @@ class Downloader:
                 srclib / "apr",
                 strip_components=1
             )
-        
+
         # APR-Util
         if not (srclib / "apr-util").exists():
             self._download_and_extract(
@@ -107,11 +109,11 @@ class Downloader:
                 srclib / "apr-util",
                 strip_components=1
             )
-            
+
         # Expat (Bundled)
         xml_dir = srclib / "apr-util" / "xml"
         xml_dir.mkdir(exist_ok=True)
-        
+
         expat_dir = xml_dir / "expat"
         if not expat_dir.exists():
             self._download_and_extract(
@@ -124,16 +126,16 @@ class Downloader:
         filename = url.split("/")[-1]
         logger.info(f"Downloading {filename}...")
         self._download_file(url, filename)
-        
+
         # target_dir.mkdir(parents=True, exist_ok=True) # Unnecessary and causes issues with rename
-        
+
         logger.info(f"Extracting to {target_dir}...")
         with tarfile.open(filename, "r:gz") as tar:
             tar.extractall(path=target_dir.parent)
-            
+
             extracted_name = filename.replace(".tar.gz", "")
             extracted_path = target_dir.parent / extracted_name
-            
+
             if extracted_path.exists() and extracted_path != target_dir:
                 if target_dir.exists():
                     import shutil
@@ -141,7 +143,7 @@ class Downloader:
                         shutil.rmtree(target_dir)
                     else:
                         target_dir.unlink()
-                
+
                 extracted_path.rename(target_dir)
 
         os.remove(filename)
@@ -150,5 +152,5 @@ class Downloader:
         with requests.get(url, stream=True) as r:
             r.raise_for_status()
             with open(filename, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=8192): 
+                for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)

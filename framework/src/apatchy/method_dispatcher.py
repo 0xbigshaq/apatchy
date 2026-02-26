@@ -9,17 +9,19 @@ import argparse
 import os
 from pathlib import Path
 from typing import Optional
-from apatchy.utils.logger import get_logger
+
 from apatchy.config import Config
 from apatchy.core.downloader import Downloader
-from apatchy.managers.config_manager import ConfigManager
 from apatchy.managers.build_manager import BuildManager
-from apatchy.managers.fuzz_manager import FuzzManager
-from apatchy.managers.report_manager import ReportManager
-from apatchy.managers.mutator_manager import MutatorManager
-from apatchy.managers.toolchain_manager import ToolchainManager
-from apatchy.managers.module_manager import ModuleManager
+from apatchy.managers.config_manager import ConfigManager
 from apatchy.managers.dev_manager import DevManager
+from apatchy.managers.fuzz_manager import FuzzManager
+from apatchy.managers.module_manager import ModuleManager
+from apatchy.managers.mutator_manager import MutatorManager
+from apatchy.managers.report_manager import ReportManager
+from apatchy.managers.toolchain_manager import ToolchainManager
+from apatchy.utils.logger import get_logger
+
 # from apatchy.core.harness import HarnessBuilder # Used inside BuildManager
 
 logger = get_logger(__name__)
@@ -52,7 +54,7 @@ class MethodDispatcher:
         """
         command = args.command
         logger.info(f"Dispatching command: {command}")
-        
+
         if command == "download":
             self._handle_download(args)
         elif command == "configure":
@@ -166,11 +168,11 @@ class MethodDispatcher:
         httpd_root = self._get_active_httpd()
         if not httpd_root:
             return
-            
+
         self.config_manager = ConfigManager(config_name=args.config) # Defaults engine/mode
-        
+
         self.report_manager = ReportManager(httpd_root, self.config_manager)
-        
+
         # Find a harness binary for triage. Prefer standalone (reads from
         # stdin) over AFL (expects shared memory forkserver protocol).
         # With static APR linking (--disable-shared), libtool places the
@@ -194,9 +196,9 @@ class MethodDispatcher:
         # We need to tell the config manager which config to use if it's not default?
         # For now, let's update ReportManager to pass args.config to get_httpd_config.
         # I can't do that easily without changing ReportManager again.
-        
+
         # Simpler approach: ConfigManager could have a current_config property.
-        
+
         self.report_manager.triage_crash(
             args.crash_file, harness_path,
             no_color=args.no_color,
@@ -330,6 +332,7 @@ class MethodDispatcher:
     def _handle_harness(self, args: argparse.Namespace) -> None:
         from rich.console import Console
         from rich.table import Table
+
         from apatchy.core.harness import HarnessBuilder
         console = Console()
 
@@ -482,8 +485,8 @@ class MethodDispatcher:
         raise SystemExit(result.returncode)
 
     def _handle_docs(self, args: argparse.Namespace) -> None:
-        import subprocess
         import shutil
+        import subprocess
 
         source_dir = Config.PROJECT_ROOT / "docs"
         build_dir = source_dir / "_build" / "html"
@@ -515,8 +518,8 @@ class MethodDispatcher:
         logger.info(f"Documentation built at {index}")
 
         if args.serve is not None:
-            import http.server
             import functools
+            import http.server
 
             port = args.serve
             bind = getattr(args, 'bind', 'localhost')

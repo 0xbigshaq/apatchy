@@ -14,14 +14,13 @@ import time
 from collections import deque
 from typing import Dict, List, Optional, Tuple, Union
 
+from rich import print as rprint
 from rich.box import Box
 from rich.console import Console, Group
 from rich.live import Live
 from rich.markup import escape
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.table import Table
-from rich import print as rprint
 
 console = Console()
 
@@ -57,24 +56,23 @@ def run_stream_panel(
         log_content = "\n".join(log_buffer) if log_buffer else "[dim]Waiting for output...[/dim]"
         return Group(spinner, Panel(log_content, box=_EMPTY_BOX, height=height + 2))
 
-    with Live(_render(), refresh_per_second=12, console=console) as live:
-        with subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            cwd=str(cwd) if cwd else None,
-            env=env,
-        ) as proc:
-            for line in proc.stdout:
-                clean = line.rstrip()
-                full_output.append(clean)
-                if clean:
-                    stripped = _ANSI_RE.sub("", clean)
-                    ts = time.strftime("%H:%M:%S")
-                    log_buffer.append(f"[dim]{ts}[/dim] {escape(stripped)}")
-                    live.update(_render())
-            returncode = proc.wait()
+    with Live(_render(), refresh_per_second=12, console=console) as live, subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        cwd=str(cwd) if cwd else None,
+        env=env,
+    ) as proc:
+        for line in proc.stdout:
+            clean = line.rstrip()
+            full_output.append(clean)
+            if clean:
+                stripped = _ANSI_RE.sub("", clean)
+                ts = time.strftime("%H:%M:%S")
+                log_buffer.append(f"[dim]{ts}[/dim] {escape(stripped)}")
+                live.update(_render())
+        returncode = proc.wait()
 
     elapsed = time.monotonic() - start_time
     mins, secs = divmod(int(elapsed), 60)
@@ -90,6 +88,7 @@ def run_stream_panel(
 
 class UI:
     """Static helpers for formatted terminal output using Rich markup."""
+
     @staticmethod
     def print_header(title: str) -> None:
         rprint(f"[bold blue]==== {title} ====[/bold blue]")

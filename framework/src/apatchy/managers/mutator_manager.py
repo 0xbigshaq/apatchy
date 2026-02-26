@@ -5,7 +5,6 @@ repository, building per-grammar ``.so`` libraries, and compiling
 simple C custom mutators.
 """
 
-import os
 import shutil
 import subprocess
 from pathlib import Path
