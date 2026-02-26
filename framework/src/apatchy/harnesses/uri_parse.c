@@ -69,9 +69,8 @@ int main(int argc, char **argv) {
 
     while (__AFL_LOOP(10000)) {
         ssize_t n = read(0, buf, sizeof(buf));
-        if (n > 0) {
-            LLVMFuzzerTestOneInput(buf, (size_t)n);
-        }
+        if (n <= 0) break;
+        LLVMFuzzerTestOneInput(buf, (size_t)n);
     }
     return 0;
 }
