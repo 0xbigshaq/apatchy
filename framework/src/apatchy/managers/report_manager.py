@@ -13,6 +13,7 @@ import subprocess
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+from apatchy.core import toolchain_config
 from apatchy.core.harness import HarnessBuilder
 from apatchy.core.process_runner import ProcessRunner
 from apatchy.managers.config_manager import ConfigManager
@@ -51,9 +52,11 @@ class ReportManager:
 
         All three must come from the same LLVM major version so that the
         profraw format produced by the compiler is readable by the tools.
-        We locate the compiler first, determine its real version, then find
-        llvm-profdata / llvm-cov binaries co-installed with it (same
-        directory) to avoid picking up mismatched toolchain copies.
+
+        Resolution order:
+        - ``toolchain.config`` - honours ``apatchy setup llvm`` results.
+        - Co-located binaries in the same directory as the compiler.
+        - PATH search.
 
         Returns (profdata_bin, cov_bin, cc).
         """
@@ -61,35 +64,37 @@ class ReportManager:
         candidates = [f"clang-{v}" for v in range(20, 10, -1)] + ["clang"]
 
         for cc in candidates:
-            cc_path = shutil.which(cc)
+            cc_path = toolchain_config.resolve_tool(cc)
             if not cc_path:
                 continue
-            major = self._clang_major_version(cc)
+            major = self._clang_major_version(cc_path)
             if major is None:
                 continue
 
-            # Look for matching llvm tools in the SAME directory as the
-            # compiler first (avoids picking up mismatched toolchain copies),
-            # then fall back to PATH search.
-            cc_dir = str(Path(cc_path).parent)
             profdata_name = f"llvm-profdata-{major}"
             cov_name = f"llvm-cov-{major}"
 
-            # Prefer co-located binaries
+            # Check toolchain.config
+            profdata_cfg = toolchain_config.resolve_tool(profdata_name, section="coverage")
+            cov_cfg = toolchain_config.resolve_tool(cov_name, section="coverage")
+            if profdata_cfg and cov_cfg:
+                self.logger.info(f"using LLVM-{major} from toolchain config")
+                return profdata_cfg, cov_cfg, cc_path
+
+            # Co-located binaries next to the compiler
+            cc_dir = str(Path(cc_path).parent)
             profdata_colocated = Path(cc_dir) / profdata_name
             cov_colocated = Path(cc_dir) / cov_name
             if profdata_colocated.is_file() and cov_colocated.is_file():
-                self.logger.info(
-                    f"Using LLVM-{major} toolchain: {cc} ({cc_path}), {profdata_colocated}, {cov_colocated}"
-                )
-                return str(profdata_colocated), str(cov_colocated), cc
+                self.logger.info(f"using LLVM-{major} (co-located with {cc_path})")
+                return str(profdata_colocated), str(cov_colocated), cc_path
 
             # Fall back to PATH
             profdata_path = shutil.which(profdata_name)
             cov_path = shutil.which(cov_name)
             if profdata_path and cov_path:
-                self.logger.info(f"Using LLVM-{major} toolchain: {cc}, {profdata_name}, {cov_name}")
-                return profdata_name, cov_name, cc
+                self.logger.info(f"using LLVM-{major} from PATH")
+                return profdata_path, cov_path, cc_path
 
         raise FileNotFoundError(
             "No matched LLVM toolchain found. Install a complete set, e.g.: apt install clang-14 llvm-14"
@@ -138,21 +143,19 @@ class ReportManager:
     def _find_llvm_symbolizer() -> Optional[str]:
         """Locate ``llvm-symbolizer`` on the system.
 
-        Many distros only ship versioned binaries (e.g.
-        ``llvm-symbolizer-14``) without an unversioned symlink.  The
-        sanitizer runtimes default to searching ``$PATH`` for the plain
-        name, so if it isn't there, stack-trace symbolization silently
-        fails (or hangs).  We try the unversioned name first, then
-        try to match the compiler version (``afl-clang-fast --version``),
-        then fall back to the lowest available version for maximum
-        compatibility.
+        Resolution order:
+        - ``toolchain.config`` - picks up locally-downloaded copies.
+        2. Unversioned ``llvm-symbolizer`` in PATH.
+        3. Versioned binary matching the compiler version.
+        4. Lowest available versioned binary in PATH.
         """
-        plain = shutil.which("llvm-symbolizer")
-        if plain:
-            return plain
+        # Check toolchain.config
+        for name in ("llvm-symbolizer",):
+            path = toolchain_config.resolve_tool(name)
+            if path:
+                return path
 
-        # Determine which clang version afl-clang-fast uses so we can
-        # pick a matching symbolizer (avoids DWARF compat issues).
+        # Also try versioned names from config
         compiler_ver: Optional[int] = None
         try:
             out = subprocess.check_output(
@@ -169,7 +172,17 @@ class ReportManager:
         except (OSError, subprocess.SubprocessError):
             pass
 
-        # Scan PATH for versioned variants.
+        if compiler_ver:
+            path = toolchain_config.resolve_tool(f"llvm-symbolizer-{compiler_ver}")
+            if path:
+                return path
+
+        # Unversioned in PATH
+        plain = shutil.which("llvm-symbolizer")
+        if plain:
+            return plain
+
+        # 3-4. Scan PATH for versioned variants.
         candidates: dict[int, str] = {}
         for d in os.environ.get("PATH", "").split(":"):
             try:

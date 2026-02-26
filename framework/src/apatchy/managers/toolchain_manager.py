@@ -34,6 +34,29 @@ class DepStatus:
     install_hint: str = ""
 
 
+#: Core LLVM tool name templates for local toolchain setup.
+#: Call ``[t.format(ver=clang_ver) for t in LLVM_CORE_TOOLS]`` to expand.
+LLVM_CORE_TOOLS = (
+    "clang-{ver}",
+    "clang++-{ver}",
+    "lld-{ver}",
+    "llvm-ar-{ver}",
+    "llvm-config-{ver}",
+    "llvm-cov-{ver}",
+    "llvm-nm-{ver}",
+    "llvm-objcopy-{ver}",
+    "llvm-objdump-{ver}",
+    "llvm-profdata-{ver}",
+    "llvm-ranlib-{ver}",
+    "llvm-readelf-{ver}",
+    "llvm-readobj-{ver}",
+    "llvm-size-{ver}",
+    "llvm-strings-{ver}",
+    "llvm-strip-{ver}",
+    "llvm-symbolizer-{ver}",
+)
+
+
 class ToolchainManager:
     """Manages toolchain dependencies: checking, AFL++ setup, LLVM detection."""
 
@@ -186,9 +209,15 @@ class ToolchainManager:
     def setup_llvm(self, standalone: bool = False) -> None:
         """Detect clang version, download missing LLVM tools to toolchain/.
 
-        Args:
-            standalone: Download ALL tools into toolchain/ even if system
-                        copies already exist.
+        After downloading, all available binaries in the local LLVM
+        directory are registered in ``toolchain.config`` so that later
+        commands prefer the local copies over system installs.
+
+        Parameters
+        ----------
+        standalone : bool
+            Download ALL tools into toolchain/ even if system copies
+            already exist.
         """
         clang_ver = self._detect_clang_major_version()
         if not clang_ver:
@@ -198,12 +227,7 @@ class ToolchainManager:
 
         logger.info(f"Detected clang major version: {clang_ver}")
 
-        tool_names = [
-            f"llvm-profdata-{clang_ver}",
-            f"llvm-cov-{clang_ver}",
-            f"lld-{clang_ver}",
-        ]
-
+        tool_names = [t.format(ver=clang_ver) for t in LLVM_CORE_TOOLS]
         llvm_dir = self.toolchain_dir / f"llvm-{clang_ver}"
 
         if standalone:
@@ -224,34 +248,19 @@ class ToolchainManager:
 
             if not targets:
                 logger.info("All LLVM tools already in toolchain directory.")
-                # Ensure config points to local copies
-                local_paths = {n: self._find_local_llvm_binary(llvm_dir, n) for n in tool_names}
-                local_paths = {n: p for n, p in local_paths.items() if p}
-                if local_paths:
-                    toolchain_config.force_update_section("coverage", local_paths)
+                self._register_local_llvm_binaries(llvm_dir, clang_ver)
                 return
 
             downloaded = self._download_llvm_packages(clang_ver, targets)
             if downloaded:
-                # Merge with any already-local tools for a complete config write
-                all_local = {}
-                for name in tool_names:
-                    if name in downloaded:
-                        all_local[name] = downloaded[name]
-                    else:
-                        local = self._find_local_llvm_binary(llvm_dir, name)
-                        if local:
-                            all_local[name] = local
-                toolchain_config.force_update_section("coverage", all_local)
                 for name, path in downloaded.items():
                     logger.info(f"  Installed: {name} -> {path}")
-                if len(all_local) == len(tool_names):
-                    logger.info("All LLVM tools present (standalone).")
-                    return
+                self._register_local_llvm_binaries(llvm_dir, clang_ver)
+                return
 
             # Fallback if download failed
             logger.error("Download failed. Try manually:")
-            logger.info(f"  sudo apt install llvm-{clang_ver} lld-{clang_ver}")
+            logger.info(f"  sudo apt install clang-{clang_ver} llvm-{clang_ver} lld-{clang_ver}")
             return
 
         # --- Normal (non-standalone) mode ---
@@ -267,11 +276,9 @@ class ToolchainManager:
         for name, path in found.items():
             logger.info(f"  Found: {name} -> {path}")
 
-        if found:
-            toolchain_config.force_update_section("coverage", found)
-
         if not missing:
             logger.info("All LLVM tools present.")
+            self._register_local_llvm_binaries(llvm_dir, clang_ver)
             return
 
         for name in missing:
@@ -282,9 +289,9 @@ class ToolchainManager:
         if answer.strip().lower() == "y":
             downloaded = self._download_llvm_packages(clang_ver, missing)
             if downloaded:
-                toolchain_config.force_update_section("coverage", downloaded)
                 for name, path in downloaded.items():
                     logger.info(f"  Installed: {name} -> {path}")
+                self._register_local_llvm_binaries(llvm_dir, clang_ver)
                 still_missing = [n for n in missing if n not in downloaded]
                 if not still_missing:
                     logger.info("All LLVM tools present.")
@@ -294,7 +301,7 @@ class ToolchainManager:
         # Manual instructions for anything still missing
         logger.info("")
         logger.info("Install manually with:")
-        logger.info(f"  sudo apt install llvm-{clang_ver} lld-{clang_ver}")
+        logger.info(f"  sudo apt install clang-{clang_ver} llvm-{clang_ver} lld-{clang_ver}")
         logger.info("")
         logger.info("If the package is not available, add the LLVM apt repo:")
         logger.info("  https://apt.llvm.org/")
@@ -395,13 +402,58 @@ class ToolchainManager:
                 return str(p)
         return None
 
+    def _register_local_llvm_binaries(self, llvm_dir: Path, clang_ver: str) -> None:
+        """Scan the local LLVM directory and register all binaries in toolchain.config.
+
+        Clang binaries go into ``[build]``, everything else into ``[coverage]``.
+        Also registers unversioned aliases (``clang`` -> local ``clang-{ver}``).
+        """
+        bin_dir = llvm_dir / "usr" / "bin"
+        if not bin_dir.is_dir():
+            return
+
+        build_entries: Dict[str, str] = {}
+        coverage_entries: Dict[str, str] = {}
+
+        for p in sorted(bin_dir.iterdir()):
+            if not p.is_file():
+                continue
+            name = p.name
+            path = str(p)
+
+            if name.startswith("clang"):
+                build_entries[name] = path
+                # Register unversioned alias so resolve_tool("clang") finds local copy
+                unversioned = name.removesuffix(f"-{clang_ver}")
+                if unversioned != name:
+                    build_entries[unversioned] = path
+            else:
+                coverage_entries[name] = path
+
+        if build_entries:
+            toolchain_config.force_update_section("build", build_entries)
+            logger.info(f"Registered {len(build_entries)} build tool(s) from {bin_dir}")
+        if coverage_entries:
+            toolchain_config.force_update_section("coverage", coverage_entries)
+            logger.info(f"Registered {len(coverage_entries)} LLVM tool(s) from {bin_dir}")
+
     def _download_llvm_packages(self, clang_ver: str, missing: List[str]) -> Dict[str, str]:
         """Download missing LLVM .deb packages and extract to toolchain/llvm-{ver}/."""
         llvm_dir = self.toolchain_dir / f"llvm-{clang_ver}"
         llvm_dir.mkdir(parents=True, exist_ok=True)
 
         # Deduplicate: map tool names to apt package names
-        pkg_names = list(set(f"lld-{clang_ver}" if t.startswith("lld") else f"llvm-{clang_ver}" for t in missing))
+        pkg_set = set()
+        for t in missing:
+            if t.startswith("lld"):
+                pkg_set.add(f"lld-{clang_ver}")
+            elif t.startswith("clang"):
+                pkg_set.add(f"clang-{clang_ver}")
+                # clang needs its compiler-rt libs (ASan, UBSan, etc.)
+                pkg_set.add(f"libclang-common-{clang_ver}-dev")
+            else:
+                pkg_set.add(f"llvm-{clang_ver}")
+        pkg_names = sorted(pkg_set)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             for pkg in pkg_names:

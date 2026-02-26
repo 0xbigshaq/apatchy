@@ -10,6 +10,7 @@ import shutil
 from pathlib import Path
 
 from apatchy.config import Config
+from apatchy.core import toolchain_config
 from apatchy.core.process_runner import ProcessRunner
 from apatchy.utils.logger import get_logger
 
@@ -114,7 +115,11 @@ class HarnessBuilder:
         if cc is None:
             cc = COMPILERS.get(mode, "clang")
 
-        if not shutil.which(cc):
+        # Resolve compiler: toolchain.config first, then PATH
+        resolved_cc = toolchain_config.resolve_tool(cc)
+        if resolved_cc:
+            cc = resolved_cc
+        elif not shutil.which(cc):
             self.logger.error(f"Compiler '{cc}' not found. Is AFL++ installed?")
             raise FileNotFoundError(f"{cc} not found in PATH")
 
@@ -192,10 +197,9 @@ class HarnessBuilder:
         # tree and needs the runtime.
         skip_afl_rt = mode == "coverage"
 
-        # When linking non-AFL compilers against AFL-instrumented Apache
-        # objects (SanCov uses non-PIC R_X86_64_32S relocations), disable
-        # PIE to avoid relocation errors.
-        if mode == "standalone" and cc != "afl-clang-fast":
+        # AFL-instrumented Apache objects use SanCov with non-PIC
+        # R_X86_64_32S relocations. Disable PIE to avoid linker errors.
+        if "-no-pie" not in ldflags:
             ldflags = f"{ldflags} -no-pie"
 
         # Link everything

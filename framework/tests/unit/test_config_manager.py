@@ -133,11 +133,11 @@ def test_all_sanitizers():
     assert "-fsanitize=implicit-unsigned-integer-truncation" in cflags
 
 
-def test_no_sanitizers_empty_ldflags():
-    """No sanitizers produces empty LDFLAGS."""
+def test_fuzz_mode_no_pie():
+    """Fuzz mode adds -no-pie for SanCov non-PIC relocations."""
     cm = ConfigManager(build_mode="fuzz")
     result = cm.generate_build_config()
-    assert result["LDFLAGS"] == ""
+    assert "-no-pie" in result["LDFLAGS"]
 
 
 # --- coverage + sanitizers ---

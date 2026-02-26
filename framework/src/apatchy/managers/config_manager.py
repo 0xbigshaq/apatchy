@@ -59,6 +59,9 @@ class ConfigManager:
             # Clang is stricter than gcc; suppress format warnings that
             # Apache's upstream code triggers under -Werror (maintainer-mode).
             cflags.append("-Wno-error=format")
+            # AFL SanCov instrumentation produces non-PIC objects.
+            # Disable PIE to avoid R_X86_64_32S relocation errors at link time.
+            ldflags.append("-no-pie")
 
         elif self.build_mode == "coverage":
             self.logger.info("Enabling Coverage Instrumentation")
