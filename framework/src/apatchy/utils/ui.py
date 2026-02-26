@@ -91,20 +91,25 @@ class UI:
 
     @staticmethod
     def print_header(title: str) -> None:
+        """Print a bold blue section header."""
         rprint(f"[bold blue]==== {title} ====[/bold blue]")
 
     @staticmethod
     def print_success(msg: str) -> None:
+        """Print a green success message."""
         rprint(f"[green][+] {msg}[/green]")
 
     @staticmethod
     def print_error(msg: str) -> None:
+        """Print a bold red error message."""
         rprint(f"[bold red][!] {msg}[/bold red]")
 
     @staticmethod
     def print_info(msg: str) -> None:
+        """Print a cyan informational message."""
         rprint(f"[cyan][*] {msg}[/cyan]")
 
     @staticmethod
     def print_warning(msg: str) -> None:
+        """Print a yellow warning message."""
         rprint(f"[yellow][~] {msg}[/yellow]")

@@ -67,6 +67,7 @@ class FuzzManager:
         self.work_dir = Path(".").resolve()
 
     def prepare_corpus(self, input_dir: str = "afl-input", output_dir: str = "afl-output") -> Tuple[Path, Path]:
+        """Create input/output directories and seed the corpus if empty."""
         input_path = self.work_dir / input_dir
         output_path = self.work_dir / output_dir
 
@@ -99,7 +100,7 @@ class FuzzManager:
         written = 0
         seen = set()
 
-        for i in range(count * 3):  # over-generate to deduplicate
+        for _i in range(count * 3):  # over-generate to deduplicate
             if written >= count:
                 break
             data = gen.generate()
@@ -126,6 +127,7 @@ class FuzzManager:
         suppress: Optional[str] = None,
         timeout: Optional[int] = None,
     ) -> None:
+        """Launch the fuzzing engine with the configured harness and corpus."""
         input_dir, out_dir = self.prepare_corpus(output_dir=output_dir)
 
         # Generate grammar-based seeds before starting the fuzzer (skip if
@@ -253,9 +255,8 @@ class FuzzManager:
         env["UBSAN_OPTIONS"] = f"{existing}:{combined}" if existing else combined
 
         # When switching from solo to parallel, migrate the default/ corpus
-        if role == "main" and resume:
-            if not self._migrate_corpus_for_parallel(output_dir, name):
-                return
+        if role == "main" and resume and not self._migrate_corpus_for_parallel(output_dir, name):
+            return
 
         # Custom mutator library
         if mutator:

@@ -6,6 +6,7 @@
 CLI commands.
 """
 
+import contextlib
 import os
 import shutil
 import subprocess
@@ -67,9 +68,7 @@ class BuildManager:
         self.logger.info(f"Updated {clangd_path}")
 
     def configure_httpd(self) -> None:
-        """
-        Runs ./configure with optimised flags.
-        """
+        """Run ``./configure`` with optimised flags."""
         httpd_version = extract_version_from_path(self.httpd_root)
         config = self.config_manager.generate_build_config(httpd_version=httpd_version)
         cflags = config["CFLAGS"]
@@ -83,11 +82,9 @@ class BuildManager:
         pcre_config = shutil.which("pcre-config") or shutil.which("pcre2-config")
 
         if pcre_config:
-            try:
+            with contextlib.suppress(subprocess.CalledProcessError):
                 # We use subprocess directly here to avoid logging noise
                 pcre_prefix = subprocess.check_output([pcre_config, "--prefix"], text=True).strip()
-            except subprocess.CalledProcessError:
-                pass
 
         configure_cmd = [
             "./configure",
@@ -126,13 +123,11 @@ class BuildManager:
             # apr-util automatically uses bundled expat if present in xml/expat
         else:
             if shutil.which("pkg-config"):
-                try:
+                with contextlib.suppress(subprocess.CalledProcessError):
                     # We use subprocess directly here to avoid logging noise
                     expat_prefix = subprocess.check_output(
                         ["pkg-config", "--variable=prefix", "expat"], text=True
                     ).strip()
-                except subprocess.CalledProcessError:
-                    pass
 
             if not expat_prefix:
                 if Path("/usr/include/expat.h").exists():
@@ -164,6 +159,7 @@ class BuildManager:
         self.runner.run_build(configure_cmd, label="Configuring Apache", cwd=self.httpd_root)
 
     def compile_httpd(self, jobs: int = None, clean: bool = True, bear: bool = False) -> None:
+        """Compile Apache HTTPD with ``make``, optionally wrapped by ``bear``."""
         if jobs is None:
             jobs = os.cpu_count() or 1
         if clean:
@@ -188,6 +184,7 @@ class BuildManager:
     def build_harness(
         self, mode: str = "standalone", engine: str = "standalone", harness_name: str = None, bear: bool = False
     ) -> None:
+        """Build the fuzzing harness for the given engine."""
         self.logger.info(f"Building harness for engine: {mode}")
 
         if bear and not _bear_available():

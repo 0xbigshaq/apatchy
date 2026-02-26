@@ -122,9 +122,9 @@ class ConfigManager:
         return result
 
     def get_httpd_config(self, config_name: Optional[str] = None) -> Optional[Path]:
-        """
-        Returns the path to the requested httpd config file.
-        Here we would look in the package resources or a local configs directory.
+        """Return the path to the requested httpd config file.
+
+        Look in the package resources or a local configs directory.
         """
         if config_name is None:
             config_name = self.config_name
@@ -159,5 +159,6 @@ class ConfigManager:
         return None
 
     def validate_configuration(self) -> None:
-        # Todo: Verify compiler compatibility (e.g., clang for coverage)
+        """Verify compiler compatibility (e.g. clang for coverage)."""
+        # Todo: implement validation
         pass

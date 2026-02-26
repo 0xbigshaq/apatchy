@@ -45,14 +45,7 @@ class MethodDispatcher:
         self.toolchain_manager: Optional[ToolchainManager] = None
 
     def dispatch(self, args: argparse.Namespace) -> None:
-        """Inspect *args.command* and delegate to the matching handler.
-
-        Parameters
-        ----------
-        args : argparse.Namespace
-            The fully-parsed CLI arguments.  Must contain a ``command``
-            attribute that names the top-level sub-command.
-        """
+        """Inspect *args.command* and delegate to the matching handler."""
         command = args.command
         logger.info(f"Dispatching command: {command}")
 

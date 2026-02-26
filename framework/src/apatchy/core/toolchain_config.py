@@ -87,7 +87,7 @@ def force_update_section(section: str, entries: Dict[str, str]) -> None:
 
 
 def get_tool_path(name: str) -> Optional[str]:
-    """Convenience alias - resolve a tool path from config or PATH."""
+    """Resolve a tool path from config or PATH."""
     return resolve_tool(name)
 
 

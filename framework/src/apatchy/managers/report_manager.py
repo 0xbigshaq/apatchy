@@ -280,10 +280,9 @@ class ReportManager:
         if not harness.exists():
             harness = self.work_dir / ".libs" / "fuzz_harness_coverage"
         libmain = cov_root / "server" / "libmain.la"
-        if harness.exists() and libmain.exists():
-            if harness.stat().st_mtime > libmain.stat().st_mtime:
-                self.logger.info(f"Coverage harness up to date: {harness}")
-                return harness, cov_root
+        if harness.exists() and libmain.exists() and harness.stat().st_mtime > libmain.stat().st_mtime:
+            self.logger.info(f"Coverage harness up to date: {harness}")
+            return harness, cov_root
 
         builder = HarnessBuilder(cov_root)
         self.logger.info("Building coverage-instrumented harness...")
@@ -493,8 +492,7 @@ class ReportManager:
         suppress: Optional[str] = None,
         timeout: int = 30,
     ) -> None:
-        """Replay *crash_file* through *harness_binary* and print the
-        sanitizer output.
+        """Replay *crash_file* through *harness_binary* and print the sanitizer output.
 
         *suppress* is an optional path to a UBSan runtime suppression
         file (passed via ``UBSAN_OPTIONS=suppressions=``).  *timeout*
@@ -573,7 +571,7 @@ class ReportManager:
             # Run harness with crash input piped to stdin.
             # We use subprocess directly because ProcessRunner doesn't
             # support binary stdin.
-            result = subprocess.run(
+            result = subprocess.run(  # noqa: UP022
                 cmd,
                 env=env,
                 input=crash_data,
