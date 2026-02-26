@@ -270,6 +270,7 @@ class FuzzManager:
         elif role == "secondary":
             cmd += ["-S", name]
 
+        # cmd += ['-D'] # fuzzing strategy yields 
         cmd += [
             "-i", str(input_dir),
             "-o", str(output_dir),
