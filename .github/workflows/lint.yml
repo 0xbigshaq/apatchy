@@ -1,0 +1,40 @@
+name: Lint
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "framework/src/**"
+      - "framework/pyproject.toml"
+      - "framework/.clang-format"
+      - ".github/workflows/lint.yml"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: framework
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Ruff format check
+        run: ruff format --check src/
+
+      - name: Ruff lint check
+        run: ruff check src/
+
+      - name: Install clang-format-17
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-17
+
+      - name: clang-format check
+        run: clang-format-17 --dry-run --Werror src/apatchy/harnesses/*.c src/apatchy/harnesses/*.h
