@@ -27,6 +27,7 @@ apatchy = ["grammars/*.json", "custom_mutators/*.c", "templates/*", "harnesses/*
 testpaths = ["tests"]
 pythonpath = ["src"]
 markers = [
+    "unit: fast tests with no external dependencies",
     "integration: requires real Apache source (download, compile, link)",
     "slow: tests that take more than a few seconds",
 ]

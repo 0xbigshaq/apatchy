@@ -4,7 +4,6 @@ Uses tmp_path for real file I/O - no mocking.
 """
 
 import configparser
-from pathlib import Path
 from unittest.mock import patch
 
 from apatchy.core import toolchain_config

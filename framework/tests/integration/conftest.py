@@ -12,6 +12,13 @@ import pytest
 
 from apatchy.config import Config
 
+
+def pytest_collection_modifyitems(items):
+    """Auto-apply the 'integration' marker to every test in the integration/ directory."""
+    for item in items:
+        if "/integration/" in str(item.fspath):
+            item.add_marker(pytest.mark.integration)
+
 _ALL_VERSIONS = [
     "2.4.62",
     "2.4.63",
@@ -40,7 +47,7 @@ def _require_tool(name):
 
 @pytest.fixture(scope="session")
 def integration_work_dir(tmp_path_factory):
-    """Persistent working directory for integration tests.
+    """Return a persistent working directory for integration tests.
 
     Uses framework/.test_cache/ so builds survive across test runs.
     Falls back to a pytest tmp dir if the cache can't be created.
@@ -86,8 +93,8 @@ def configured_apache(apache_source):
     if config_vars.exists():
         return apache_source
 
-    from apatchy.managers.config_manager import ConfigManager
     from apatchy.managers.build_manager import BuildManager
+    from apatchy.managers.config_manager import ConfigManager
 
     cm = ConfigManager(build_mode="fuzz", asan=True)
     bm = BuildManager(apache_source, cm, verbose=True)
@@ -108,8 +115,8 @@ def compiled_apache(configured_apache):
     if httpd_binary.exists():
         return configured_apache
 
-    from apatchy.managers.config_manager import ConfigManager
     from apatchy.managers.build_manager import BuildManager
+    from apatchy.managers.config_manager import ConfigManager
 
     cm = ConfigManager(build_mode="fuzz", asan=True)
     bm = BuildManager(configured_apache, cm, verbose=True)

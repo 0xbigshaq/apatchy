@@ -1,10 +1,5 @@
 """Integration tests for Apache HTTPD download and extraction."""
 
-import pytest
-
-
-pytestmark = pytest.mark.integration
-
 
 def test_source_dir_exists(apache_source):
     """Downloaded source directory exists."""

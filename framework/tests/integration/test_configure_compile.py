@@ -2,17 +2,11 @@
 
 import re
 
-import pytest
-
 from apatchy.core.harness import HarnessBuilder
 
 
-pytestmark = pytest.mark.integration
-
-
-
 def test_config_vars_generated(configured_apache):
-    """configure produces build/config_vars.mk."""
+    """Configure produces build/config_vars.mk."""
     config_vars = configured_apache / "build" / "config_vars.mk"
     assert config_vars.exists()
     assert config_vars.stat().st_size > 0
@@ -33,7 +27,7 @@ def test_config_vars_has_cflags(configured_apache):
 
 
 def test_config_status_generated(configured_apache):
-    """configure produces config.status."""
+    """Configure produces config.status."""
     assert (configured_apache / "config.status").exists()
 
 
@@ -46,7 +40,7 @@ def test_session_modules_enabled(configured_apache):
 
 
 def test_httpd_binary_exists(compiled_apache):
-    """make produces the httpd binary."""
+    """Make produces the httpd binary."""
     httpd = compiled_apache / "httpd"
     assert httpd.exists()
 

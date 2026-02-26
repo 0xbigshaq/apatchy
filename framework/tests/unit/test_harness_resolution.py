@@ -2,9 +2,8 @@
 
 from pathlib import Path
 
-from apatchy.core.harness import HarnessBuilder, COMPILERS
 from apatchy.config import Config
-
+from apatchy.core.harness import COMPILERS, HarnessBuilder
 
 # --- COMPILERS mapping ---
 

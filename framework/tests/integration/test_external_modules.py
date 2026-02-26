@@ -4,11 +4,8 @@ import shutil
 
 import pytest
 
-from apatchy.managers.module_manager import ModuleManager
 from apatchy.config import Config
-
-
-pytestmark = pytest.mark.integration
+from apatchy.managers.module_manager import ModuleManager
 
 
 def test_list_modules(compiled_apache):

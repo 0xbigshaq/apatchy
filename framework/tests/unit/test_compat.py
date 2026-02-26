@@ -9,7 +9,6 @@ from apatchy.compat import (
     get_compat_flags,
 )
 
-
 # --- _parse_version ---
 
 def test_parse_version_three_parts():

@@ -1,10 +1,8 @@
 """Tests for FuzzManager corpus preparation."""
 
-from pathlib import Path
-from unittest.mock import MagicMock
 
-from apatchy.managers.fuzz_manager import FuzzManager
 from apatchy.managers.config_manager import ConfigManager
+from apatchy.managers.fuzz_manager import FuzzManager
 
 
 def _make_fuzz_manager(work_dir):

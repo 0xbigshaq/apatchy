@@ -1,7 +1,6 @@
 """Tests for CLI argument parsing in apatchy.main."""
 
 import argparse
-import sys
 
 import pytest
 
@@ -10,7 +9,7 @@ def _parse(args):
     """Run the apatchy argument parser on a list of args without dispatching."""
     # Import here to avoid side effects at module level
     from unittest.mock import patch
-    from apatchy.main import main
+
 
     with patch("sys.argv", ["apatchy"] + args):
         # Build the parser the same way main() does, but don't dispatch

@@ -6,12 +6,8 @@ import subprocess
 
 import pytest
 
-from apatchy.core.harness import HarnessBuilder, COMPILERS
 from apatchy.config import Config
-
-
-pytestmark = pytest.mark.integration
-
+from apatchy.core.harness import HarnessBuilder
 
 
 def test_include_paths_exist(compiled_apache):
@@ -90,7 +86,7 @@ def test_build_afl_harness(compiled_apache, harness_build_dir, monkeypatch):
 
 
 def test_linked_libraries_resolve(compiled_apache, harness_build_dir, monkeypatch):
-    """ldd on the harness binary shows no 'not found' entries."""
+    """Ldd on the harness binary shows no 'not found' entries."""
     if not shutil.which("ldd"):
         pytest.skip("ldd not available")
 

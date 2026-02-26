@@ -10,13 +10,9 @@ import shutil
 
 import pytest
 
-from apatchy.managers.report_manager import ReportManager
 from apatchy.managers.config_manager import ConfigManager
+from apatchy.managers.report_manager import ReportManager
 from apatchy.utils.build_tree import AlternateBuildTree
-
-
-pytestmark = pytest.mark.integration
-
 
 
 def test_detect_llvm_toolchain(compiled_apache):

@@ -1,9 +1,7 @@
 """Tests for apatchy.managers.config_manager.ConfigManager flag generation."""
 
-from pathlib import Path
 
 from apatchy.managers.config_manager import ConfigManager
-
 
 # --- fuzz mode ---
 
