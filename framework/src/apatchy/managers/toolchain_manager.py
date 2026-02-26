@@ -16,6 +16,7 @@ from typing import Dict, List, Optional
 
 from apatchy.config import Config
 from apatchy.core import toolchain_config
+from apatchy.core.process_runner import ProcessRunner
 from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -36,9 +37,10 @@ class DepStatus:
 class ToolchainManager:
     """Manages toolchain dependencies: checking, AFL++ setup, LLVM detection."""
 
-    def __init__(self) -> None:
+    def __init__(self, verbose: bool = False) -> None:
         self.toolchain_dir = Config.TOOLCHAIN_DIR
         self.aflpp_dir = self.toolchain_dir / "aflplusplus"
+        self.runner = ProcessRunner(verbose=verbose)
 
 
     def check(self) -> List[DepStatus]:
@@ -159,21 +161,19 @@ class ToolchainManager:
 
         # Clone
         if not self.aflpp_dir.exists():
-            logger.info("Cloning AFL++...")
-            subprocess.run(
+            self.runner.run_build(
                 ["git", "clone", Config.AFLPP_REPO_URL, str(self.aflpp_dir)],
-                check=True,
+                label="Cloning AFL++",
             )
         else:
             logger.info("AFL++ source already present, building...")
 
         # Build
         nproc = os.cpu_count() or 1
-        logger.info(f"Building AFL++ (make -j{nproc} source-only)...")
-        subprocess.run(
+        self.runner.run_build(
             ["make", f"-j{nproc}", "source-only"],
+            label="Building AFL++",
             cwd=self.aflpp_dir,
-            check=True,
         )
 
         if afl_fuzz.exists():

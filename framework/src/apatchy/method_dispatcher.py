@@ -212,9 +212,9 @@ class MethodDispatcher:
             self.mutator_manager = MutatorManager()
         return self.mutator_manager
 
-    def _get_toolchain_manager(self) -> ToolchainManager:
+    def _get_toolchain_manager(self, verbose: bool = False) -> ToolchainManager:
         if self.toolchain_manager is None:
-            self.toolchain_manager = ToolchainManager()
+            self.toolchain_manager = ToolchainManager(verbose=verbose)
         return self.toolchain_manager
 
     def _handle_setup(self, args: argparse.Namespace) -> None:
@@ -222,7 +222,8 @@ class MethodDispatcher:
         from rich.table import Table
 
         console = Console()
-        tm = self._get_toolchain_manager()
+        verbose = getattr(args, "verbose", False)
+        tm = self._get_toolchain_manager(verbose=verbose)
 
         action = getattr(args, "action", None)
         if not action:
