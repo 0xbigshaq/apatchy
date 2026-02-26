@@ -5,6 +5,7 @@ httpd-*/
 .vscode/
 .DS_Store
 compile_commands.json
+.clangd
 .cache/
 
 # Legacy / internal
