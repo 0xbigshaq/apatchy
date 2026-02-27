@@ -1,7 +1,7 @@
 /*
  * @description: Multi-request pipeline harness - processes multiple requests per fuzz input
  *
- * Like full_pipeline, but splits fuzz input on \r\n\r\n boundaries and
+ * Like mod_fuzzy, but splits fuzz input on \r\n\r\n boundaries and
  * processes each segment as a separate connection. This exercises
  * cross-connection state: sessions, connection cleanup, per-conn isolation.
  *

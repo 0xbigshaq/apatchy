@@ -149,8 +149,8 @@ class HarnessBuilder:
         # Ensure harness source exists
         src = Path("fuzz_harness.c")
         if not src.exists():
-            # Default to uri_parse harness
-            default_harness = Config.HARNESSES_DIR / "uri_parse.c"
+            # Default to mod_fuzzy harness
+            default_harness = Config.HARNESSES_DIR / "mod_fuzzy.c"
             if default_harness.exists():
                 self.logger.info(f"Copying default harness from {default_harness}")
                 shutil.copy(default_harness, src)

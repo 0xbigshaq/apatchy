@@ -123,7 +123,7 @@ def main():
     # Build Harness
     build_parser = _sub(subparsers, "build", help="Build fuzzing harness")
     build_parser.add_argument("engine", choices=["afl", "libfuzzer", "standalone"], help="Fuzzing engine")
-    build_parser.add_argument("--harness", help="Harness name to use (e.g. 'full_pipeline')")
+    build_parser.add_argument("--harness", help="Harness name to use (e.g. 'mod_fuzzy')")
     build_parser.add_argument(
         "--bear", action="store_true", help="Wrap compilation with bear to generate compile_commands.json"
     )
@@ -172,7 +172,7 @@ def main():
     coverage_report.add_argument("--afl-dir", default="afl-output", help="AFL output directory")
     coverage_report.add_argument("--config", default="fuzz.conf", help="Httpd config for corpus replay")
     coverage_report.add_argument("--output", default="coverage-report", help="Output directory for HTML report")
-    coverage_report.add_argument("--harness", default=None, help="Harness to use (e.g. full_pipeline)")
+    coverage_report.add_argument("--harness", default=None, help="Harness to use (e.g. mod_fuzzy)")
 
     # Grammar mutator
     grammar_parser = _sub(subparsers, "grammar", help="Manage AFL++ grammar mutators")
@@ -207,7 +207,7 @@ def main():
     harness_sub = harness_parser.add_subparsers(dest="action")
     _sub(harness_sub, "list", help="List available harnesses")
     harness_use = _sub(harness_sub, "use", help="Select a harness for building")
-    harness_use.add_argument("name", help="Harness name (e.g. 'full_pipeline')")
+    harness_use.add_argument("name", help="Harness name (e.g. 'mod_fuzzy')")
 
     # Module (external DSO modules)
     module_parser = _sub(subparsers, "module", help="Manage external Apache modules")

@@ -46,11 +46,11 @@ def test_list_harnesses_has_name_and_source():
 
 
 def test_list_harnesses_contains_known():
-    """list_harnesses() includes uri_parse and full_pipeline."""
+    """list_harnesses() includes uri_parse and mod_fuzzy."""
     harnesses = HarnessBuilder.list_harnesses()
     names = [h["name"] for h in harnesses]
     assert "uri_parse" in names
-    assert "full_pipeline" in names
+    assert "mod_fuzzy" in names
 
 
 def test_list_harnesses_sources_are_c_files():
@@ -70,9 +70,9 @@ def test_resolve_harness_by_name():
     assert result.exists()
 
 
-def test_resolve_harness_full_pipeline():
-    """resolve_harness('full_pipeline') finds the harness."""
-    result = HarnessBuilder.resolve_harness("full_pipeline")
+def test_resolve_harness_mod_fuzzy():
+    """resolve_harness('mod_fuzzy') finds the harness."""
+    result = HarnessBuilder.resolve_harness("mod_fuzzy")
     assert result is not None
     assert result.exists()
 

@@ -1,14 +1,6 @@
 # Apatchy - Apache HTTPD Fuzzer
 
-A modular, Python-based framework for fuzzing Apache HTTPD modules.
-
-## Features
-
--   **Modular Architecture**: Separate managers for configuration, building, fuzzing, and reporting.
--   **Multi-Engine Support**: Supports AFL++ and LibFuzzer.
--   **Advanced Build Modes**: Easily switch between ASan, Coverage, and Standard builds.
--   **Rich UI**: User-friendly terminal interface.
--   **Direct Integration**: Downloads and builds Apache and APR from source.
+A modular, Python-based framework for fuzzing Apache HTTPD modules. For the full project documentation - how it works, getting started, architecture - see the [docs/](../docs/README.md) directory.
 
 ## Installation
 
@@ -30,25 +22,6 @@ source venv/bin/activate
 
 # Install in editable mode
 pip install -e .
-```
-
-## Usage
-
-```bash
-# Download Apache source
-apatchy download
-
-# Configure for fuzzing (default)
-apatchy configure
-
-# Compile
-apatchy compile
-
-# Build Harness (AFL mode)
-apatchy build afl
-
-# Start Fuzzing
-apatchy fuzz
 ```
 
 ## Resuming a Fuzzing Session
@@ -107,6 +80,3 @@ When `--name` is omitted, it defaults to `main01` for main and `sec01` for secon
 
 > **Note:** `--role` and `--name` are only supported with `--engine afl` (the default).
 
-## Documentation
-
-Run `apatchy docs` to view the full documentation.

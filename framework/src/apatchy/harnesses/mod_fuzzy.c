@@ -1,5 +1,5 @@
 /*
- * @description: Full Apache pipeline harness - single request per fuzz input
+ * @description: mod_fuzzy harness - single request per fuzz input
  *
  * Processes one fuzz input as a single HTTP request through Apache's
  * full request handling pipeline. See fuzz_common.c for shared infrastructure.

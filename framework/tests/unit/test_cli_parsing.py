@@ -173,9 +173,9 @@ def test_build_standalone():
 
 
 def test_build_with_harness():
-    """Parse 'build afl --harness full_pipeline'."""
-    args = _parse(["build", "afl", "--harness", "full_pipeline"])
-    assert args.harness == "full_pipeline"
+    """Parse 'build afl --harness mod_fuzzy'."""
+    args = _parse(["build", "afl", "--harness", "mod_fuzzy"])
+    assert args.harness == "mod_fuzzy"
 
 
 def test_build_invalid_engine():

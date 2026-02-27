@@ -53,17 +53,17 @@ def test_build_standalone_harness(compiled_apache, harness_build_dir, monkeypatc
     assert result.returncode < 128, f"Harness crashed with code {result.returncode}"
 
 
-def test_build_standalone_full_pipeline(compiled_apache, harness_build_dir, monkeypatch):
-    """Build full_pipeline harness in standalone mode."""
+def test_build_standalone_mod_fuzzy(compiled_apache, harness_build_dir, monkeypatch):
+    """Build mod_fuzzy harness in standalone mode."""
     monkeypatch.chdir(harness_build_dir)
 
     builder = HarnessBuilder(compiled_apache, verbose=True)
-    builder.build(mode="standalone", harness_name="full_pipeline")
+    builder.build(mode="standalone", harness_name="mod_fuzzy")
 
     binary = harness_build_dir / "fuzz_harness_standalone"
     if not binary.exists():
         binary = harness_build_dir / ".libs" / "fuzz_harness_standalone"
-    assert binary.exists(), "full_pipeline standalone binary not produced"
+    assert binary.exists(), "mod_fuzzy standalone binary not produced"
 
 
 

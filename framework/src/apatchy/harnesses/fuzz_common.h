@@ -2,7 +2,7 @@
  * Shared fuzzing infrastructure for Apache pipeline harnesses.
  *
  * Provides Apache initialization, fake connection handling, and request
- * processing. Individual harness files (full_pipeline.c, multi_pipeline.c)
+ * processing. Individual harness files (mod_fuzzy.c, mod_fuzzy_multi.c)
  * include this header and provide only their entry points.
  */
 
