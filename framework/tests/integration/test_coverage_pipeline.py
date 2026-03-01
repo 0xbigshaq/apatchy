@@ -15,6 +15,7 @@ from apatchy.managers.report_manager import ReportManager
 from apatchy.utils.build_tree import AlternateBuildTree
 
 
+
 def test_detect_llvm_toolchain(compiled_apache):
     """_detect_llvm_toolchain finds a matched clang/profdata/cov triple."""
     cm = ConfigManager(build_mode="coverage")
@@ -28,6 +29,7 @@ def test_detect_llvm_toolchain(compiled_apache):
     assert "profdata" in profdata
     assert "cov" in cov
     assert "clang" in cc
+
 
 
 
@@ -68,6 +70,7 @@ def test_find_afl_instances_empty(compiled_apache, tmp_path):
 
     instances = rm._find_afl_instances(str(tmp_path))
     assert len(instances) == 0
+
 
 
 

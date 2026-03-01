@@ -5,6 +5,7 @@ import re
 from apatchy.core.harness import HarnessBuilder
 
 
+
 def test_config_vars_generated(configured_apache):
     """Configure produces build/config_vars.mk."""
     config_vars = configured_apache / "build" / "config_vars.mk"
@@ -39,6 +40,7 @@ def test_session_modules_enabled(configured_apache):
 
 
 
+
 def test_httpd_binary_exists(compiled_apache):
     """Make produces the httpd binary."""
     httpd = compiled_apache / "httpd"
@@ -64,6 +66,7 @@ def test_apr_util_built(compiled_apache):
     """APR-Util library is built."""
     aprutil_lib = compiled_apache / "srclib" / "apr-util" / "libaprutil-1.la"
     assert aprutil_lib.exists()
+
 
 
 

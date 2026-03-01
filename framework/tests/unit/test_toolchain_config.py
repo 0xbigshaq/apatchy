@@ -126,10 +126,13 @@ def test_update_section_merges(mock_path, tmp_path):
     cp.set("build", "cc", str(tool_a))
     toolchain_config.save(cp)
 
-    toolchain_config.update_section("build", {
-        "cc": str(tool_b),
-        "ld": str(tool_c),
-    })
+    toolchain_config.update_section(
+        "build",
+        {
+            "cc": str(tool_b),
+            "ld": str(tool_c),
+        },
+    )
 
     cp2 = toolchain_config.load()
     assert cp2.get("build", "cc") == str(tool_a)  # preserved
@@ -151,9 +154,12 @@ def test_force_update_section_overwrites(mock_path, tmp_path):
     cp.set("build", "cc", str(tool_a))
     toolchain_config.save(cp)
 
-    toolchain_config.force_update_section("build", {
-        "cc": str(tool_b),
-    })
+    toolchain_config.force_update_section(
+        "build",
+        {
+            "cc": str(tool_b),
+        },
+    )
 
     cp2 = toolchain_config.load()
     assert cp2.get("build", "cc") == str(tool_b)  # overwritten

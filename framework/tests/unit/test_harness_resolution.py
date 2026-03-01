@@ -7,6 +7,7 @@ from apatchy.core.harness import COMPILERS, HarnessBuilder
 
 # --- COMPILERS mapping ---
 
+
 def test_compilers_afl():
     """COMPILERS maps 'afl' to afl-clang-fast."""
     assert COMPILERS["afl"] == "afl-clang-fast"
@@ -28,6 +29,7 @@ def test_compilers_coverage():
 
 
 # --- list_harnesses ---
+
 
 def test_list_harnesses_returns_list():
     """list_harnesses() returns a non-empty list."""
@@ -61,6 +63,7 @@ def test_list_harnesses_sources_are_c_files():
 
 
 # --- resolve_harness ---
+
 
 def test_resolve_harness_by_name():
     """resolve_harness('uri_parse') finds uri_parse.c."""

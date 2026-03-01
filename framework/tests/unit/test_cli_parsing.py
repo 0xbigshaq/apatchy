@@ -10,7 +10,6 @@ def _parse(args):
     # Import here to avoid side effects at module level
     from unittest.mock import patch
 
-
     with patch("sys.argv", ["apatchy"] + args):
         # Build the parser the same way main() does, but don't dispatch
         parser = argparse.ArgumentParser(
@@ -18,8 +17,9 @@ def _parse(args):
             add_help=False,
         )
         from apatchy.main import _add_help, _sub
+
         _add_help(parser)
-        parser.add_argument('-v', '--verbose', action='store_true', default=False)
+        parser.add_argument("-v", "--verbose", action="store_true", default=False)
         subparsers = parser.add_subparsers(dest="command")
 
         # Download
@@ -87,6 +87,7 @@ def _parse(args):
 
 # --- download ---
 
+
 def test_download_command():
     """Parse 'download' subcommand."""
     args = _parse(["download"])
@@ -120,6 +121,7 @@ def test_download_no_action_is_none():
 
 # --- configure ---
 
+
 def test_configure_defaults():
     """Configure defaults to fuzz mode, no sanitizers."""
     args = _parse(["configure"])
@@ -146,6 +148,7 @@ def test_configure_sanitizers():
 
 # --- make ---
 
+
 def test_make_defaults():
     """Make defaults to no jobs, no bear."""
     args = _parse(["make"])
@@ -167,6 +170,7 @@ def test_make_with_bear():
 
 
 # --- build ---
+
 
 def test_build_afl():
     """Parse 'build afl'."""
@@ -200,6 +204,7 @@ def test_build_invalid_engine():
 
 
 # --- fuzz ---
+
 
 def test_fuzz_defaults():
     """Fuzz defaults to afl engine, fuzz.conf, no resume."""
@@ -250,6 +255,7 @@ def test_fuzz_suppress():
 
 # --- triage ---
 
+
 def test_triage():
     """Parse 'triage crash_001'."""
     args = _parse(["triage", "crash_001"])
@@ -264,6 +270,7 @@ def test_triage_no_color():
 
 
 # --- coverage ---
+
 
 def test_coverage_report():
     """Parse 'coverage report' with defaults."""
@@ -280,6 +287,7 @@ def test_coverage_report_custom_output():
 
 
 # --- setup ---
+
 
 def test_setup_check():
     """Parse 'setup check'."""
@@ -308,6 +316,7 @@ def test_setup_standalone_flag():
 
 # --- global flags ---
 
+
 def test_verbose_flag():
     """Parse '-v' global verbose flag."""
     args = _parse(["-v", "download"])
@@ -315,6 +324,7 @@ def test_verbose_flag():
 
 
 # --- edge cases ---
+
 
 def test_no_command_is_none():
     """No arguments sets command to None."""

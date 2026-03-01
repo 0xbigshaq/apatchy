@@ -40,12 +40,16 @@ class Downloader:
                 if tag != "a":
                     return
                 for name, value in attrs:
-                    if name == "href" and value is not None:
-                        # e.g. "httpd-2.4.62.tar.gz" but not "httpd-2.4.16-deps.tar.gz"
-                        if value.startswith("httpd-2.4.") and value.endswith(".tar.gz"):
-                            version = value.removeprefix("httpd-").removesuffix(".tar.gz")
-                            if version.replace(".", "").isdigit():
-                                self.versions.add(version)
+                    # e.g. "httpd-2.4.62.tar.gz" but not "httpd-2.4.16-deps.tar.gz"
+                    if (
+                        name == "href"
+                        and value is not None
+                        and value.startswith("httpd-2.4.")
+                        and value.endswith(".tar.gz")
+                    ):
+                        version = value.removeprefix("httpd-").removesuffix(".tar.gz")
+                        if version.replace(".", "").isdigit():
+                            self.versions.add(version)
 
         parser = _LinkParser()
         parser.feed(html)
@@ -82,11 +86,13 @@ class Downloader:
 
         results = []
         for v in archive_versions:
-            results.append({
-                "version": v,
-                "mirror": v in mirror_versions,
-                "downloaded": v in local_dirs,
-            })
+            results.append(
+                {
+                    "version": v,
+                    "mirror": v in mirror_versions,
+                    "downloaded": v in local_dirs,
+                }
+            )
         return results
 
     def download_apache(self, version: Optional[str] = None) -> Path:

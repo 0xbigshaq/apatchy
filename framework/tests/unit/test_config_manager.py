@@ -1,9 +1,9 @@
 """Tests for apatchy.managers.config_manager.ConfigManager flag generation."""
 
-
 from apatchy.managers.config_manager import ConfigManager
 
 # --- fuzz mode ---
+
 
 def test_fuzz_mode_cc():
     """Fuzz mode sets CC to afl-clang-fast."""
@@ -30,6 +30,7 @@ def test_fuzz_mode_suppresses_format_warning():
 
 # --- coverage mode ---
 
+
 def test_coverage_mode_flags():
     """Coverage mode adds profile and coverage-mapping flags."""
     cm = ConfigManager(build_mode="coverage")
@@ -54,6 +55,7 @@ def test_coverage_mode_no_cc():
 
 
 # --- sanitizers ---
+
 
 def test_asan():
     """ASan flag adds -fsanitize=address to CFLAGS and LDFLAGS."""
@@ -96,6 +98,7 @@ def test_intsan_without_ignorelist(tmp_path, monkeypatch):
     """IntSan works without ignorelist (just no ignorelist flag)."""
     monkeypatch.chdir(tmp_path)
     from apatchy.config import Config
+
     monkeypatch.setattr(Config, "PROJECT_ROOT", tmp_path)
 
     cm = ConfigManager(build_mode="fuzz", intsan=True)
@@ -142,6 +145,7 @@ def test_fuzz_mode_no_pie():
 
 # --- coverage + sanitizers ---
 
+
 def test_coverage_with_asan():
     """Coverage mode + ASan combines both flag sets."""
     cm = ConfigManager(build_mode="coverage", asan=True)
@@ -152,6 +156,7 @@ def test_coverage_with_asan():
 
 
 # --- config path resolution ---
+
 
 def test_get_httpd_config_direct_path(tmp_path):
     """get_httpd_config resolves a direct file path."""

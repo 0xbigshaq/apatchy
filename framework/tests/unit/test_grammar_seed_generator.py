@@ -16,6 +16,7 @@ def test_simple_terminal(sample_grammar):
 def test_deterministic_with_seed(sample_grammar):
     """Same random seed produces same output."""
     import random
+
     random.seed(42)
     gen = GrammarSeedGenerator(sample_grammar)
     r1 = gen.generate()

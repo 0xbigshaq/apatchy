@@ -102,7 +102,9 @@ class ToolchainManager:
                 )
             )
         else:
-            deps.append(self._check_binary("llvm-profdata", "Coverage", "apt install llvm", version_args=["merge", "--version"]))
+            deps.append(
+                self._check_binary("llvm-profdata", "Coverage", "apt install llvm", version_args=["merge", "--version"])
+            )
             deps.append(self._check_binary("llvm-cov", "Coverage", "apt install llvm"))
 
         # System libraries

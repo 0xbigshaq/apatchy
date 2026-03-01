@@ -1,4 +1,3 @@
-
 import pytest
 
 
@@ -16,7 +15,7 @@ def pytest_runtest_protocol(item, nextitem):
         label = doc.strip().split("\n")[0]
         params = ""
         if "[" in original:
-            params = " " + original[original.rindex("["):]
+            params = " " + original[original.rindex("[") :]
         item._nodeid = original.split("::")[0] + " :: " + label + params
     yield
     item._nodeid = original
@@ -36,4 +35,5 @@ def sample_grammar():
 def project_root():
     """Path to the framework/ root."""
     from pathlib import Path
+
     return Path(__file__).parent.parent

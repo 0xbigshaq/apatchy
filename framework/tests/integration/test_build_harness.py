@@ -10,6 +10,7 @@ from apatchy.config import Config
 from apatchy.core.harness import HarnessBuilder
 
 
+
 def test_include_paths_exist(compiled_apache):
     """Every -I path from get_include_paths() is a real directory."""
     builder = HarnessBuilder(compiled_apache)
@@ -27,6 +28,7 @@ def test_include_paths_have_headers(compiled_apache):
     assert (include / "httpd.h").exists()
     assert (include / "http_config.h").exists()
     assert (include / "ap_config.h").exists()
+
 
 
 
@@ -67,6 +69,7 @@ def test_build_standalone_mod_fuzzy(compiled_apache, harness_build_dir, monkeypa
 
 
 
+
 @pytest.mark.skipif(
     not shutil.which("afl-clang-fast"),
     reason="afl-clang-fast not found",
@@ -82,6 +85,7 @@ def test_build_afl_harness(compiled_apache, harness_build_dir, monkeypatch):
     if not binary.exists():
         binary = harness_build_dir / ".libs" / "fuzz_harness_afl"
     assert binary.exists(), "AFL harness binary not produced"
+
 
 
 
@@ -103,11 +107,11 @@ def test_linked_libraries_resolve(compiled_apache, harness_build_dir, monkeypatc
     # (--disable-util-dso), so no LD_LIBRARY_PATH is needed.
     result = subprocess.run(
         ["ldd", str(binary)],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
-    assert "not found" not in result.stdout, (
-        f"Missing libraries:\n{result.stdout}"
-    )
+    assert "not found" not in result.stdout, f"Missing libraries:\n{result.stdout}"
+
 
 
 
@@ -131,9 +135,7 @@ def test_all_harnesses_compile(compiled_apache, harness_build_dir, monkeypatch):
     for name in harness_names:
         # Copy harness to CWD and compile the object (not full link)
         builder.use_harness(name)
-        builder._compile_object(
-            "fuzz_harness.c", f"{name}.lo", "-g -O0", "clang"
-        )
+        builder._compile_object("fuzz_harness.c", f"{name}.lo", "-g -O0", "clang")
         # The .lo file (libtool descriptor) should exist
         lo_file = harness_build_dir / f"{name}.lo"
         assert lo_file.exists(), f"Failed to compile harness: {name}"

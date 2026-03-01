@@ -19,10 +19,12 @@ def pytest_collection_modifyitems(items):
         if "/integration/" in str(item.fspath):
             item.add_marker(pytest.mark.integration)
 
+
 _ALL_VERSIONS = [
     "2.4.62",
     "2.4.63",
 ]
+
 
 def _get_versions():
     """Return the list of Apache versions to test.
@@ -35,13 +37,16 @@ def _get_versions():
         return [v.strip() for v in env.split(",") if v.strip()]
     return _ALL_VERSIONS
 
+
 APACHE_VERSIONS = _get_versions()
+
 
 
 def _require_tool(name):
     """Skip the entire test session if a tool is missing."""
     if not shutil.which(name):
         pytest.skip(f"{name} not found on PATH", allow_module_level=True)
+
 
 
 
@@ -61,6 +66,7 @@ def integration_work_dir(tmp_path_factory):
 
 
 
+
 @pytest.fixture(scope="session", params=APACHE_VERSIONS)
 def apache_source(request, integration_work_dir):
     """Download and extract Apache HTTPD source.
@@ -77,6 +83,7 @@ def apache_source(request, integration_work_dir):
     httpd_root = dl.download_apache(version=version)
     assert httpd_root.exists(), f"Download failed: {httpd_root} does not exist"
     return httpd_root
+
 
 
 
@@ -105,6 +112,7 @@ def configured_apache(apache_source):
 
 
 
+
 @pytest.fixture(scope="session")
 def compiled_apache(configured_apache):
     """Compile Apache (make). Skips if already compiled.
@@ -124,6 +132,7 @@ def compiled_apache(configured_apache):
 
     assert httpd_binary.exists(), "Compilation failed: httpd binary not produced"
     return configured_apache
+
 
 
 

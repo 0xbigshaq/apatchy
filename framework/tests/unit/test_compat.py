@@ -11,6 +11,7 @@ from apatchy.compat import (
 
 # --- _parse_version ---
 
+
 def test_parse_version_three_parts():
     """_parse_version handles standard X.Y.Z strings."""
     assert _parse_version("2.4.52") == (2, 4, 52)
@@ -27,6 +28,7 @@ def test_parse_version_single_digit():
 
 
 # --- extract_version_from_path ---
+
 
 def test_extract_version_standard():
     """extract_version_from_path parses httpd-X.Y.Z directory names."""
@@ -51,6 +53,7 @@ def test_extract_version_no_version():
 
 
 # --- get_compat_flags: OpenSSL 3.0 entry ---
+
 
 def test_openssl3_matches_old_version():
     """OpenSSL 3.0 compat entry matches httpd 2.4.52."""
@@ -83,6 +86,7 @@ def test_no_matches_returns_empty():
 
 # --- CompatEntry with min_version ---
 
+
 def test_min_version_excludes_older():
     """An entry with min_version excludes versions below it."""
     entry = CompatEntry(
@@ -93,6 +97,7 @@ def test_min_version_excludes_older():
         cflags=["-Wtest"],
     )
     from apatchy import compat
+
     original = list(compat.COMPAT_REGISTRY)
     try:
         compat.COMPAT_REGISTRY.append(entry)
@@ -107,9 +112,11 @@ def test_min_version_excludes_older():
 
 # --- ConfigManager integration ---
 
+
 def test_generate_build_config_with_version():
     """ConfigManager applies compat flags when httpd_version is given."""
     from apatchy.managers.config_manager import ConfigManager
+
     cm = ConfigManager(build_mode="fuzz")
     result = cm.generate_build_config(httpd_version="2.4.52")
     assert "-Wno-error=deprecated-declarations" in result["CFLAGS"]
@@ -118,6 +125,7 @@ def test_generate_build_config_with_version():
 def test_generate_build_config_without_version():
     """ConfigManager omits compat flags when no version is given."""
     from apatchy.managers.config_manager import ConfigManager
+
     cm = ConfigManager(build_mode="fuzz")
     result = cm.generate_build_config()
     assert "-Wno-error=deprecated-declarations" not in result["CFLAGS"]
@@ -126,6 +134,7 @@ def test_generate_build_config_without_version():
 def test_generate_build_config_new_version_no_compat():
     """ConfigManager does not add compat flags for versions past the range."""
     from apatchy.managers.config_manager import ConfigManager
+
     cm = ConfigManager(build_mode="fuzz")
     result = cm.generate_build_config(httpd_version="2.4.62")
     assert "-Wno-error=deprecated-declarations" not in result["CFLAGS"]

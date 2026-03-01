@@ -1,6 +1,5 @@
 """Tests for FuzzManager corpus preparation."""
 
-
 from apatchy.managers.config_manager import ConfigManager
 from apatchy.managers.fuzz_manager import FuzzManager
 
@@ -75,6 +74,7 @@ def test_generate_grammar_seeds(tmp_path):
     }
     grammar_file = tmp_path / "test.json"
     import json
+
     grammar_file.write_text(json.dumps(grammar))
 
     input_dir = tmp_path / "seeds"
@@ -96,6 +96,7 @@ def test_generate_grammar_seeds_deduplicates(tmp_path):
     }
     grammar_file = tmp_path / "single.json"
     import json
+
     grammar_file.write_text(json.dumps(grammar))
 
     input_dir = tmp_path / "seeds"
@@ -114,6 +115,7 @@ def test_generate_grammar_seeds_missing_start(tmp_path):
     }
     grammar_file = tmp_path / "nostartjson"
     import json
+
     grammar_file.write_text(json.dumps(grammar))
 
     input_dir = tmp_path / "seeds"
