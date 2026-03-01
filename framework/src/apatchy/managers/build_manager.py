@@ -2,7 +2,7 @@
 
 :class:`BuildManager` ties together :class:`~apatchy.managers.config_manager.ConfigManager`
 (compiler/flag selection) and :class:`~apatchy.core.harness.HarnessBuilder`
-(harness compilation) behind the ``configure``, ``compile``, and ``build``
+(harness compilation) behind the ``configure``, ``make``, and ``build``
 CLI commands.
 """
 

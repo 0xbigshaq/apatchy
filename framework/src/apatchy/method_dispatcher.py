@@ -53,7 +53,7 @@ class MethodDispatcher:
             self._handle_download(args)
         elif command == "configure":
             self._handle_configure(args)
-        elif command == "compile":
+        elif command == "make":
             self._handle_compile(args)
         elif command == "build":
             self._handle_build(args)

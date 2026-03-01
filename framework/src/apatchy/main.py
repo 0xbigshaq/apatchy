@@ -111,8 +111,8 @@ def main():
         help="Enable implicit-unsigned-integer-truncation sanitizer (can combine with any mode)",
     )
 
-    # Compile
-    compile_parser = _sub(subparsers, "compile", help="Compile Apache")
+    # Make (compile Apache)
+    compile_parser = _sub(subparsers, "make", help="Compile Apache")
     compile_parser.add_argument(
         "-j", "--jobs", type=int, default=None, help="Number of parallel make jobs (default: nproc)"
     )

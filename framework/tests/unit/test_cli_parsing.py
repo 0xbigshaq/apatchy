@@ -34,8 +34,8 @@ def _parse(args):
         cfg.add_argument("--intsan", action="store_true")
         cfg.add_argument("--truncsan", action="store_true")
 
-        # Compile
-        comp = _sub(subparsers, "compile")
+        # Make (compile Apache)
+        comp = _sub(subparsers, "make")
         comp.add_argument("-j", "--jobs", type=int, default=None)
         comp.add_argument("--bear", action="store_true")
 
@@ -129,25 +129,25 @@ def test_configure_sanitizers():
     assert args.truncsan is True
 
 
-# --- compile ---
+# --- make ---
 
-def test_compile_defaults():
-    """Compile defaults to no jobs, no bear."""
-    args = _parse(["compile"])
-    assert args.command == "compile"
+def test_make_defaults():
+    """Make defaults to no jobs, no bear."""
+    args = _parse(["make"])
+    assert args.command == "make"
     assert args.jobs is None
     assert args.bear is False
 
 
-def test_compile_with_jobs():
-    """Parse 'compile -j 8'."""
-    args = _parse(["compile", "-j", "8"])
+def test_make_with_jobs():
+    """Parse 'make -j 8'."""
+    args = _parse(["make", "-j", "8"])
     assert args.jobs == 8
 
 
-def test_compile_with_bear():
-    """Parse 'compile --bear'."""
-    args = _parse(["compile", "--bear"])
+def test_make_with_bear():
+    """Parse 'make --bear'."""
+    args = _parse(["make", "--bear"])
     assert args.bear is True
 
 

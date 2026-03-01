@@ -18,7 +18,7 @@ apatchy setup afl                # install AFL++ locally
 
 apatchy download --version 2.4.62
 apatchy configure
-apatchy compile
+apatchy make
 
 apatchy build afl                # build the harness
 apatchy fuzz --config rewrite.conf
