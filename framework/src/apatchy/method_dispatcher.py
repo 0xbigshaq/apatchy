@@ -121,8 +121,9 @@ class MethodDispatcher:
             table.add_row(label, source, local)
 
         console.print(table)
-        console.print(f"\n[dim]{len(versions)} versions available.  "
-                       f"Download with: apatchy download --version <version>[/dim]")
+        console.print(
+            f"\n[dim]{len(versions)} versions available.  Download with: apatchy download --version <version>[/dim]"
+        )
 
     def _handle_download_interactive(self) -> None:
         from rich.console import Console
