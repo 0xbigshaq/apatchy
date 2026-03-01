@@ -86,8 +86,10 @@ class MethodDispatcher:
         action = getattr(args, "action", None)
         if action == "list":
             self._handle_download_list()
-        else:
+        elif args.version:
             self.downloader.download_apache(args.version)
+        else:
+            self._handle_download_interactive()
 
     def _handle_download_list(self) -> None:
         from rich.console import Console
@@ -121,6 +123,44 @@ class MethodDispatcher:
         console.print(table)
         console.print(f"\n[dim]{len(versions)} versions available.  "
                        f"Download with: apatchy download --version <version>[/dim]")
+
+    def _handle_download_interactive(self) -> None:
+        from rich.console import Console
+
+        from apatchy.utils.picker import pick_option
+
+        console = Console()
+        console.print("[dim]Fetching available versions from archive.apache.org...[/dim]")
+
+        versions = self.downloader.list_versions()
+        if not versions:
+            console.print("[yellow]No versions found.[/yellow]")
+            return
+
+        default = Config.DEFAULT_APACHE_VERSION
+
+        # Build display items (newest first)
+        entries = list(reversed(versions))
+        display: list[str] = []
+        pre_selected = 0
+        for i, entry in enumerate(entries):
+            v = entry["version"]
+            parts = [v]
+            if v == default:
+                parts.append("(default)")
+                pre_selected = i
+            parts.append("mirror" if entry["mirror"] else "archive")
+            if entry["downloaded"]:
+                parts.append("[downloaded]")
+            display.append("  ".join(parts))
+
+        choice = pick_option(display, title="Select Apache HTTPD version to download", selected=pre_selected)
+        if choice is None:
+            console.print("[dim]Cancelled.[/dim]")
+            return
+
+        selected_version = entries[choice]["version"]
+        self.downloader.download_apache(selected_version)
 
     def _handle_configure(self, args: argparse.Namespace) -> None:
         # We need to know which Apache version we are working with
