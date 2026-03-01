@@ -90,6 +90,7 @@ class ToolchainManager:
                     "Coverage",
                     f"apt install llvm-{clang_ver}",
                     fallback="llvm-profdata",
+                    version_args=["merge", "--version"],
                 )
             )
             deps.append(
@@ -101,7 +102,7 @@ class ToolchainManager:
                 )
             )
         else:
-            deps.append(self._check_binary("llvm-profdata", "Coverage", "apt install llvm"))
+            deps.append(self._check_binary("llvm-profdata", "Coverage", "apt install llvm", version_args=["merge", "--version"]))
             deps.append(self._check_binary("llvm-cov", "Coverage", "apt install llvm"))
 
         # System libraries
@@ -321,6 +322,7 @@ class ToolchainManager:
         category: str,
         install_hint: str,
         fallback: Optional[str] = None,
+        version_args: Optional[list[str]] = None,
     ) -> DepStatus:
         """Check if a binary exists - config override, then PATH."""
         # Check toolchain.config first (respects user overrides)
@@ -330,7 +332,10 @@ class ToolchainManager:
             if path:
                 name = f"{name} (via {fallback})"
         if path:
-            version = self._get_binary_version(path) or ""
+            if version_args:
+                version = self._get_binary_version_from_args(path, version_args) or ""
+            else:
+                version = self._get_binary_version(path) or ""
             return DepStatus(name, category, True, version, path)
         return DepStatus(name, category, False, install_hint=install_hint)
 
@@ -569,6 +574,27 @@ class ToolchainManager:
                 if major_only:
                     return version.split(".")[0]
                 return version
+        except (subprocess.TimeoutExpired, OSError):
+            pass
+        return None
+
+    @staticmethod
+    def _get_binary_version_from_args(
+        binary_path: str,
+        args: list[str],
+    ) -> Optional[str]:
+        """Extract version string using a custom argument list (e.g. ['merge', '--version'])."""
+        try:
+            result = subprocess.run(
+                [binary_path, *args],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            output = result.stdout + result.stderr
+            match = re.search(r"(\d+\.\d+[\.\d]*)", output)
+            if match:
+                return match.group(1)
         except (subprocess.TimeoutExpired, OSError):
             pass
         return None

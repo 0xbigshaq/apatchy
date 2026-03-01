@@ -234,7 +234,7 @@ class MethodDispatcher:
 
         if action == "check":
             deps = tm.check()
-            table = Table(title="Dependency Status")
+            table = Table(box=None, show_edge=False, pad_edge=False, header_style="bold underline")
             table.add_column("Category", style="dim")
             table.add_column("Name", style="cyan")
             table.add_column("Status", style="bold")
@@ -246,6 +246,7 @@ class MethodDispatcher:
                 detail = dep.path if dep.found else dep.install_hint
                 table.add_row(dep.category, dep.name, status, dep.version, detail)
 
+            console.print()
             console.print(table)
             found = sum(1 for d in deps if d.found)
             total = len(deps)
@@ -283,7 +284,7 @@ class MethodDispatcher:
 
         elif action == "status":
             info = mm.status()
-            table = Table(title="Grammar Mutator Status")
+            table = Table(box=None, show_edge=False, pad_edge=False, header_style="bold underline")
             table.add_column("Property", style="cyan")
             table.add_column("Value", style="magenta")
             table.add_row("Setup", "yes" if info["setup"] else "no")
@@ -299,7 +300,7 @@ class MethodDispatcher:
             if not grammars:
                 console.print("[yellow]No grammar files found.[/yellow]")
                 return
-            table = Table(title="Available Grammars")
+            table = Table(box=None, show_edge=False, pad_edge=False, header_style="bold underline")
             table.add_column("Name", style="cyan")
             for g in grammars:
                 table.add_row(g)
@@ -325,7 +326,7 @@ class MethodDispatcher:
             if not mutators:
                 console.print("[yellow]No custom mutator sources found.[/yellow]")
                 return
-            table = Table(title="Custom Mutators")
+            table = Table(box=None, show_edge=False, pad_edge=False, header_style="bold underline")
             table.add_column("Name", style="cyan")
             table.add_column("Source", style="dim")
             table.add_column("Built", style="green")
@@ -351,7 +352,7 @@ class MethodDispatcher:
             if not harnesses:
                 console.print("[yellow]No harness files found.[/yellow]")
                 return
-            table = Table(title="Available Harnesses")
+            table = Table(box=None, show_edge=False, pad_edge=False, header_style="bold underline")
             table.add_column("Name", style="cyan")
             table.add_column("Description", style="magenta")
             for h in harnesses:
@@ -407,7 +408,7 @@ class MethodDispatcher:
             if not modules:
                 console.print("[yellow]No external module sources found.[/yellow]")
                 return
-            table = Table(title="External Modules")
+            table = Table(box=None, show_edge=False, pad_edge=False, header_style="bold underline")
             table.add_column("Name", style="cyan")
             table.add_column("Source", style="dim")
             table.add_column("Built", style="green")
@@ -447,7 +448,7 @@ class MethodDispatcher:
             if not projects:
                 console.print("[yellow]No dev projects found. Run 'apatchy dev init <name>' to create one.[/yellow]")
                 return
-            table = Table(title="Dev Harness Projects")
+            table = Table(box=None, show_edge=False, pad_edge=False, header_style="bold underline")
             table.add_column("Name", style="cyan")
             table.add_column("Path", style="dim")
             table.add_column("Built", style="green")
