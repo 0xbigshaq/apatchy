@@ -90,6 +90,8 @@ def main():
     # Download
     download_parser = _sub(subparsers, "download", help="Download Apache Source")
     download_parser.add_argument("--version", help="Specific Apache version to download")
+    download_sub = download_parser.add_subparsers(dest="action")
+    _sub(download_sub, "list", help="List available Apache HTTPD versions")
 
     # Configure
     configure_parser = _sub(subparsers, "configure", help="Configure Apache for fuzzing")

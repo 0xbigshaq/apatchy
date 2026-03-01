@@ -25,6 +25,8 @@ def _parse(args):
         # Download
         dl = _sub(subparsers, "download")
         dl.add_argument("--version")
+        dl_sub = dl.add_subparsers(dest="action")
+        _sub(dl_sub, "list")
 
         # Configure
         cfg = _sub(subparsers, "configure")
@@ -101,6 +103,19 @@ def test_download_version_default_none():
     """Download version defaults to None."""
     args = _parse(["download"])
     assert args.version is None
+
+
+def test_download_list():
+    """Parse 'download list'."""
+    args = _parse(["download", "list"])
+    assert args.command == "download"
+    assert args.action == "list"
+
+
+def test_download_no_action_is_none():
+    """Bare 'download' has no action (falls through to download)."""
+    args = _parse(["download"])
+    assert args.action is None
 
 
 # --- configure ---

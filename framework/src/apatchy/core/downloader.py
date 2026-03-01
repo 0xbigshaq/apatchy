@@ -7,8 +7,9 @@ fallback), plus APR, APR-Util, and Expat which are placed into
 
 import os
 import tarfile
+from html.parser import HTMLParser
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import requests
 
@@ -25,6 +26,68 @@ class Downloader:
         self.mirror = Config.APACHE_MIRROR
         self.archive = Config.APACHE_ARCHIVE
         self.work_dir = Config.WORK_DIR
+
+    @staticmethod
+    def _extract_versions(html: str) -> set[str]:
+        """Parse an Apache directory listing and return httpd 2.4.x versions."""
+
+        class _LinkParser(HTMLParser):
+            def __init__(self) -> None:
+                super().__init__()
+                self.versions: set[str] = set()
+
+            def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+                if tag != "a":
+                    return
+                for name, value in attrs:
+                    if name == "href" and value is not None:
+                        # e.g. "httpd-2.4.62.tar.gz" but not "httpd-2.4.16-deps.tar.gz"
+                        if value.startswith("httpd-2.4.") and value.endswith(".tar.gz"):
+                            version = value.removeprefix("httpd-").removesuffix(".tar.gz")
+                            if version.replace(".", "").isdigit():
+                                self.versions.add(version)
+
+        parser = _LinkParser()
+        parser.feed(html)
+        return parser.versions
+
+    def list_versions(self) -> List[dict]:
+        """Fetch available Apache HTTPD 2.4.x versions from the archive.
+
+        Returns
+        -------
+        list[dict]
+            Each entry has keys ``version`` (str), ``mirror`` (bool, on
+            the primary mirror), and ``downloaded`` (bool, already local).
+        """
+        # Scrape the archive index for all httpd-2.4.x tarballs
+        resp = requests.get(f"{self.archive}/", timeout=15)
+        resp.raise_for_status()
+        archive_versions = sorted(
+            self._extract_versions(resp.text),
+            key=lambda v: list(map(int, v.split("."))),
+        )
+
+        # Check which version is on the primary mirror
+        mirror_versions: set[str] = set()
+        try:
+            resp = requests.get(f"{self.mirror}/", timeout=10)
+            resp.raise_for_status()
+            mirror_versions = self._extract_versions(resp.text)
+        except Exception:
+            logger.debug("Could not reach primary mirror; skipping mirror check")
+
+        # Check which versions are already downloaded locally
+        local_dirs = {d.name.removeprefix("httpd-") for d in self.work_dir.glob("httpd-2.4.*") if d.is_dir()}
+
+        results = []
+        for v in archive_versions:
+            results.append({
+                "version": v,
+                "mirror": v in mirror_versions,
+                "downloaded": v in local_dirs,
+            })
+        return results
 
     def download_apache(self, version: Optional[str] = None) -> Path:
         """Download Apache HTTPD and its bundled dependencies.

@@ -83,7 +83,44 @@ class MethodDispatcher:
             logger.error(f"Unknown command: {command}")
 
     def _handle_download(self, args: argparse.Namespace) -> None:
-        self.downloader.download_apache(args.version)
+        action = getattr(args, "action", None)
+        if action == "list":
+            self._handle_download_list()
+        else:
+            self.downloader.download_apache(args.version)
+
+    def _handle_download_list(self) -> None:
+        from rich.console import Console
+        from rich.table import Table
+
+        console = Console()
+        console.print("[dim]Fetching available versions from archive.apache.org...[/dim]")
+
+        versions = self.downloader.list_versions()
+        if not versions:
+            console.print("[yellow]No versions found.[/yellow]")
+            return
+
+        table = Table(box=None, show_edge=False, pad_edge=False, header_style="bold underline")
+        table.add_column("Version", style="cyan")
+        table.add_column("Source", style="dim")
+        table.add_column("Local", style="green")
+
+        default = Config.DEFAULT_APACHE_VERSION
+
+        for entry in reversed(versions):
+            v = entry["version"]
+            label = v
+            if v == default:
+                label = f"{v} (default)"
+
+            source = "mirror" if entry["mirror"] else "archive"
+            local = "downloaded" if entry["downloaded"] else ""
+            table.add_row(label, source, local)
+
+        console.print(table)
+        console.print(f"\n[dim]{len(versions)} versions available.  "
+                       f"Download with: apatchy download --version <version>[/dim]")
 
     def _handle_configure(self, args: argparse.Namespace) -> None:
         # We need to know which Apache version we are working with
