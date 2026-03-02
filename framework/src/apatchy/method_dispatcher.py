@@ -586,6 +586,9 @@ class MethodDispatcher:
             logger.error("sphinx-build not found. Install with: pip install './framework[docs]'")
             return
 
+        # Generate Apache HTTPD Doxygen assets (tag file + HTML) for doxylink cross-references
+        self._ensure_doxygen_tagfile(source_dir)
+
         # Clean stale build artifacts before rebuilding
         build_root = source_dir / "_build"
         if build_root.exists():
@@ -600,6 +603,13 @@ class MethodDispatcher:
             logger.error("Sphinx build failed")
             return
 
+        # Copy Doxygen HTML into Sphinx output so doxylink references resolve locally
+        doxy_html = source_dir / "_doxygen" / "html"
+        if doxy_html.exists():
+            dest = build_dir / "doxygen"
+            shutil.copytree(str(doxy_html), str(dest))
+            logger.info(f"Doxygen HTML copied to {dest}")
+
         index = build_dir / "index.html"
         logger.info(f"Documentation built at {index}")
 
@@ -613,6 +623,47 @@ class MethodDispatcher:
             logger.info(f"Serving docs at http://{bind}:{port}/ (Ctrl+C to stop)")
             with http.server.HTTPServer((bind, port), handler) as server:
                 server.serve_forever()
+
+    def _ensure_doxygen_tagfile(self, docs_dir: Path) -> None:
+        """Generate the Apache HTTPD Doxygen tag file and HTML if they don't already exist."""
+        import shutil
+        import subprocess
+
+        doxy_dir = docs_dir / "_doxygen"
+        tag_file = doxy_dir / "httpd.tag"
+        html_dir = doxy_dir / "html"
+        if tag_file.exists() and html_dir.exists():
+            return
+
+        doxygen = shutil.which("doxygen")
+        if doxygen is None:
+            logger.warning("doxygen not found; Apache API cross-references will be unavailable")
+            return
+
+        httpd_dir = self._get_active_httpd()
+        if httpd_dir is None:
+            logger.warning("No httpd source found; skipping Doxygen generation")
+            return
+
+        doxyfile = doxy_dir / "Doxyfile"
+        if not doxyfile.exists():
+            logger.warning(f"Doxyfile not found at {doxyfile}; skipping Doxygen generation")
+            return
+
+        logger.info(f"Generating Doxygen tag file and HTML from {httpd_dir.name}...")
+        env = {**os.environ, "HTTPD_SRC": str(httpd_dir)}
+        result = subprocess.run(
+            [doxygen, str(doxyfile)],
+            cwd=str(doxy_dir),
+            env=env,
+        )
+        if result.returncode != 0:
+            logger.warning("Doxygen generation failed; API cross-references will be unavailable")
+        else:
+            if tag_file.exists():
+                logger.info(f"Doxygen tag file generated at {tag_file}")
+            if html_dir.exists():
+                logger.info(f"Doxygen HTML generated at {html_dir}")
 
     def _get_active_httpd(self) -> Optional[Path]:
         # reuse logic to find httpd directory
