@@ -603,13 +603,6 @@ class MethodDispatcher:
             logger.error("Sphinx build failed")
             return
 
-        # Copy Doxygen HTML into Sphinx output so doxylink references resolve locally
-        doxy_html = source_dir / "_doxygen" / "html"
-        if doxy_html.exists():
-            dest = build_dir / "doxygen"
-            shutil.copytree(str(doxy_html), str(dest))
-            logger.info(f"Doxygen HTML copied to {dest}")
-
         index = build_dir / "index.html"
         logger.info(f"Documentation built at {index}")
 
@@ -617,9 +610,20 @@ class MethodDispatcher:
             import functools
             import http.server
 
+            doxy_html = source_dir / "_doxygen" / "html"
+            route_map = {"/doxygen/": str(doxy_html)} if doxy_html.exists() else {}
+
+            class MultiRootHandler(http.server.SimpleHTTPRequestHandler):
+                def translate_path(self, path):
+                    for prefix, directory in route_map.items():
+                        if path.startswith(prefix):
+                            rel = path[len(prefix):]
+                            return os.path.join(directory, rel)
+                    return super().translate_path(path)
+
             port = args.serve
             bind = getattr(args, "bind", "localhost")
-            handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(build_dir))
+            handler = functools.partial(MultiRootHandler, directory=str(build_dir))
             logger.info(f"Serving docs at http://{bind}:{port}/ (Ctrl+C to stop)")
             with http.server.HTTPServer((bind, port), handler) as server:
                 server.serve_forever()
