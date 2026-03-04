@@ -256,6 +256,11 @@ def main():
     # Docs
     docs_parser = _sub(subparsers, "docs", help="Build and view Sphinx API documentation")
     docs_parser.add_argument(
+        "--rebuild",
+        action="store_true",
+        help="Force regeneration of Doxygen API docs (tag file, HTML, and graphs)",
+    )
+    docs_parser.add_argument(
         "--serve",
         nargs="?",
         const=8000,

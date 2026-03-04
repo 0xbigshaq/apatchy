@@ -587,7 +587,7 @@ class MethodDispatcher:
             return
 
         # Generate Apache HTTPD Doxygen assets (tag file + HTML) for doxylink cross-references
-        self._ensure_doxygen_tagfile(source_dir)
+        self._ensure_doxygen_tagfile(source_dir, rebuild=getattr(args, "rebuild", False))
 
         # Clean stale build artifacts before rebuilding
         build_root = source_dir / "_build"
@@ -624,7 +624,7 @@ class MethodDispatcher:
             with http.server.HTTPServer((bind, port), handler) as server:
                 server.serve_forever()
 
-    def _ensure_doxygen_tagfile(self, docs_dir: Path) -> None:
+    def _ensure_doxygen_tagfile(self, docs_dir: Path, *, rebuild: bool = False) -> None:
         """Generate the Apache HTTPD Doxygen tag file and HTML if they don't already exist."""
         import shutil
         import subprocess
@@ -632,7 +632,14 @@ class MethodDispatcher:
         doxy_dir = docs_dir / "_doxygen"
         tag_file = doxy_dir / "httpd.tag"
         html_dir = doxy_dir / "html"
-        if tag_file.exists() and html_dir.exists():
+
+        if rebuild:
+            logger.info("Rebuilding Doxygen output (--rebuild)...")
+            if tag_file.exists():
+                tag_file.unlink()
+            if html_dir.exists():
+                shutil.rmtree(html_dir)
+        elif tag_file.exists() and html_dir.exists():
             return
 
         doxygen = shutil.which("doxygen")
