@@ -617,7 +617,7 @@ class MethodDispatcher:
                 def translate_path(self, path):
                     for prefix, directory in route_map.items():
                         if path.startswith(prefix):
-                            rel = path[len(prefix):]
+                            rel = path[len(prefix) :]
                             return os.path.join(directory, rel)
                     return super().translate_path(path)
 
