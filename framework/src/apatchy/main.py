@@ -5,7 +5,9 @@ Defines all argparse sub-commands and delegates to
 """
 
 import argparse
+import subprocess
 import sys
+from pathlib import Path
 
 import argcomplete
 
@@ -13,6 +15,26 @@ from apatchy.method_dispatcher import MethodDispatcher
 from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+_COMPLETION_DIR = Path.home() / ".local" / "share" / "bash-completion" / "completions"
+_COMPLETION_FILE = _COMPLETION_DIR / "apatchy"
+
+
+def _ensure_bash_completion():
+    """Install bash completion script if not already present."""
+    if _COMPLETION_FILE.exists():
+        return
+    try:
+        result = subprocess.run(
+            ["register-python-argcomplete", "apatchy"],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0 and result.stdout:
+            _COMPLETION_DIR.mkdir(parents=True, exist_ok=True)
+            _COMPLETION_FILE.write_text(result.stdout)
+    except FileNotFoundError:
+        pass  # argcomplete not installed globally
 
 
 class _ShortHelpAction(argparse.Action):
@@ -273,6 +295,7 @@ def main():
     )
 
     argcomplete.autocomplete(parser)
+    _ensure_bash_completion()
     args = parser.parse_args()
 
     if not args.command:
