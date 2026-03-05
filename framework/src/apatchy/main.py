@@ -297,6 +297,12 @@ def main():
         "--bind", default="localhost", metavar="ADDR", help="Address to bind the HTTP server to (default: localhost)"
     )
 
+    # Clean
+    clean_parser = _sub(subparsers, "clean", help="Remove build artifacts and generated files")
+    clean_parser.add_argument(
+        "--all", action="store_true", help="Full reset: also remove httpd source, toolchain, and test cache"
+    )
+
     argcomplete.autocomplete(parser)
     _ensure_bash_completion()
     args = parser.parse_args()

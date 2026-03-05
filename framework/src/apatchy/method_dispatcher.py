@@ -79,6 +79,8 @@ class MethodDispatcher:
             self._handle_test(args)
         elif command == "docs":
             self._handle_docs(args)
+        elif command == "clean":
+            self._handle_clean(args)
         else:
             logger.error(f"Unknown command: {command}")
 
@@ -694,3 +696,96 @@ class MethodDispatcher:
                 logger.error("No httpd directory found. Run 'download' first.")
                 return None
         return target
+
+    def _handle_clean(self, args: argparse.Namespace) -> None:
+        import shutil
+
+        work = Config.WORK_DIR
+
+        # Build artifacts (always cleaned)
+        build_patterns = [
+            "fuzz_harness_*",  # compiled harness binaries
+            "fuzz_harness.c",  # copied harness source
+            "fuzz_common.[cho]",  # copied companion files
+            "fuzz_common.lo",
+            "fuzz_harness.o",
+            "fuzz_harness.lo",
+            "buildmark.o",
+            "buildmark.lo",
+            "modules.o",
+            "modules.lo",
+            "*.profraw",
+            "*.profdata",
+        ]
+        build_dirs = [
+            "afl-output",
+            "modules",
+            ".libs",
+            "coverage-report",
+        ]
+        build_globs = [
+            "afl-input/grammar_*.txt",  # generated grammar seeds
+            "coverage-report*",
+            "conf/*",  # generated configs (mime.types is excluded below)
+        ]
+        # Source files that must survive cleaning
+        keep = {work / "conf" / "mime.types"}
+
+        # Full reset (--all)
+        all_patterns = [
+            "toolchain.config",
+        ]
+        all_dirs = [
+            "toolchain",
+            ".test_cache",
+            "dev",
+        ]
+        all_globs = [
+            "httpd-*",
+        ]
+
+        targets = []
+
+        # Collect build artifacts
+        for pat in build_patterns:
+            targets.extend(work.glob(pat))
+        for d in build_dirs:
+            p = work / d
+            if p.exists():
+                targets.append(p)
+        for pat in build_globs:
+            targets.extend(work.glob(pat))
+
+        # Collect --all targets
+        if getattr(args, "all", False):
+            for pat in all_patterns:
+                targets.extend(work.glob(pat))
+            for d in all_dirs:
+                p = work / d
+                if p.exists():
+                    targets.append(p)
+            for pat in all_globs:
+                targets.extend(p for p in work.glob(pat) if p.is_dir())
+
+        targets = sorted(set(targets) - keep)
+
+        if not targets:
+            logger.info("Nothing to clean.")
+            return
+        logger.info("Will remove:")
+        for t in targets:
+            logger.info(f"  {t.relative_to(work)}")
+
+        answer = input("\nProceed? [y/N] ").strip().lower()
+        if answer != "y":
+            logger.info("Aborted.")
+            return
+
+        for t in targets:
+            if t.is_dir():
+                shutil.rmtree(t)
+            else:
+                t.unlink()
+            logger.info(f"Removed {t.relative_to(work)}")
+
+        logger.info("Clean complete.")
