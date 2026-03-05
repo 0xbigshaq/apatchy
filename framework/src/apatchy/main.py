@@ -176,6 +176,9 @@ def main():
     fuzz_parser.add_argument(
         "--suppress", default=None, help="UBSan suppression file (e.g. ubsan.supp). See configs/ for examples."
     )
+    fuzz_parser.add_argument(
+        "--debug", action="store_true", help="Show AFL++ child process output for debugging/troubleshooting purposes"
+    )
 
     # Triage
     triage_parser = _sub(subparsers, "triage", help="Triage crashes")

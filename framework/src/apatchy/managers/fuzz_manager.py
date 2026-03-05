@@ -142,6 +142,7 @@ class FuzzManager:
         name: Optional[str] = None,
         suppress: Optional[str] = None,
         timeout: Optional[int] = None,
+        debug: bool = False,
     ) -> None:
         """Launch the fuzzing engine with the configured harness and corpus."""
         input_dir, out_dir = self.prepare_corpus(output_dir=output_dir)
@@ -169,6 +170,7 @@ class FuzzManager:
                 name=name,
                 suppress=suppress,
                 timeout=timeout,
+                debug=debug,
             )
         elif engine == "libfuzzer":
             self._start_libfuzzer(harness_path, input_dir)
@@ -233,6 +235,7 @@ class FuzzManager:
         name: Optional[str] = None,
         suppress: Optional[str] = None,
         timeout: Optional[int] = None,
+        debug: bool = False,
     ) -> None:
         # Resolve instance name for parallel mode
         if role and not name:
@@ -251,6 +254,8 @@ class FuzzManager:
             self.logger.info("No httpd config found - harness will run without Apache pipeline")
         env["AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES"] = "1"
         env["AFL_SKIP_CPUFREQ"] = "1"
+        if debug:
+            env["AFL_DEBUG_CHILD"] = "1"
         if resume:
             env["AFL_AUTORESUME"] = "1"
 
