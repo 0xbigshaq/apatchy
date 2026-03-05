@@ -12,8 +12,8 @@ import random
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from apatchy.core.process_runner import ProcessRunner
 from apatchy.core import toolchain_config
+from apatchy.core.process_runner import ProcessRunner
 from apatchy.managers.config_manager import ConfigManager
 from apatchy.utils.logger import get_logger
 
