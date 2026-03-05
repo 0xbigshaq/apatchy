@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from apatchy.core.process_runner import ProcessRunner
+from apatchy.core import toolchain_config
 from apatchy.managers.config_manager import ConfigManager
 from apatchy.utils.logger import get_logger
 
@@ -65,6 +66,21 @@ class FuzzManager:
         self.logger = logger
         self.runner = ProcessRunner()
         self.work_dir = Path(".").resolve()
+
+    def _resolve_preload_modules(self, config_path: Path) -> List[str]:
+        """Parse LoadModule directives from the config and return .so paths."""
+        modules = []
+        for line in config_path.read_text().splitlines():
+            stripped = line.strip()
+            if stripped.startswith("LoadModule") and not stripped.startswith("#"):
+                parts = stripped.split()
+                if len(parts) >= 3:
+                    so_path = self.work_dir / parts[2]
+                    if so_path.exists():
+                        modules.append(str(so_path))
+                    else:
+                        self.logger.warning(f"LoadModule references missing file: {parts[2]}")
+        return modules
 
     def prepare_corpus(self, input_dir: str = "afl-input", output_dir: str = "afl-output") -> Tuple[Path, Path]:
         """Create input/output directories and seed the corpus if empty."""
@@ -268,17 +284,16 @@ class FuzzManager:
             env["AFL_CUSTOM_MUTATOR_ONLY"] = "1"  # FIXME: i need to re-think about this hack
             self.logger.info(f"Using custom mutator: {mutator_path}")
 
-        # Preload external modules (.so) so AFL++ instruments them.
-        # APR/APR-Util and the crypto driver are statically linked
-        # (--disable-util-dso), so no LD_LIBRARY_PATH or crypto
-        # preloading is needed.
-        modules_dir = self.work_dir / "modules"
-        if modules_dir.exists():
-            preload = [str(so) for so in sorted(modules_dir.glob("*.so"))]
+        # Preload only dynamically loaded modules referenced by the config
+        # so AFL++ instruments them.  Built-in modules are statically linked
+        # and don't need preloading.
+        if config_path:
+            preload = self._resolve_preload_modules(config_path)
             if preload:
                 env["AFL_PRELOAD"] = ":".join(preload)
 
-        cmd = ["afl-fuzz"]
+        afl_fuzz = toolchain_config.resolve_tool("afl-fuzz") or "afl-fuzz"
+        cmd = [afl_fuzz]
 
         # Per-execution timeout (converted to milliseconds for AFL's -t)
         if timeout is not None:
