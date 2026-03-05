@@ -3,6 +3,7 @@
 import os
 import shutil
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -11,9 +12,9 @@ from apatchy.core.harness import HarnessBuilder
 
 
 
-def test_include_paths_exist(compiled_apache):
+def test_include_paths_exist(httpd: Path) -> None:
     """Every -I path from get_include_paths() is a real directory."""
-    builder = HarnessBuilder(compiled_apache)
+    builder = HarnessBuilder(httpd)
     paths = builder.get_include_paths()
     assert len(paths) > 0
     for flag in paths:
@@ -22,9 +23,9 @@ def test_include_paths_exist(compiled_apache):
         assert os.path.isdir(dir_path), f"Include dir missing: {dir_path}"
 
 
-def test_include_paths_have_headers(compiled_apache):
+def test_include_paths_have_headers(httpd: Path) -> None:
     """Key Apache headers exist in the include paths."""
-    include = compiled_apache / "include"
+    include = httpd / "include"
     assert (include / "httpd.h").exists()
     assert (include / "http_config.h").exists()
     assert (include / "ap_config.h").exists()
@@ -32,16 +33,16 @@ def test_include_paths_have_headers(compiled_apache):
 
 
 
-def test_build_standalone_harness(compiled_apache, harness_build_dir, monkeypatch):
+def test_build_standalone_harness(httpd: Path, build_dir: Path, mp: pytest.MonkeyPatch) -> None:
     """Build a standalone harness - binary is produced and runs."""
-    monkeypatch.chdir(harness_build_dir)
+    mp.chdir(build_dir)
 
-    builder = HarnessBuilder(compiled_apache, verbose=True)
+    builder = HarnessBuilder(httpd, verbose=True)
     builder.build(mode="standalone", harness_name="uri_parse")
 
-    binary = harness_build_dir / "fuzz_harness_standalone"
+    binary = build_dir / "fuzz_harness_standalone"
     if not binary.exists():
-        binary = harness_build_dir / ".libs" / "fuzz_harness_standalone"
+        binary = build_dir / ".libs" / "fuzz_harness_standalone"
     assert binary.exists(), "Standalone harness binary not produced"
 
     # Run with empty input - should exit cleanly (not crash)
@@ -55,16 +56,16 @@ def test_build_standalone_harness(compiled_apache, harness_build_dir, monkeypatc
     assert result.returncode < 128, f"Harness crashed with code {result.returncode}"
 
 
-def test_build_standalone_mod_fuzzy(compiled_apache, harness_build_dir, monkeypatch):
+def test_build_standalone_mod_fuzzy(httpd: Path, build_dir: Path, mp: pytest.MonkeyPatch) -> None:
     """Build mod_fuzzy harness in standalone mode."""
-    monkeypatch.chdir(harness_build_dir)
+    mp.chdir(build_dir)
 
-    builder = HarnessBuilder(compiled_apache, verbose=True)
+    builder = HarnessBuilder(httpd, verbose=True)
     builder.build(mode="standalone", harness_name="mod_fuzzy")
 
-    binary = harness_build_dir / "fuzz_harness_standalone"
+    binary = build_dir / "fuzz_harness_standalone"
     if not binary.exists():
-        binary = harness_build_dir / ".libs" / "fuzz_harness_standalone"
+        binary = build_dir / ".libs" / "fuzz_harness_standalone"
     assert binary.exists(), "mod_fuzzy standalone binary not produced"
 
 
@@ -74,34 +75,34 @@ def test_build_standalone_mod_fuzzy(compiled_apache, harness_build_dir, monkeypa
     not shutil.which("afl-clang-fast"),
     reason="afl-clang-fast not found",
 )
-def test_build_afl_harness(compiled_apache, harness_build_dir, monkeypatch):
+def test_build_afl_harness(httpd: Path, build_dir: Path, mp: pytest.MonkeyPatch) -> None:
     """Build an AFL harness - binary is produced."""
-    monkeypatch.chdir(harness_build_dir)
+    mp.chdir(build_dir)
 
-    builder = HarnessBuilder(compiled_apache, verbose=True)
+    builder = HarnessBuilder(httpd, verbose=True)
     builder.build(mode="afl", harness_name="uri_parse")
 
-    binary = harness_build_dir / "fuzz_harness_afl"
+    binary = build_dir / "fuzz_harness_afl"
     if not binary.exists():
-        binary = harness_build_dir / ".libs" / "fuzz_harness_afl"
+        binary = build_dir / ".libs" / "fuzz_harness_afl"
     assert binary.exists(), "AFL harness binary not produced"
 
 
 
 
-def test_linked_libraries_resolve(compiled_apache, harness_build_dir, monkeypatch):
+def test_linked_libraries_resolve(httpd: Path, build_dir: Path, mp: pytest.MonkeyPatch) -> None:
     """Ldd on the harness binary shows no 'not found' entries."""
     if not shutil.which("ldd"):
         pytest.skip("ldd not available")
 
-    monkeypatch.chdir(harness_build_dir)
+    mp.chdir(build_dir)
 
-    builder = HarnessBuilder(compiled_apache, verbose=True)
+    builder = HarnessBuilder(httpd, verbose=True)
     builder.build(mode="standalone", harness_name="uri_parse")
 
-    binary = harness_build_dir / "fuzz_harness_standalone"
+    binary = build_dir / "fuzz_harness_standalone"
     if not binary.exists():
-        binary = harness_build_dir / ".libs" / "fuzz_harness_standalone"
+        binary = build_dir / ".libs" / "fuzz_harness_standalone"
 
     # APR/APR-Util and the crypto driver are statically linked
     # (--disable-util-dso), so no LD_LIBRARY_PATH is needed.
@@ -115,11 +116,11 @@ def test_linked_libraries_resolve(compiled_apache, harness_build_dir, monkeypatc
 
 
 
-def test_all_harnesses_compile(compiled_apache, harness_build_dir, monkeypatch):
+def test_all_harnesses_compile(httpd: Path, build_dir: Path, mp: pytest.MonkeyPatch) -> None:
     """Every bundled harness .c file compiles (object stage only)."""
-    monkeypatch.chdir(harness_build_dir)
+    mp.chdir(build_dir)
 
-    builder = HarnessBuilder(compiled_apache, verbose=True)
+    builder = HarnessBuilder(httpd, verbose=True)
     harnesses = builder.list_harnesses()
 
     # Skip companion files that aren't standalone harnesses
@@ -130,12 +131,12 @@ def test_all_harnesses_compile(compiled_apache, harness_build_dir, monkeypatch):
     for companion in ("fuzz_common.c", "fuzz_common.h"):
         src = Config.HARNESSES_DIR / companion
         if src.exists():
-            shutil.copy(src, harness_build_dir / companion)
+            shutil.copy(src, build_dir / companion)
 
     for name in harness_names:
         # Copy harness to CWD and compile the object (not full link)
         builder.use_harness(name)
         builder._compile_object("fuzz_harness.c", f"{name}.lo", "-g -O0", "clang")
         # The .lo file (libtool descriptor) should exist
-        lo_file = harness_build_dir / f"{name}.lo"
+        lo_file = build_dir / f"{name}.lo"
         assert lo_file.exists(), f"Failed to compile harness: {name}"

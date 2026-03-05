@@ -7,13 +7,14 @@ compile) happen once per test run and persist across runs.
 
 import os
 import shutil
+from pathlib import Path
 
 import pytest
 
 from apatchy.config import Config
 
 
-def pytest_collection_modifyitems(items):
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     """Auto-apply the 'integration' marker to every test in the integration/ directory."""
     for item in items:
         if "/integration/" in str(item.fspath):
@@ -26,7 +27,7 @@ _ALL_VERSIONS = [
 ]
 
 
-def _get_versions():
+def _get_versions() -> list[str]:
     """Return the list of Apache versions to test.
 
     If APATCHY_TEST_VERSIONS is set (comma-separated), use only those.
@@ -42,7 +43,7 @@ APACHE_VERSIONS = _get_versions()
 
 
 
-def _require_tool(name):
+def _require_tool(name: str) -> None:
     """Skip the entire test session if a tool is missing."""
     if not shutil.which(name):
         pytest.skip(f"{name} not found on PATH", allow_module_level=True)
@@ -51,7 +52,7 @@ def _require_tool(name):
 
 
 @pytest.fixture(scope="session")
-def integration_work_dir(tmp_path_factory):
+def work_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
     """Return a persistent working directory for integration tests.
 
     Uses framework/.test_cache/ so builds survive across test runs.
@@ -68,7 +69,7 @@ def integration_work_dir(tmp_path_factory):
 
 
 @pytest.fixture(scope="session", params=APACHE_VERSIONS)
-def apache_source(request, integration_work_dir):
+def httpd_src(request: pytest.FixtureRequest, work_dir: Path) -> Path:
     """Download and extract Apache HTTPD source.
 
     Returns the httpd root Path (e.g. .test_cache/httpd-2.4.62).
@@ -78,7 +79,7 @@ def apache_source(request, integration_work_dir):
 
     version = request.param
     dl = Downloader()
-    dl.work_dir = integration_work_dir
+    dl.work_dir = work_dir
 
     httpd_root = dl.download_apache(version=version)
     assert httpd_root.exists(), f"Download failed: {httpd_root} does not exist"
@@ -88,7 +89,7 @@ def apache_source(request, integration_work_dir):
 
 
 @pytest.fixture(scope="session")
-def configured_apache(apache_source):
+def httpd_configured(httpd_src: Path) -> Path:
     """Configure Apache for fuzzing (with ASan + session/crypto).
 
     Skips if already configured (config_vars.mk exists).
@@ -96,51 +97,57 @@ def configured_apache(apache_source):
     """
     _require_tool("make")
 
-    config_vars = apache_source / "build" / "config_vars.mk"
+    config_vars = httpd_src / "build" / "config_vars.mk"
     if config_vars.exists():
-        return apache_source
+        return httpd_src
 
     from apatchy.managers.build_manager import BuildManager
     from apatchy.managers.config_manager import ConfigManager
 
     cm = ConfigManager(build_mode="fuzz", asan=True)
-    bm = BuildManager(apache_source, cm, verbose=True)
+    bm = BuildManager(httpd_src, cm, verbose=True)
     bm.configure_httpd()
 
     assert config_vars.exists(), "configure failed: config_vars.mk not generated"
-    return apache_source
+    return httpd_src
 
 
 
 
 @pytest.fixture(scope="session")
-def compiled_apache(configured_apache):
+def httpd(httpd_configured: Path) -> Path:
     """Compile Apache (make). Skips if already compiled.
 
     Returns the httpd root Path.
     """
-    httpd_binary = configured_apache / "httpd"
+    httpd_binary = httpd_configured / "httpd"
     if httpd_binary.exists():
-        return configured_apache
+        return httpd_configured
 
     from apatchy.managers.build_manager import BuildManager
     from apatchy.managers.config_manager import ConfigManager
 
     cm = ConfigManager(build_mode="fuzz", asan=True)
-    bm = BuildManager(configured_apache, cm, verbose=True)
+    bm = BuildManager(httpd_configured, cm, verbose=True)
     bm.compile_httpd(clean=False)
 
     assert httpd_binary.exists(), "Compilation failed: httpd binary not produced"
-    return configured_apache
+    return httpd_configured
 
 
 
 
 @pytest.fixture
-def harness_build_dir(integration_work_dir):
+def build_dir(work_dir: Path) -> Path:
     """Temporary directory for harness builds, cleaned between tests."""
-    build_dir = integration_work_dir / "_harness_build"
-    if build_dir.exists():
-        shutil.rmtree(build_dir)
-    build_dir.mkdir()
-    return build_dir
+    d = work_dir / "_harness_build"
+    if d.exists():
+        shutil.rmtree(d)
+    d.mkdir()
+    return d
+
+
+@pytest.fixture
+def mp(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
+    """Short alias for the monkeypatch fixture."""
+    return monkeypatch

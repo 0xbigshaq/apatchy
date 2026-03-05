@@ -1,6 +1,7 @@
 """Integration tests for external module (DSO) builds."""
 
 import shutil
+from pathlib import Path
 
 import pytest
 
@@ -8,21 +9,21 @@ from apatchy.config import Config
 from apatchy.managers.module_manager import ModuleManager
 
 
-def test_list_modules(compiled_apache):
+def test_list_modules(httpd: Path) -> None:
     """list_modules() returns at least one module."""
-    mm = ModuleManager(compiled_apache)
+    mm = ModuleManager(httpd)
     modules = mm.list_modules()
     assert len(modules) > 0
     assert modules[0]["name"] == "mod_pwn"
 
 
-def test_build_single_module(compiled_apache, harness_build_dir, monkeypatch):
+def test_build_single_module(httpd: Path, build_dir: Path, mp: pytest.MonkeyPatch) -> None:
     """Build mod_pwn as a shared object."""
-    monkeypatch.chdir(harness_build_dir)
+    mp.chdir(build_dir)
 
-    mm = ModuleManager(compiled_apache)
-    mm.work_dir = harness_build_dir
-    mm.modules_out = harness_build_dir / "modules"
+    mm = ModuleManager(httpd)
+    mm.work_dir = build_dir
+    mm.modules_out = build_dir / "modules"
 
     # Use clang directly (don't require afl-clang-fast for this test)
     mm.build_module("mod_pwn", cc="clang")
@@ -36,13 +37,13 @@ def test_build_single_module(compiled_apache, harness_build_dir, monkeypatch):
     not shutil.which("afl-clang-fast"),
     reason="afl-clang-fast not found",
 )
-def test_build_module_with_afl(compiled_apache, harness_build_dir, monkeypatch):
+def test_build_module_with_afl(httpd: Path, build_dir: Path, mp: pytest.MonkeyPatch) -> None:
     """Build mod_pwn with afl-clang-fast for instrumented fuzzing."""
-    monkeypatch.chdir(harness_build_dir)
+    mp.chdir(build_dir)
 
-    mm = ModuleManager(compiled_apache)
-    mm.work_dir = harness_build_dir
-    mm.modules_out = harness_build_dir / "modules"
+    mm = ModuleManager(httpd)
+    mm.work_dir = build_dir
+    mm.modules_out = build_dir / "modules"
 
     mm.build_module("mod_pwn", cc="afl-clang-fast")
 
@@ -50,13 +51,13 @@ def test_build_module_with_afl(compiled_apache, harness_build_dir, monkeypatch):
     assert so_file.exists()
 
 
-def test_build_all_modules(compiled_apache, harness_build_dir, monkeypatch):
+def test_build_all_modules(httpd: Path, build_dir: Path, mp: pytest.MonkeyPatch) -> None:
     """Build all external modules (name=None)."""
-    monkeypatch.chdir(harness_build_dir)
+    mp.chdir(build_dir)
 
-    mm = ModuleManager(compiled_apache)
-    mm.work_dir = harness_build_dir
-    mm.modules_out = harness_build_dir / "modules"
+    mm = ModuleManager(httpd)
+    mm.work_dir = build_dir
+    mm.modules_out = build_dir / "modules"
 
     mm.build_module(name=None, cc="clang")
 
@@ -67,9 +68,9 @@ def test_build_all_modules(compiled_apache, harness_build_dir, monkeypatch):
         assert so_file.exists(), f"{src.stem}.so not built"
 
 
-def test_sanitizer_flags_extracted(compiled_apache):
+def test_sanitizer_flags_extracted(httpd: Path) -> None:
     """_get_sanitizer_flags reads real config_vars.mk."""
-    mm = ModuleManager(compiled_apache)
+    mm = ModuleManager(httpd)
     flags = mm._get_sanitizer_flags()
 
     # The configured_apache fixture uses --asan, so we expect sanitizer flags
