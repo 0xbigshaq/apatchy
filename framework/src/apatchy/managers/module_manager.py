@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from apatchy.config import Config
+from apatchy.core import toolchain_config
 from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -83,10 +84,15 @@ class ModuleManager:
         output = self.modules_out / f"{name}.so"
 
         if cc is None:
-            # Default: use afl-clang-fast for instrumented builds, fall back to clang/gcc
-            cc = shutil.which("afl-clang-fast") or shutil.which("clang") or shutil.which("gcc")
+            # Default: use afl-clang-fast for instrumented builds, fall back to clang/gcc.
+            # Prefer toolchain config paths over system PATH.
+            cc = (
+                toolchain_config.resolve_tool("afl-clang-fast")
+                or toolchain_config.resolve_tool("clang")
+                or shutil.which("gcc")
+            )
         else:
-            cc = shutil.which(cc) or cc
+            cc = toolchain_config.resolve_tool(cc) or shutil.which(cc) or cc
 
         if not cc:
             logger.error("No C compiler found (afl-clang-fast, clang, or gcc)")
