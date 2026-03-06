@@ -497,6 +497,129 @@ class ReportManager:
         self.logger.info(f"HTML report: {html_dir / 'index.html'}")
         self.logger.info("Coverage report complete. AFL build is untouched.")
 
+    def _triage_env(
+        self,
+        no_color: bool = False,
+        suppress: Optional[str] = None,
+    ) -> Tuple[dict, Optional[Path]]:
+        """Build the environment dict shared by single-crash and pipeline triage."""
+        config_path = self.config_manager.get_httpd_config()
+        if not config_path:
+            raise FileNotFoundError("Config not found for triage.")
+
+        supp_path = None
+        if suppress:
+            supp_path = Path(suppress).resolve()
+            if not supp_path.exists():
+                raise FileNotFoundError(f"Suppression file not found: {supp_path}")
+            self.logger.info(f"Using UBSan suppression file: {supp_path}")
+
+        env = os.environ.copy()
+        env["FUZZ_CONF"] = str(config_path)
+        env["FUZZ_ROOT"] = str(self.work_dir)
+
+        symbolizer = self._find_llvm_symbolizer()
+        if symbolizer:
+            env["ASAN_SYMBOLIZER_PATH"] = symbolizer
+            self.logger.debug(f"Using symbolizer: {symbolizer}")
+
+        color_val = "never" if no_color else "always"
+        for var in ("ASAN_OPTIONS", "UBSAN_OPTIONS", "LSAN_OPTIONS"):
+            existing = env.get(var, "")
+            env[var] = f"{existing}:color={color_val}" if existing else f"color={color_val}"
+
+        existing = env.get("UBSAN_OPTIONS", "")
+        env["UBSAN_OPTIONS"] = f"{existing}:print_stacktrace=1"
+
+        if supp_path:
+            existing = env.get("UBSAN_OPTIONS", "")
+            supp_opt = f"suppressions={supp_path}"
+            env["UBSAN_OPTIONS"] = f"{existing}:{supp_opt}" if existing else supp_opt
+
+        env["AFL_IGNORE_PROBLEMS"] = "1"
+
+        return env, config_path
+
+    def triage_pipeline(
+        self,
+        crash_dir: Path,
+        harness_binary: Path,
+        no_color: bool = False,
+        suppress: Optional[str] = None,
+        timeout: int = 30,
+    ) -> None:
+        r"""Concatenate numbered crash files from *crash_dir* and replay them.
+
+        Files are sorted numerically (0, 1, 2, ...).  The harness must be
+        built from ``mod_fuzzy_multi`` so it splits on ``\r\n\r\n``
+        boundaries.
+        """
+        crash_dir = Path(crash_dir)
+        if not crash_dir.is_dir():
+            self.logger.error(f"Not a directory: {crash_dir}")
+            return
+
+        # Collect and sort files lexicographically.  Works for both plain
+        # numeric names (0, 1, 2) and AFL crash IDs (id:000000, id:000001, ...)
+        # since AFL zero-pads the IDs.
+        files = sorted(
+            (f for f in crash_dir.iterdir() if f.is_file()),
+            key=lambda f: f.name,
+        )
+        if not files:
+            self.logger.error(f"No files found in {crash_dir}")
+            return
+
+        self.logger.info(f"Pipeline triage: {len(files)} crash files from {crash_dir}")
+        for f in files:
+            self.logger.info(f"  [{f.name}] {f}")
+
+        # Concatenate all crash data.  The multi harness splits on \r\n\r\n.
+        combined = b""
+        for f in files:
+            data = f.read_bytes()
+            combined += data
+            # Make sure segment ends with \r\n\r\n so the multi harness
+            # sees it as a complete request.
+            if not data.endswith(b"\r\n\r\n"):
+                combined += b"\r\n\r\n"
+
+        try:
+            env, config_path = self._triage_env(no_color=no_color, suppress=suppress)
+        except FileNotFoundError as e:
+            self.logger.error(str(e))
+            return
+
+        cmd = [
+            str(harness_binary),
+            "-f",
+            str(config_path),
+            "-d",
+            str(self.work_dir),
+        ]
+
+        try:
+            result = subprocess.run(  # noqa: UP022
+                cmd,
+                env=env,
+                input=combined,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=timeout,
+            )
+
+            self.logger.info("Crash Output (Stderr):")
+            print(result.stderr.decode("utf-8", errors="replace"))
+
+            if result.stdout:
+                self.logger.info("Stdout:")
+                print(result.stdout.decode("utf-8", errors="replace"))
+
+        except subprocess.TimeoutExpired:
+            self.logger.error(f"Triage timed out ({timeout}s)")
+        except Exception as e:
+            self.logger.error(f"Failed to triage pipeline: {e}")
+
     def triage_crash(
         self,
         crash_file: Path,
@@ -514,59 +637,12 @@ class ReportManager:
         """
         self.logger.info(f"Triaging crash: {crash_file}")
 
-        config_path = self.config_manager.get_httpd_config()
-        if not config_path:
-            self.logger.error("Config not found for triage.")
+        try:
+            env, config_path = self._triage_env(no_color=no_color, suppress=suppress)
+        except FileNotFoundError as e:
+            self.logger.error(str(e))
             return
 
-        # Resolve suppression file early so we can fail fast.
-        supp_path = None
-        if suppress:
-            supp_path = Path(suppress).resolve()
-            if not supp_path.exists():
-                self.logger.error(f"Suppression file not found: {supp_path}")
-                return
-            self.logger.info(f"Using UBSan suppression file: {supp_path}")
-
-        env = os.environ.copy()
-        env["FUZZ_CONF"] = str(config_path)
-        env["FUZZ_ROOT"] = str(self.work_dir)
-
-        # Resolve llvm-symbolizer so sanitizer runtimes can print stack
-        # traces.  Many distros only ship versioned binaries
-        # (llvm-symbolizer-13, -14, ...) without an unversioned symlink.
-        symbolizer = self._find_llvm_symbolizer()
-        if symbolizer:
-            env["ASAN_SYMBOLIZER_PATH"] = symbolizer
-            self.logger.debug(f"Using symbolizer: {symbolizer}")
-
-        # Force sanitizer color output through the pipe (they default to
-        # auto which disables color when stderr is not a TTY).
-        color_val = "never" if no_color else "always"
-        for var in ("ASAN_OPTIONS", "UBSAN_OPTIONS", "LSAN_OPTIONS"):
-            existing = env.get(var, "")
-            env[var] = f"{existing}:color={color_val}" if existing else f"color={color_val}"
-
-        # Ask UBSan to print full stack traces so triage output includes
-        # the call chain leading to the error.
-        existing = env.get("UBSAN_OPTIONS", "")
-        env["UBSAN_OPTIONS"] = f"{existing}:print_stacktrace=1"
-
-        # Apply UBSan suppression file if provided.
-        if supp_path:
-            existing = env.get("UBSAN_OPTIONS", "")
-            supp_opt = f"suppressions={supp_path}"
-            env["UBSAN_OPTIONS"] = f"{existing}:{supp_opt}" if existing else supp_opt
-
-        # The standalone harness links afl-compiler-rt.o (needed to
-        # satisfy __afl_area_ptr from AFL-instrumented Apache objects).
-        # This means the AFL dlopen() hook is active even outside
-        # afl-fuzz.  Tell it to ignore post-forkserver dlopen() since
-        # we only care about reproducing the crash, not coverage.
-        env["AFL_IGNORE_PROBLEMS"] = "1"
-
-        # Build command with both env vars (AFL entry point) and
-        # command-line args (standalone entry point) for config/root.
         cmd = [
             str(harness_binary),
             "-f",

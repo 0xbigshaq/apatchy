@@ -182,7 +182,12 @@ def main():
 
     # Triage
     triage_parser = _sub(subparsers, "triage", help="Triage crashes")
-    triage_parser.add_argument("crash_file", help="Path to crash file to triage")
+    triage_parser.add_argument("crash_file", nargs="?", default=None, help="Path to crash file to triage")
+    triage_parser.add_argument(
+        "--pipeline",
+        default=None,
+        help="Directory of numbered crash files (0, 1, 2, ...) to replay as a multi-request pipeline",
+    )
     triage_parser.add_argument("--config", default="fuzz.conf", help="Httpd config file to use")
     triage_parser.add_argument("--no-color", action="store_true", help="Disable colored output for sanitizer reports")
     triage_parser.add_argument(

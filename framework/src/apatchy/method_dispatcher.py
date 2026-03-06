@@ -274,19 +274,28 @@ class MethodDispatcher:
             logger.error("No harness binary found. Run 'apatchy build standalone' or 'apatchy build afl' first.")
             return
 
-        # We need to tell the config manager which config to use if it's not default?
-        # For now, let's update ReportManager to pass args.config to get_httpd_config.
-        # I can't do that easily without changing ReportManager again.
-
-        # Simpler approach: ConfigManager could have a current_config property.
-
-        self.report_manager.triage_crash(
-            args.crash_file,
-            harness_path,
-            no_color=args.no_color,
-            suppress=getattr(args, "suppress", None),
-            timeout=args.timeout,
-        )
+        if args.pipeline:
+            if args.crash_file:
+                logger.error("Cannot use both a crash file and --pipeline at the same time.")
+                return
+            self.report_manager.triage_pipeline(
+                args.pipeline,
+                harness_path,
+                no_color=args.no_color,
+                suppress=getattr(args, "suppress", None),
+                timeout=args.timeout,
+            )
+        else:
+            if not args.crash_file:
+                logger.error("Either a crash file or --pipeline <dir> is required.")
+                return
+            self.report_manager.triage_crash(
+                args.crash_file,
+                harness_path,
+                no_color=args.no_color,
+                suppress=getattr(args, "suppress", None),
+                timeout=args.timeout,
+            )
 
     def _get_mutator_manager(self) -> MutatorManager:
         if self.mutator_manager is None:
