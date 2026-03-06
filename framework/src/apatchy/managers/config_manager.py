@@ -53,6 +53,9 @@ class ConfigManager:
         ldflags = []
         cc = None
 
+        def both(flag: str):
+            (cflags.append(flag), ldflags.append(flag))
+
         if self.build_mode == "fuzz":
             self.logger.info("Using afl-clang-fast for AFL instrumentation")
             cc = "afl-clang-fast"
@@ -65,9 +68,8 @@ class ConfigManager:
 
         elif self.build_mode == "coverage":
             self.logger.info("Enabling Coverage Instrumentation")
-            cflags.append("-fprofile-instr-generate")
             cflags.append("-fcoverage-mapping")
-            ldflags.append("-fprofile-instr-generate")
+            both("-fprofile-instr-generate")
             # Apache modules may have been compiled with AFL SanCov
             # instrumentation (non-PIC). Disable PIE to avoid
             # R_X86_64_32S relocation errors at link time.
@@ -77,18 +79,18 @@ class ConfigManager:
         # any compiler (fuzz, coverage, or default).
         if self.asan:
             self.logger.info("Enabling AddressSanitizer")
-            cflags.append("-fsanitize=address")
-            ldflags.append("-fsanitize=address")
+            both("-fsanitize=address")
 
         if self.ubsan:
             self.logger.info("Enabling UndefinedBehaviorSanitizer")
-            cflags.append("-fsanitize=undefined")
-            ldflags.append("-fsanitize=undefined")
+            both("-fsanitize=undefined")
+            # fix SIGILL issue
+            both("-fsanitize-recover=all")  # continue execution after reporting (don't abort)
+            both("-fno-sanitize-trap")  # emit runtime report instead of ud1/ud2 trap
 
         if self.intsan:
             self.logger.info("Enabling unsigned-integer-overflow sanitizer")
-            cflags.append("-fsanitize=unsigned-integer-overflow")
-            ldflags.append("-fsanitize=unsigned-integer-overflow")
+            both("-fsanitize=unsigned-integer-overflow")
             ignorelist = self._resolve_ignorelist("intsan.ignorelist")
             if ignorelist:
                 self.logger.info(f"Applying intsan ignorelist: {ignorelist}")
@@ -104,8 +106,7 @@ class ConfigManager:
             self.logger.warning(
                 "--truncsan is noisy on Apache internals. Consider using it only for targeted module auditing."
             )
-            cflags.append("-fsanitize=implicit-unsigned-integer-truncation")
-            ldflags.append("-fsanitize=implicit-unsigned-integer-truncation")
+            both("-fsanitize=implicit-unsigned-integer-truncation")
 
         # Apply version-specific compatibility flags when the HTTPD
         # version is known (see apatchy.compat for the registry).

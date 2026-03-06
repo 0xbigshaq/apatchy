@@ -130,7 +130,7 @@ class HarnessBuilder:
         config_vars = self._parse_config_vars()
         for key in ("CFLAGS", "LDFLAGS"):
             for token in config_vars.get(key, "").split():
-                if token.startswith("-fsanitize="):
+                if token.startswith(("-fsanitize", "-fno-sanitize")):
                     if token not in cflags:
                         cflags = f"{cflags} {token}"
                     if token not in ldflags:

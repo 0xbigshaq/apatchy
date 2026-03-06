@@ -73,7 +73,7 @@ class ModuleManager:
             key, _, value = line.partition("=")
             if key.strip() in ("CFLAGS", "LDFLAGS"):
                 for token in value.split():
-                    if token.startswith("-fsanitize=") and token not in flags:
+                    if token.startswith(("-fsanitize", "-fno-sanitize")) and token not in flags:
                         flags.append(token)
         return flags
 

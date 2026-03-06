@@ -65,6 +65,7 @@
 
 #ifdef ASAN_ENABLED
 void __asan_set_death_callback(void (*callback)(void));
+void __sanitizer_print_stack_trace(void);
 
 static int asan_saved_stderr_fd = -1;
 
@@ -82,6 +83,29 @@ static void asan_save_stderr_and_signals(void)
     for (size_t i = 0; i < ASAN_NUM_SIGNALS; i++) {
         sigaction(asan_saved_signals[i], NULL, &asan_saved_actions[i]);
     }
+}
+
+#define write_err(msg) write(STDERR_FILENO, msg, sizeof(msg) - 1);
+static void ubsan_signal_handler(int sig)
+{
+    // write a message to stderr
+    write_err("[*] ubsan_signal_handler :: custom handler triggered!\n");
+    write_err("SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior\n");
+
+    // print a stack trace
+    __sanitizer_print_stack_trace();
+
+    // forward signal number
+    // we could just hard-code SIGILL but we will
+    // pass the original for our python triage cmd
+    _exit(128 + sig);
+}
+
+static void register_ubsan_signal_handler()
+{
+    struct sigaction tmp_var = {0};
+    tmp_var.sa_handler = &ubsan_signal_handler;
+    sigaction(SIGILL, &tmp_var, NULL);
 }
 
 static void asan_restore_stderr_and_signals(void)
@@ -631,6 +655,7 @@ int fuzz_init(const char *confname, const char *server_root)
 
 #ifdef ASAN_ENABLED
     asan_restore_stderr_and_signals();
+    register_ubsan_signal_handler();
 #endif
 
     g_initialized = 1;
