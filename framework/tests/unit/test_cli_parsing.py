@@ -41,11 +41,11 @@ def _parse(args):
         comp.add_argument("-j", "--jobs", type=int, default=None)
         comp.add_argument("--bear", action="store_true")
 
-        # Build
-        build = _sub(subparsers, "build")
-        build.add_argument("engine", choices=["afl", "libfuzzer", "standalone"])
-        build.add_argument("--harness")
-        build.add_argument("--bear", action="store_true")
+        # Link
+        link = _sub(subparsers, "link")
+        link.add_argument("engine", choices=["afl", "libfuzzer", "standalone"])
+        link.add_argument("--harness")
+        link.add_argument("--bear", action="store_true")
 
         # Fuzz
         fuzz = _sub(subparsers, "fuzz")
@@ -169,38 +169,38 @@ def test_make_with_bear():
     assert args.bear is True
 
 
-# --- build ---
+# --- link ---
 
 
-def test_build_afl():
-    """Parse 'build afl'."""
-    args = _parse(["build", "afl"])
-    assert args.command == "build"
+def test_link_afl():
+    """Parse 'link afl'."""
+    args = _parse(["link", "afl"])
+    assert args.command == "link"
     assert args.engine == "afl"
 
 
-def test_build_libfuzzer():
-    """Parse 'build libfuzzer'."""
-    args = _parse(["build", "libfuzzer"])
+def test_link_libfuzzer():
+    """Parse 'link libfuzzer'."""
+    args = _parse(["link", "libfuzzer"])
     assert args.engine == "libfuzzer"
 
 
-def test_build_standalone():
-    """Parse 'build standalone'."""
-    args = _parse(["build", "standalone"])
+def test_link_standalone():
+    """Parse 'link standalone'."""
+    args = _parse(["link", "standalone"])
     assert args.engine == "standalone"
 
 
-def test_build_with_harness():
-    """Parse 'build afl --harness mod_fuzzy'."""
-    args = _parse(["build", "afl", "--harness", "mod_fuzzy"])
+def test_link_with_harness():
+    """Parse 'link afl --harness mod_fuzzy'."""
+    args = _parse(["link", "afl", "--harness", "mod_fuzzy"])
     assert args.harness == "mod_fuzzy"
 
 
-def test_build_invalid_engine():
+def test_link_invalid_engine():
     """Invalid engine raises SystemExit."""
     with pytest.raises(SystemExit):
-        _parse(["build", "invalid_engine"])
+        _parse(["link", "invalid_engine"])
 
 
 # --- fuzz ---

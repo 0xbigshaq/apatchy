@@ -79,7 +79,7 @@ cov-*/
 # Dev harness projects (user-specific, created by `apatchy dev init`)
 framework/dev/
 
-# Copied harness sources (build artifacts from `apatchy build`)
+# Copied harness sources (build artifacts from `apatchy link`)
 /fuzz_harness.c
 framework/fuzz_harness.c
 framework/fuzz_common.c

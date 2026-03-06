@@ -2,7 +2,7 @@
 
 The :class:`MethodDispatcher` acts as the glue between the argument parser
 (defined in :mod:`apatchy.main`) and the various manager classes that
-implement each workflow step (download, configure, build, fuzz, ...).
+implement each workflow step (download, configure, link, fuzz, ...).
 """
 
 import argparse
@@ -55,8 +55,8 @@ class MethodDispatcher:
             self._handle_configure(args)
         elif command == "make":
             self._handle_compile(args)
-        elif command == "build":
-            self._handle_build(args)
+        elif command == "link":
+            self._handle_link(args)
         elif command == "fuzz":
             self._handle_fuzz(args)
         elif command == "triage":
@@ -195,7 +195,7 @@ class MethodDispatcher:
         jobs = getattr(args, "jobs", None)
         self.build_manager.compile_httpd(jobs=jobs, bear=getattr(args, "bear", False))
 
-    def _handle_build(self, args: argparse.Namespace) -> None:
+    def _handle_link(self, args: argparse.Namespace) -> None:
         httpd_root = self._get_active_httpd()
         if not httpd_root:
             return
@@ -228,7 +228,7 @@ class MethodDispatcher:
         if not harness_path.exists():
             harness_path = Config.WORK_DIR / ".libs" / f"fuzz_harness_{args.engine}"
         if not harness_path.exists():
-            logger.error(f"Harness not found: {harness_path}. Run 'apatchy build {args.engine}' first.")
+            logger.error(f"Harness not found: {harness_path}. Run 'apatchy link {args.engine}' first.")
             return
 
         self.fuzz_manager.start_fuzzer(
@@ -271,7 +271,7 @@ class MethodDispatcher:
                 break
 
         if not harness_path:
-            logger.error("No harness binary found. Run 'apatchy build standalone' or 'apatchy build afl' first.")
+            logger.error("No harness binary found. Run 'apatchy link standalone' or 'apatchy link afl' first.")
             return
 
         modes = sum(bool(x) for x in (args.crash_file, args.pipeline, args.bulk))

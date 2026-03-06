@@ -20,7 +20,7 @@ apatchy download --version 2.4.62
 apatchy configure
 apatchy make
 
-apatchy build afl                # build the harness
+apatchy link afl                # link the harness
 apatchy fuzz --config rewrite.conf
 ```
 

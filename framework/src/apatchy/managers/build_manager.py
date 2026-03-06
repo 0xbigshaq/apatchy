@@ -2,7 +2,7 @@
 
 :class:`BuildManager` ties together :class:`~apatchy.managers.config_manager.ConfigManager`
 (compiler/flag selection) and :class:`~apatchy.core.harness.HarnessBuilder`
-(harness compilation) behind the ``configure``, ``make``, and ``build``
+(harness compilation) behind the ``configure``, ``make``, and ``link``
 CLI commands.
 """
 
@@ -27,7 +27,7 @@ def _bear_available() -> bool:
 
 
 class BuildManager:
-    """Orchestrate Apache ``./configure``, ``make``, and harness builds."""
+    """Orchestrate Apache ``./configure``, ``make``, and harness linking."""
 
     def __init__(self, httpd_root: Path, config_manager: ConfigManager, verbose: bool = False) -> None:
         self.httpd_root = httpd_root

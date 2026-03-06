@@ -144,11 +144,11 @@ def main():
         "--bear", action="store_true", help="Wrap make with bear to generate compile_commands.json"
     )
 
-    # Build Harness
-    build_parser = _sub(subparsers, "build", help="Build fuzzing harness")
-    build_parser.add_argument("engine", choices=["afl", "libfuzzer", "standalone"], help="Fuzzing engine")
-    build_parser.add_argument("--harness", help="Harness name to use (e.g. 'mod_fuzzy')")
-    build_parser.add_argument(
+    # Link Harness
+    link_parser = _sub(subparsers, "link", help="Link fuzzing harness")
+    link_parser.add_argument("engine", choices=["afl", "libfuzzer", "standalone"], help="Fuzzing engine")
+    link_parser.add_argument("--harness", help="Harness name to use (e.g. 'mod_fuzzy')")
+    link_parser.add_argument(
         "--bear", action="store_true", help="Wrap compilation with bear to generate compile_commands.json"
     )
 
