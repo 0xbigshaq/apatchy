@@ -8,10 +8,18 @@ individual crash inputs.
 """
 
 import os
+import re
 import shutil
+import signal
 import subprocess
+from collections import Counter
 from pathlib import Path
 from typing import List, Optional, Tuple
+
+from rich.console import Console
+from rich.live import Live
+from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.table import Table
 
 from apatchy.core import toolchain_config
 from apatchy.core.harness import HarnessBuilder
@@ -676,3 +684,147 @@ class ReportManager:
             self.logger.error(f"Triage timed out ({timeout}s)")
         except Exception as e:
             self.logger.error(f"Failed to triage crash: {e}")
+
+
+    _BUG_LABELS = {
+        "heap-use-after-free": "UAF",
+        "heap-buffer-overflow": "heap-overflow",
+        "stack-buffer-overflow": "stack-overflow",
+        "global-buffer-overflow": "global-overflow",
+        "double-free": "double-free",
+        "SEGV": "SEGV",
+        "integer-overflow": "int-overflow",
+        "unsigned-integer-overflow": "int-overflow",
+        "stack-use-after-return": "use-after-return",
+        "use-after-poison": "use-after-poison",
+        "null-dereference": "null-deref",
+        "FPE": "FPE",
+        "requested-alignment": "alignment",
+        "alloc-dealloc-mismatch": "alloc-mismatch",
+    }
+
+    @staticmethod
+    def _format_exit(returncode: int) -> str:
+        """Format an exit code as ``SIGNAME(code)`` when killed by a signal."""
+        if returncode < 0:
+            try:
+                name = signal.Signals(-returncode).name
+            except ValueError:
+                name = "SIG?"
+            return f"{name}({returncode})"
+        return str(returncode)
+
+    @staticmethod
+    def _classify_bugs(stderr: str) -> str:
+        """Extract all bug types from sanitizer SUMMARY lines in *stderr*.
+
+        Returns a comma-separated string of short labels (e.g.
+        ``"int-overflow, UAF"``), or ``"unknown"`` if no SUMMARY lines
+        are found.
+        """
+        labels: list[str] = []
+        for m in re.finditer(r"^SUMMARY:\s*\S+:\s*(\S+)", stderr, re.MULTILINE):
+            raw = m.group(1)
+            label = ReportManager._BUG_LABELS.get(raw, raw)
+            if label not in labels:
+                labels.append(label)
+        return ", ".join(labels) if labels else "unknown"
+
+    def triage_bulk(
+        self,
+        crash_dir: Path,
+        harness_binary: Path,
+        no_color: bool = False,
+        suppress: Optional[str] = None,
+        timeout: int = 30,
+    ) -> None:
+        """Triage every crash file in *crash_dir* individually and print a summary table."""
+        crash_dir = Path(crash_dir)
+        if not crash_dir.is_dir():
+            self.logger.error(f"Not a directory: {crash_dir}")
+            return
+
+        files = sorted(
+            (f for f in crash_dir.iterdir() if f.is_file()),
+            key=lambda f: f.name,
+        )
+        if not files:
+            self.logger.error(f"No files found in {crash_dir}")
+            return
+
+        try:
+            env, config_path = self._triage_env(no_color=no_color, suppress=suppress)
+        except FileNotFoundError as e:
+            self.logger.error(str(e))
+            return
+
+        cmd = [
+            str(harness_binary),
+            "-f",
+            str(config_path),
+            "-d",
+            str(self.work_dir),
+        ]
+
+        self.logger.info(f"Bulk triage: {len(files)} crash files from {crash_dir}")
+
+        console = Console()
+        results: list[tuple[str, str, str]] = []
+        bug_counts: Counter[str] = Counter()
+
+        spinner = Progress(SpinnerColumn(), TextColumn("{task.description}"))
+        task_id = spinner.add_task("")
+
+        with Live(spinner, console=console, refresh_per_second=12):
+            for i, crash_file in enumerate(files, 1):
+                # Update status line with current file and running totals.
+                counts_str = ", ".join(f"{v} {k}" for k, v in bug_counts.most_common()) if bug_counts else "-"
+                spinner.update(
+                    task_id,
+                    description=(
+                        f"[yellow]Triaging[/yellow] [cyan]{crash_file.name}[/cyan] "
+                        f"[dim]({i}/{len(files)})[/dim]  [dim]found:[/dim] {counts_str}"
+                    ),
+                )
+
+                try:
+                    crash_data = crash_file.read_bytes()
+                    result = subprocess.run(  # noqa: UP022
+                        cmd,
+                        env=env,
+                        input=crash_data,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        timeout=timeout,
+                    )
+                    stderr_text = result.stderr.decode("utf-8", errors="replace")
+                    bug_type = self._classify_bugs(stderr_text)
+                    exit_str = self._format_exit(result.returncode)
+                    results.append((crash_file.name, bug_type, exit_str))
+                    for label in bug_type.split(", "):
+                        bug_counts[label] += 1
+                except subprocess.TimeoutExpired:
+                    results.append((crash_file.name, "timeout", "-"))
+                    bug_counts["timeout"] += 1
+                except Exception as e:
+                    results.append((crash_file.name, f"error: {e}", "-"))
+                    bug_counts["error"] += 1
+
+        if not results:
+            return
+
+        # Print summary table using the project-wide Rich table style.
+        table = Table(box=None, show_edge=False, pad_edge=False, header_style="bold underline")
+        table.add_column("File", style="cyan")
+        table.add_column("Bug Type", style="magenta")
+        table.add_column("Exit", style="dim", justify="right")
+
+        for name, bug, exit_code in results:
+            table.add_row(name, bug, exit_code)
+
+        console.print()
+        console.print(table)
+
+        # Print totals.
+        counts_str = ", ".join(f"[bold]{v}[/bold] {k}" for k, v in bug_counts.most_common())
+        console.print(f"\n[dim]{len(results)} crashes triaged:[/dim] {counts_str}")

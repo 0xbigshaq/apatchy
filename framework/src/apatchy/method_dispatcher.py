@@ -274,10 +274,15 @@ class MethodDispatcher:
             logger.error("No harness binary found. Run 'apatchy build standalone' or 'apatchy build afl' first.")
             return
 
+        modes = sum(bool(x) for x in (args.crash_file, args.pipeline, args.bulk))
+        if modes == 0:
+            logger.error("Either a crash file, --pipeline <dir>, or --bulk <dir> is required.")
+            return
+        if modes > 1:
+            logger.error("Only one of crash file, --pipeline, and --bulk can be used at a time.")
+            return
+
         if args.pipeline:
-            if args.crash_file:
-                logger.error("Cannot use both a crash file and --pipeline at the same time.")
-                return
             self.report_manager.triage_pipeline(
                 args.pipeline,
                 harness_path,
@@ -285,10 +290,15 @@ class MethodDispatcher:
                 suppress=getattr(args, "suppress", None),
                 timeout=args.timeout,
             )
+        elif args.bulk:
+            self.report_manager.triage_bulk(
+                args.bulk,
+                harness_path,
+                no_color=args.no_color,
+                suppress=getattr(args, "suppress", None),
+                timeout=args.timeout,
+            )
         else:
-            if not args.crash_file:
-                logger.error("Either a crash file or --pipeline <dir> is required.")
-                return
             self.report_manager.triage_crash(
                 args.crash_file,
                 harness_path,

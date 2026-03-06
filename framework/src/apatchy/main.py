@@ -188,6 +188,11 @@ def main():
         default=None,
         help="Directory of numbered crash files (0, 1, 2, ...) to replay as a multi-request pipeline",
     )
+    triage_parser.add_argument(
+        "--bulk",
+        default=None,
+        help="Directory of crash files to triage individually, printing a summary table of bug types",
+    )
     triage_parser.add_argument("--config", default="fuzz.conf", help="Httpd config file to use")
     triage_parser.add_argument("--no-color", action="store_true", help="Disable colored output for sanitizer reports")
     triage_parser.add_argument(
