@@ -92,6 +92,9 @@ out-*.txt
 docs/_build/
 docs/api/_build/
 
+# Generated Doxygen tag file
+httpd.tag
+
 # Obsidian vault config
 docs/.obsidian/
 
