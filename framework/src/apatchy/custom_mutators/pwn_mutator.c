@@ -82,7 +82,8 @@ void afl_custom_deinit(void *data) {
 
 /* Find headers end */
 static char *find_headers_end(const uint8_t *buf, size_t buf_size) {
-    for (size_t i = 0; i < buf_size - 3; i++) {
+    if (buf_size < 4) return NULL;
+    for (size_t i = 0; i <= buf_size - 4; i++) {
         if (buf[i] == '\r' && buf[i+1] == '\n' &&
             buf[i+2] == '\r' && buf[i+3] == '\n') {
             return (char *)&buf[i+2];
