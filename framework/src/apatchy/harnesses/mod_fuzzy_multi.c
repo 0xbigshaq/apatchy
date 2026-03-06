@@ -168,15 +168,25 @@ int main(int argc, const char *const argv[])
 
     unsigned char *buf = __AFL_FUZZ_TESTCASE_BUF;
 
-    while (__AFL_LOOP(10000)) {
-        int len = __AFL_FUZZ_TESTCASE_LEN;
-        if (len > 0) {
-            fuzz_multi_input((const char *)buf, len);
-        }
+    if (__AFL_LOOP(10000)) {
+        /* Running under afl-fuzz: use shared-memory test cases. */
+        do {
+            int len = __AFL_FUZZ_TESTCASE_LEN;
+            if (len > 0) {
+                fuzz_multi_input((const char *)buf, len);
+            }
+        } while (__AFL_LOOP(10000));
+    } else {
+        /* Not under afl-fuzz (standalone triage): read from stdin. */
+        read_stdin_and_process();
     }
 #else
     read_stdin_and_process();
 #endif
+
+    /* Flush the HTTP response written by the output filter before
+     * pool/APR teardown (which may call _exit internally). */
+    fflush(stdout);
 
     apr_pool_destroy(g_pool);
     apr_terminate();

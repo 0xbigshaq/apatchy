@@ -695,6 +695,11 @@ int __llvm_profile_write_file(void) __attribute__((weak));
 
 void fuzz_exit(int status)
 {
+    /* _exit() skips atexit handlers and does NOT flush stdio buffers.
+     * Flush stdout so the HTTP response (written by the output filter
+     * via fwrite) is not lost when the harness is run standalone. */
+    fflush(stdout);
+
     /* Flush LLVM coverage (.profraw) data before _exit(), because
      * _exit() skips atexit handlers where LLVM normally writes it. */
     if (__llvm_profile_write_file) {
