@@ -558,16 +558,12 @@ class ReportManager:
             supp_opt = f"suppressions={supp_path}"
             env["UBSAN_OPTIONS"] = f"{existing}:{supp_opt}" if existing else supp_opt
 
-        # Preload external modules (.so) so the harness can dlopen() them.
-        # The crypto driver is statically linked (--disable-util-dso), so
-        # no LD_PRELOAD or LD_LIBRARY_PATH is needed for APR/APR-Util.
-        modules_dir = self.work_dir / "modules"
-        if modules_dir.exists():
-            preload = [str(so) for so in sorted(modules_dir.glob("*.so"))]
-            if preload:
-                existing = env.get("LD_PRELOAD", "")
-                combined = ":".join(preload)
-                env["LD_PRELOAD"] = f"{combined}:{existing}" if existing else combined
+        # The standalone harness links afl-compiler-rt.o (needed to
+        # satisfy __afl_area_ptr from AFL-instrumented Apache objects).
+        # This means the AFL dlopen() hook is active even outside
+        # afl-fuzz.  Tell it to ignore post-forkserver dlopen() since
+        # we only care about reproducing the crash, not coverage.
+        env["AFL_IGNORE_PROBLEMS"] = "1"
 
         # Build command with both env vars (AFL entry point) and
         # command-line args (standalone entry point) for config/root.
