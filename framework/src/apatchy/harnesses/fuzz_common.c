@@ -68,9 +68,20 @@ void __asan_set_death_callback(void (*callback)(void));
 
 static int asan_saved_stderr_fd = -1;
 
-static void asan_save_stderr(void)
+/* Signal handlers saved before Apache initialization.  ASan installs its
+ * own handlers at program startup; Apache's sig_coredump overwrites them.
+ * We snapshot the handlers early and restore them after Apache init. */
+static const int asan_saved_signals[] = {SIGSEGV, SIGBUS, SIGABRT, SIGFPE, SIGILL};
+#define ASAN_NUM_SIGNALS (sizeof(asan_saved_signals) / sizeof(asan_saved_signals[0]))
+static struct sigaction asan_saved_actions[ASAN_NUM_SIGNALS];
+
+static void asan_save_stderr_and_signals(void)
 {
     asan_saved_stderr_fd = dup(STDERR_FILENO);
+
+    for (size_t i = 0; i < ASAN_NUM_SIGNALS; i++) {
+        sigaction(asan_saved_signals[i], NULL, &asan_saved_actions[i]);
+    }
 }
 
 static void asan_restore_stderr_and_signals(void)
@@ -81,11 +92,9 @@ static void asan_restore_stderr_and_signals(void)
         asan_saved_stderr_fd = -1;
     }
 
-    signal(SIGSEGV, SIG_DFL);
-    signal(SIGBUS, SIG_DFL);
-    signal(SIGABRT, SIG_DFL);
-    signal(SIGFPE, SIG_DFL);
-    signal(SIGILL, SIG_DFL);
+    for (size_t i = 0; i < ASAN_NUM_SIGNALS; i++) {
+        sigaction(asan_saved_signals[i], &asan_saved_actions[i], NULL);
+    }
 }
 #endif
 
@@ -507,7 +516,7 @@ int fuzz_init(const char *confname, const char *server_root)
     }
 
 #ifdef ASAN_ENABLED
-    asan_save_stderr();
+    asan_save_stderr_and_signals();
 #endif
 
     rv = apr_initialize();

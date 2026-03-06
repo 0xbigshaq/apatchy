@@ -143,14 +143,11 @@ int main(int argc, const char *const argv[])
     read_stdin_and_process();
 #endif
 
-    /* Flush the HTTP response written by the output filter before
-     * pool/APR teardown (which may call _exit internally). */
-    fflush(stdout);
-
-    apr_pool_destroy(g_pool);
-    apr_terminate();
-
-    return 0;
+    /* Use fuzz_exit() instead of normal cleanup - apr_pool_destroy /
+     * apr_terminate would try to pthread_join mod_watchdog's background
+     * threads, which deadlocks because there is no MPM event loop to
+     * signal them.  fuzz_exit() calls _exit() to tear down immediately. */
+    fuzz_exit(0);
 }
 
 #else /* Standalone */
