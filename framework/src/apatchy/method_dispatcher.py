@@ -236,7 +236,7 @@ class MethodDispatcher:
         self.fuzz_manager.start_fuzzer(
             harness_path,
             engine=args.engine,
-            mutator=getattr(args, "mutator", None),
+            mutator=getattr(args, "mutator", None) and getattr(args, "mutator").split(","),
             grammar=getattr(args, "grammar", None),
             resume=getattr(args, "resume", False),
             output_dir=getattr(args, "output_dir", "afl-output"),

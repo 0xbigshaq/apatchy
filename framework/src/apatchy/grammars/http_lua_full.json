@@ -1,0 +1,226 @@
+{
+	"<A>": [
+		["<GET_REQUEST>"],
+		["<POST_URLENCODED_REQUEST>"],
+		["<POST_MULTIPART_REQUEST>"],
+		["<PUT_REQUEST>"],
+		["<OTHER_REQUEST>"]
+	],
+
+	"<GET_REQUEST>": [
+		["GET ", "<GET_PATH>", " HTTP/1.1\r\nHost: localhost\r\n", "<OPT_HEADERS>", "\r\n"]
+	],
+	"<POST_URLENCODED_REQUEST>": [
+		["POST ", "<POST_PATH>", " HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/x-www-form-urlencoded\r\n", "<CONTENT_LENGTH_SMALL>", "<OPT_HEADERS>", "\r\n", "<URL_ENCODED_BODY>"]
+	],
+	"<POST_MULTIPART_REQUEST>": [
+		["POST ", "<POST_PATH>", " HTTP/1.1\r\nHost: localhost\r\nContent-Type: multipart/form-data; boundary=fuzzboundary\r\n", "<CONTENT_LENGTH_LARGE>", "<OPT_HEADERS>", "\r\n", "<MULTIPART_BODY>"]
+	],
+	"<PUT_REQUEST>": [
+		["PUT ", "<SIMPLE_PATH>", " HTTP/1.1\r\nHost: localhost\r\nContent-Type: text/plain\r\n", "<CONTENT_LENGTH_SMALL>", "<OPT_HEADERS>", "\r\n", "<PLAIN_BODY>"]
+	],
+	"<OTHER_REQUEST>": [
+		["<OTHER_METHOD>", " ", "<SIMPLE_PATH>", " HTTP/1.1\r\nHost: localhost\r\n", "<OPT_HEADERS>", "\r\n"]
+	],
+
+	"<OTHER_METHOD>": [["DELETE"], ["OPTIONS"], ["PATCH"], ["HEAD"], ["TRACE"]],
+
+	"<GET_PATH>": [
+		["/handler.lua"],
+		["/handler.lua?", "<QUERY_STRING>"],
+		["/test"],
+		["/test?", "<QUERY_STRING>"],
+		["/api/data?", "<QUERY_STRING>"],
+		["/", "<PATH_WORD>", "?", "<QUERY_STRING>"],
+		["/", "<PATH_WORD>", "/", "<PATH_WORD>"]
+	],
+	"<POST_PATH>": [
+		["/handler.lua"],
+		["/handler.lua?", "<QUERY_STRING>"],
+		["/submit"],
+		["/api/upload"],
+		["/", "<PATH_WORD>"]
+	],
+	"<SIMPLE_PATH>": [
+		["/handler.lua"],
+		["/test"],
+		["/", "<PATH_WORD>"],
+		["/", "<PATH_WORD>", "/", "<PATH_WORD>"]
+	],
+
+	"<PATH_WORD>": [
+		["handler.lua"], ["index"], ["test"], ["api"], ["data"],
+		["submit"], ["upload"], ["admin"], ["status"], ["search"],
+		["login"], ["process"], ["info"]
+	],
+
+	"<QUERY_STRING>": [
+		["<QS_PARAM>"],
+		["<QS_PARAM>", "&", "<QS_PARAM>"],
+		["<QS_PARAM>", "&", "<QS_PARAM>", "&", "<QS_PARAM>"],
+		["<QS_PARAM>", "&", "<QS_PARAM>", "&", "<QS_PARAM>", "&", "<QS_PARAM>"]
+	],
+	"<QS_PARAM>": [
+		["<PARAM_KEY>", "=", "<PARAM_VAL>"]
+	],
+	"<PARAM_KEY>": [
+		["name"], ["id"], ["action"], ["token"], ["q"],
+		["page"], ["sort"], ["debug"], ["format"], ["type"],
+		["user"], ["role"], ["file"], ["lang"], ["callback"]
+	],
+	"<PARAM_VAL>": [
+		["<WORD>"],
+		["<NUMBER>"],
+		["<WORD>", "<WORD>"],
+		["<ENCODED_SPECIAL>"],
+		["true"], ["false"], ["null"],
+		["<WORD>", "%20", "<WORD>"],
+		["<B64_SHORT>"]
+	],
+
+	"<CONTENT_LENGTH_SMALL>": [
+		["Content-Length: 5\r\n"],
+		["Content-Length: 10\r\n"],
+		["Content-Length: 20\r\n"],
+		["Content-Length: 32\r\n"],
+		["Content-Length: 50\r\n"],
+		["Content-Length: 64\r\n"],
+		["Content-Length: 100\r\n"],
+		["Content-Length: 128\r\n"]
+	],
+	"<CONTENT_LENGTH_LARGE>": [
+		["Content-Length: 128\r\n"],
+		["Content-Length: 200\r\n"],
+		["Content-Length: 256\r\n"],
+		["Content-Length: 300\r\n"],
+		["Content-Length: 400\r\n"],
+		["Content-Length: 512\r\n"],
+		["Content-Length: 1024\r\n"]
+	],
+
+	"<OPT_HEADERS>": [
+		[],
+		["<HEADER_LINE>"],
+		["<HEADER_LINE>", "<HEADER_LINE>"],
+		["<HEADER_LINE>", "<HEADER_LINE>", "<HEADER_LINE>"],
+		["<HEADER_LINE>", "<HEADER_LINE>", "<HEADER_LINE>", "<HEADER_LINE>"],
+		["<HEADER_LINE>", "<HEADER_LINE>", "<HEADER_LINE>", "<HEADER_LINE>", "<HEADER_LINE>"]
+	],
+	"<HEADER_LINE>": [
+		["Cookie: ", "<COOKIE_KV>", "\r\n"],
+		["Date: ", "<DATE>", "\r\n"],
+		["If-Modified-Since: ", "<DATE>", "\r\n"],
+		["Authorization: Basic ", "<B64_SHORT>", "\r\n"],
+		["Accept-Encoding: ", "<ACCEPT_ENC>", "\r\n"],
+		["Range: bytes=", "<NUMBER>", "-", "<NUMBER>", "\r\n"],
+		["User-Agent: ", "<UA_VAL>", "\r\n"],
+		["Connection: ", "<CONN_VAL>", "\r\n"],
+		["Accept: ", "<ACCEPT_VAL>", "\r\n"],
+		["Referer: http://localhost/", "<PATH_WORD>", "\r\n"],
+		["X-Forwarded-For: ", "<IP>", "\r\n"],
+		["X-Custom: ", "<WORD>", "<WORD>", "\r\n"],
+		["If-None-Match: \"", "<WORD>", "<WORD>", "\"\r\n"],
+		["Content-Encoding: ", "<CE_VAL>", "\r\n"]
+	],
+
+	"<COOKIE_KV>": [
+		["session=", "<WORD>", "<WORD>"],
+		["token=", "<B64_SHORT>"],
+		["fuzz=", "<WORD>"],
+		["session=", "<WORD>", "; token=", "<WORD>"],
+		["session=", "<WORD>", "; fuzz=", "<WORD>", "; token=", "<B64_SHORT>"]
+	],
+
+	"<DATE>": [
+		["Sat, 29 Oct 1994 19:43:31 GMT"],
+		["Sun, 06 Nov 1994 08:49:37 GMT"],
+		["Tue, 15 Nov 1994 08:12:31 GMT"],
+		["Mon, 01 Jan 2024 00:00:00 GMT"],
+		["Wed, 09 Jun 2021 10:18:14 GMT"],
+		["<WORD>"]
+	],
+
+	"<ACCEPT_ENC>": [["gzip"], ["deflate"], ["br"], ["gzip, deflate"], ["identity"], ["*"]],
+	"<UA_VAL>": [["FuzzBot/1.0"], ["Mozilla/5.0"], ["curl/7.68.0"]],
+	"<CONN_VAL>": [["close"], ["keep-alive"]],
+	"<ACCEPT_VAL>": [["*/*"], ["text/html"], ["application/json"], ["text/plain"]],
+	"<CE_VAL>": [["gzip"], ["deflate"], ["identity"]],
+	"<IP>": [["127.0.0.1"], ["10.0.0.1"], ["192.168.1.1"], ["0.0.0.0"]],
+
+	"<URL_ENCODED_BODY>": [
+		["<BODY_PARAM>"],
+		["<BODY_PARAM>", "&", "<BODY_PARAM>"],
+		["<BODY_PARAM>", "&", "<BODY_PARAM>", "&", "<BODY_PARAM>"],
+		["<BODY_PARAM>", "&", "<BODY_PARAM>", "&", "<BODY_PARAM>", "&", "<BODY_PARAM>"]
+	],
+	"<BODY_PARAM>": [
+		["<PARAM_KEY>", "=", "<PARAM_VAL>"]
+	],
+
+	"<MULTIPART_BODY>": [
+		["<MP_PART>", "--fuzzboundary--\r\n"],
+		["<MP_PART>", "<MP_PART>", "--fuzzboundary--\r\n"],
+		["<MP_PART>", "<MP_PART>", "<MP_PART>", "--fuzzboundary--\r\n"]
+	],
+	"<MP_PART>": [
+		["--fuzzboundary\r\nContent-Disposition: form-data; name=\"", "<PARAM_KEY>", "\"\r\n\r\n", "<MP_VALUE>", "\r\n"],
+		["--fuzzboundary\r\nContent-Disposition: form-data; name=\"", "<PARAM_KEY>", "\"; filename=\"", "<FILENAME>", "\"\r\nContent-Type: ", "<MP_CT>", "\r\n\r\n", "<MP_VALUE>", "\r\n"]
+	],
+	"<MP_VALUE>": [
+		["<WORD>"],
+		["<WORD>", " ", "<WORD>"],
+		["<WORD>", " ", "<WORD>", " ", "<WORD>"],
+		["<NUMBER>"],
+		["<SPECIAL_CHARS>"],
+		["<B64_SHORT>"]
+	],
+	"<FILENAME>": [
+		["test.txt"], ["upload.bin"], ["data.csv"], ["image.png"],
+		["file.html"], ["report.pdf"], ["<WORD>", ".", "<EXT>"]
+	],
+	"<EXT>": [["txt"], ["bin"], ["html"], ["json"], ["xml"], ["csv"]],
+	"<MP_CT>": [
+		["text/plain"], ["application/octet-stream"],
+		["image/png"], ["application/json"], ["text/html"]
+	],
+
+	"<PLAIN_BODY>": [
+		["<WORD>"],
+		["<WORD>", " ", "<WORD>", " ", "<WORD>"],
+		["<WORD>", "\n", "<WORD>", "\n", "<WORD>"],
+		["<SPECIAL_CHARS>"],
+		["<NUMBER>"],
+		["<B64_SHORT>"]
+	],
+
+	"<WORD>": [
+		["test"], ["hello"], ["admin"], ["user"], ["data"],
+		["fuzz"], ["value"], ["input"], ["query"], ["search"],
+		["login"], ["token"], ["secret"], ["debug"], ["error"],
+		["null"], ["undefined"], ["root"], ["system"], ["config"]
+	],
+	"<NUMBER>": [
+		["0"], ["1"], ["42"], ["100"], ["255"], ["1024"],
+		["65535"], ["-1"], ["999999"], ["0x41"]
+	],
+	"<SPECIAL_CHARS>": [
+		["<script>"], ["../.."], ["' OR 1=1"], ["%00%0a%0d"],
+		["{{template}}"], ["${jndi:}"], ["\\x41\\x42"],
+		["a]b[c"], ["<>&\"'"]
+	],
+	"<ENCODED_SPECIAL>": [
+		["%3Cscript%3E"], ["%00"], ["%0d%0a"], ["%252e%252e"],
+		["%26amp%3B"], ["%27OR%201%3D1"]
+	],
+	"<B64_SHORT>": [
+		["dGVzdA=="],
+		["YWRtaW4="],
+		["YWRtaW46cGFzcw=="],
+		["Zm9vYmFy"],
+		["<B64CH>", "<B64CH>", "<B64CH>", "<B64CH>", "<B64CH>", "<B64CH>", "<B64CH>", "<B64CH>"]
+	],
+	"<B64CH>": [
+		["A"], ["B"], ["Q"], ["R"], ["Z"], ["a"], ["m"], ["z"],
+		["0"], ["5"], ["9"], ["+"], ["/"]
+	]
+}

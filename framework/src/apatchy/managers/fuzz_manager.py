@@ -134,7 +134,7 @@ class FuzzManager:
         self,
         harness_path: Path,
         engine: str = "afl",
-        mutator: Optional[str] = None,
+        mutator: Optional[list[str]] = None,
         grammar: Optional[str] = None,
         resume: bool = False,
         output_dir: str = "afl-output",
@@ -229,7 +229,7 @@ class FuzzManager:
         harness: Path,
         input_dir: Path,
         output_dir: Path,
-        mutator: Optional[str] = None,
+        mutator: Optional[list[str]] = None,
         resume: bool = False,
         role: Optional[str] = None,
         name: Optional[str] = None,
@@ -279,15 +279,18 @@ class FuzzManager:
         if role == "main" and resume and not self._migrate_corpus_for_parallel(output_dir, name):
             return
 
-        # Custom mutator library
+        # Custom mutator library (supports multiple, chained with ':')
         if mutator:
-            mutator_path = Path(mutator).resolve()
-            if not mutator_path.exists():
-                self.logger.error(f"Mutator library not found: {mutator_path}")
-                return
-            env["AFL_CUSTOM_MUTATOR_LIBRARY"] = str(mutator_path)
+            resolved = []
+            for m in mutator:
+                p = Path(m).resolve()
+                if not p.exists():
+                    self.logger.error(f"Mutator library not found: {p}")
+                    return
+                resolved.append(str(p))
+            env["AFL_CUSTOM_MUTATOR_LIBRARY"] = ":".join(resolved)
             env["AFL_CUSTOM_MUTATOR_ONLY"] = "1"  # FIXME: i need to re-think about this hack
-            self.logger.info(f"Using custom mutator: {mutator_path}")
+            self.logger.info(f"Using custom mutator(s): {', '.join(resolved)}")
 
         # Preload only dynamically loaded modules referenced by the config
         # so AFL++ instruments them.  Built-in modules are statically linked
