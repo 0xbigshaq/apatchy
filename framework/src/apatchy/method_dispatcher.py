@@ -79,6 +79,8 @@ class MethodDispatcher:
             self._handle_test(args)
         elif command == "docs":
             self._handle_docs(args)
+        elif command == "bug":
+            self._handle_bug(args)
         elif command == "clean":
             self._handle_clean(args)
         else:
@@ -716,6 +718,82 @@ class MethodDispatcher:
                 return None
         return target
 
+    def _handle_bug(self, args: argparse.Namespace) -> None:
+        from rich.console import Console
+        from rich.table import Table
+
+        from apatchy.managers.bug_manager import BugManager
+
+        console = Console()
+        verbose = getattr(args, "verbose", False)
+        bm = BugManager(verbose=verbose)
+
+        action = getattr(args, "action", None)
+        if not action:
+            logger.error("No bug sub-command specified. Use: list, info, setup, reproduce")
+            return
+
+        if action == "list":
+            bugs = bm.list_bugs()
+            if not bugs:
+                console.print("[yellow]No bugs found. Add bug directories under bugs/.[/yellow]")
+                return
+            table = Table(box=None, show_edge=False, pad_edge=False, header_style="bold underline")
+            table.add_column("CVE ID", style="cyan")
+            table.add_column("Module(s)", style="magenta")
+            table.add_column("Version", style="green")
+            table.add_column("Type", style="yellow")
+            table.add_column("Description", style="dim")
+            for bug in bugs:
+                table.add_row(
+                    bug["id"],
+                    ", ".join(bug["modules"]),
+                    bug["version"],
+                    bug["type"],
+                    bug["description"],
+                )
+            console.print(table)
+
+        elif action == "info":
+            try:
+                bug = bm.get_bug_instance(args.cve_id)
+            except FileNotFoundError as e:
+                logger.error(str(e))
+                return
+
+            console.print(f"\n[bold cyan]{bug.cve_id}[/bold cyan]")
+            console.print(f"  [dim]Description:[/dim]  {bug.description}")
+            console.print(f"  [dim]Version:[/dim]      {bug.version}")
+            console.print(f"  [dim]Type:[/dim]         {bug.bug_type}")
+            console.print(f"  [dim]Modules:[/dim]      {', '.join(bug.modules)}")
+            console.print(f"  [dim]Sanitizers:[/dim]   {', '.join(bug.sanitizers)}")
+            console.print(f"  [dim]Config:[/dim]       {bug.httpd_config}")
+            console.print(f"  [dim]Directory:[/dim]    {bug.bug_dir}")
+            if bug.references:
+                console.print("  [dim]References:[/dim]")
+                for ref in bug.references:
+                    console.print(f"    - {ref}")
+            console.print()
+
+        elif action == "setup":
+            bm.setup(args.cve_id)
+
+        elif action == "reproduce":
+            bm.reproduce(args.cve_id)
+
+        elif action == "clean":
+            cve_id = getattr(args, "cve_id", None)
+            if cve_id:
+                bug = bm.get_bug_instance(cve_id)
+                bug.clean()
+                console.print(f"[green]Cleaned {bug.cve_id}[/green]")
+            else:
+                bugs = bm.list_bugs()
+                for bug_info in bugs:
+                    bug = bm.get_bug_instance(bug_info["id"])
+                    bug.clean()
+                    console.print(f"[green]Cleaned {bug.cve_id}[/green]")
+
     def _handle_clean(self, args: argparse.Namespace) -> None:
         import shutil
 
@@ -806,5 +884,15 @@ class MethodDispatcher:
             else:
                 t.unlink()
             logger.info(f"Removed {t.relative_to(work)}")
+
+        # Clean all bug artifacts
+        from apatchy.managers.bug_manager import BugManager
+
+        bm = BugManager()
+        bugs = bm.list_bugs()
+        for bug_info in bugs:
+            bug = bm.get_bug_instance(bug_info["id"])
+            bug.clean()
+            logger.info(f"Cleaned bug artifacts for {bug.cve_id}")
 
         logger.info("Clean complete.")

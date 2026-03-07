@@ -307,6 +307,19 @@ def main():
         "--bind", default="localhost", metavar="ADDR", help="Address to bind the HTTP server to (default: localhost)"
     )
 
+    # Bug (1day reproduction)
+    bug_parser = _sub(subparsers, "bug", help="Manage 1day bug reproductions")
+    bug_sub = bug_parser.add_subparsers(dest="action", help="Bug sub-commands")
+    _sub(bug_sub, "list", help="List available bug reproductions")
+    bug_info = _sub(bug_sub, "info", help="Show details for a specific bug")
+    bug_info.add_argument("cve_id", help="CVE identifier (e.g. CVE-2022-23943)")
+    bug_setup = _sub(bug_sub, "setup", help="Download, build, and prepare a bug for reproduction")
+    bug_setup.add_argument("cve_id", help="CVE identifier (e.g. CVE-2022-23943)")
+    bug_reproduce = _sub(bug_sub, "reproduce", help="Reproduce a bug by triaging its seeds")
+    bug_reproduce.add_argument("cve_id", help="CVE identifier (e.g. CVE-2022-23943)")
+    bug_clean = _sub(bug_sub, "clean", help="Clean generated artifacts for a bug (or all bugs)")
+    bug_clean.add_argument("cve_id", nargs="?", default=None, help="CVE identifier (cleans all if omitted)")
+
     # Clean
     clean_parser = _sub(subparsers, "clean", help="Remove build artifacts and generated files")
     clean_parser.add_argument(

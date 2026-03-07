@@ -1,0 +1,18 @@
+[bug]
+id = "CVE-2022-23943"
+description = "Integer overflow in mod_sed line buffer (sed1.c)"
+modules = ["mod_sed", "mod_deflate"]
+version = "2.4.52"
+type = "integer-overflow"
+references = [
+    "https://httpd.apache.org/security/vulnerabilities_24.html",
+    "https://jfrog.com/blog/diving-into-cve-2022-23943/",
+]
+
+[build]
+sanitizers = ["asan", "ubsan"]
+configure_flags = []
+
+[reproduce]
+timeout = 120
+suppress = "ubsan.supp"

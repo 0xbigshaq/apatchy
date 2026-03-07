@@ -11,6 +11,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Optional
 
 from apatchy.compat import extract_version_from_path, get_compat_flags
 from apatchy.core.harness import HarnessBuilder
@@ -67,7 +68,7 @@ class BuildManager:
         clangd_path.write_text(content)
         self.logger.info(f"Updated {clangd_path}")
 
-    def configure_httpd(self) -> None:
+    def configure_httpd(self, extra_flags: Optional[list] = None) -> None:
         """Run ``./configure`` with optimised flags."""
         httpd_version = extract_version_from_path(self.httpd_root)
         config = self.config_manager.generate_build_config(httpd_version=httpd_version)
@@ -153,6 +154,9 @@ class BuildManager:
         if cc:
             self.logger.info(f"Using CC: {cc}")
             configure_cmd.append(f"CC={cc}")
+
+        if extra_flags:
+            configure_cmd.extend(extra_flags)
 
         configure_cmd.extend([f"CFLAGS={cflags}", f"LDFLAGS={ldflags}"])
 
