@@ -150,11 +150,12 @@ class BugManager:
         build_manager.compile_httpd()
 
         # 4. Link harnesses
+        harness_name = bug.harness
         for engine in ("afl", "standalone"):
             harness_path = Config.WORK_DIR / f"fuzz_harness_{engine}"
             if not harness_path.exists():
                 logger.info(f"Linking {engine} harness...")
-                build_manager.build_harness(mode=engine)
+                build_manager.build_harness(mode=engine, harness_name=harness_name)
 
         # Bug-specific setup
         logger.info("Running bug-specific setup...")
@@ -178,6 +179,20 @@ class BugManager:
             CVE identifier.
         """
         bug = self.get_bug_instance(cve_id)
+
+        # Warn on version mismatch
+        expected_version = bug.version
+        httpd_dir = Config.get_apache_dir(expected_version)
+        if not httpd_dir.exists():
+            # Check what version is actually built
+            built_dirs = [d for d in Config.WORK_DIR.glob("httpd-*") if not d.name.endswith(("-cov", "-standalone"))]
+            if built_dirs:
+                built_versions = [d.name.replace("httpd-", "") for d in built_dirs]
+                logger.warning(
+                    f"{bug.cve_id} targets Apache {expected_version}, "
+                    f"but only {', '.join(built_versions)} found. "
+                    f"Run 'apatchy bug setup {cve_id}' to build the correct version."
+                )
 
         if not bug.seeds_dir.exists() or not any(bug.seeds_dir.iterdir()):
             logger.info("No seeds found, generating...")

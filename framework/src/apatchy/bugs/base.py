@@ -76,6 +76,11 @@ class Bug:
         return self.manifest.get("build", {}).get("sanitizers", ["asan"])
 
     @property
+    def harness(self) -> Optional[str]:
+        """Harness name to use for this bug (e.g. ``mod_fuzzy``)."""
+        return self.manifest.get("reproduce", {}).get("harness")
+
+    @property
     def triage_timeout(self) -> int:
         """Recommended triage timeout in seconds."""
         return self.manifest.get("reproduce", {}).get("timeout", 30)

@@ -16,3 +16,4 @@ configure_flags = []
 [reproduce]
 timeout = 120
 suppress = "ubsan.supp"
+harness = "mod_fuzzy"
