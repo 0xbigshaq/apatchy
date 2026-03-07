@@ -298,8 +298,6 @@ class ReportManager:
 
         # Skip harness rebuild if it's already newer than the coverage libs
         harness = self.work_dir / "fuzz_harness_coverage"
-        if not harness.exists():
-            harness = self.work_dir / ".libs" / "fuzz_harness_coverage"
         libmain = cov_root / "server" / "libmain.la"
         if harness.exists() and libmain.exists() and harness.stat().st_mtime > libmain.stat().st_mtime:
             self.logger.info(f"Coverage harness up to date: {harness}")
@@ -309,11 +307,7 @@ class ReportManager:
         self.logger.info("Building coverage-instrumented harness...")
         builder.build(mode="coverage", cflags=cflags, ldflags=ldflags, cc=cc, harness_name=harness_name)
 
-        # With static APR (--disable-shared), the binary is in cwd.
-        # Fall back to .libs/ for older shared-library builds.
         harness = self.work_dir / "fuzz_harness_coverage"
-        if not harness.exists():
-            harness = self.work_dir / ".libs" / "fuzz_harness_coverage"
         if not harness.exists():
             raise FileNotFoundError("Failed to build fuzz_harness_coverage")
 

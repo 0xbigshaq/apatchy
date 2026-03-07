@@ -19,70 +19,31 @@ logger = get_logger(__name__)
 class MutatorManager:
     """Manages AFL++ grammar mutators and simple custom mutators."""
 
-    # The grammar-mutator repo is a submodule of AFL++ at:
-    #   AFLplusplus/custom_mutators/grammar_mutator/grammar_mutator/
-    # It contains GNUmakefile and takes GRAMMAR_FILE=<path> to build
-    # a per-grammar libgrammarmutator-<name>.so.
     GRAMMAR_MUTATOR_REPO = "https://github.com/AFLplusplus/grammar-mutator"
     ANTLR_JAR_URL = "https://www.antlr.org/download/antlr-4.8-complete.jar"
 
     def __init__(self) -> None:
         self.work_dir = Config.WORK_DIR
-        self.aflpp_dir = self.work_dir / "grammar_mutator"
-        # The inner grammar_mutator submodule dir (where GNUmakefile lives)
-        self.grammar_mutator_src = self.aflpp_dir / "custom_mutators" / "grammar_mutator" / "grammar_mutator"
-        self.custom_mutators_out = self.work_dir / "custom_mutators"
+        # grammar-mutator cloned directly (GNUmakefile at root)
+        self.grammar_mutator_dir = self.work_dir / "grammar_mutator"
+        self.custom_mutators_out = Config.CUSTOM_MUTATORS_DIR
 
 
     def setup(self) -> None:
-        """Clone AFL++, init grammar_mutator submodule, download antlr4 jar."""
+        """Clone grammar-mutator repo and download antlr4 jar."""
         self._check_deps(["git", "make", "g++"])
 
-        # 1. Clone AFL++
-        if not self.aflpp_dir.exists():
-            logger.info("Cloning AFLplusplus repository...")
+        if not self.grammar_mutator_dir.exists():
+            logger.info("Cloning grammar-mutator repository...")
             subprocess.run(
-                ["git", "clone", Config.AFLPP_REPO_URL, str(self.aflpp_dir)],
+                ["git", "clone", self.GRAMMAR_MUTATOR_REPO, str(self.grammar_mutator_dir)],
                 check=True,
             )
         else:
-            logger.info("Using existing AFLplusplus directory...")
+            logger.info("Using existing grammar-mutator directory...")
 
-        # 2. Init grammar_mutator submodule
-        gm_wrapper = self.aflpp_dir / "custom_mutators" / "grammar_mutator"
-        if not gm_wrapper.exists():
-            logger.error("custom_mutators/grammar_mutator not found in AFL++ source.")
-            return
-
-        version_file = gm_wrapper / "GRAMMAR_VERSION"
-        grammar_version = version_file.read_text().strip() if version_file.exists() else "main"
-
-        if not any(self.grammar_mutator_src.iterdir()) if self.grammar_mutator_src.exists() else True:
-            logger.info("Initializing grammar_mutator submodule...")
-            # Try submodule init first
-            result = subprocess.run(
-                ["git", "submodule", "update", "--init", "custom_mutators/grammar_mutator/grammar_mutator"],
-                cwd=self.aflpp_dir,
-                capture_output=True,
-                text=True,
-            )
-            # If submodule init failed (e.g. shallow clone), clone directly
-            if result.returncode != 0 or not any(self.grammar_mutator_src.iterdir()):
-                logger.info(f"Cloning grammar-mutator repo (version {grammar_version})...")
-                if self.grammar_mutator_src.exists():
-                    shutil.rmtree(self.grammar_mutator_src)
-                subprocess.run(
-                    ["git", "clone", self.GRAMMAR_MUTATOR_REPO, str(self.grammar_mutator_src)],
-                    check=True,
-                )
-                subprocess.run(
-                    ["git", "checkout", grammar_version],
-                    cwd=self.grammar_mutator_src,
-                    check=True,
-                )
-
-        # 3. Download antlr4 jar if missing
-        antlr_jar = self.grammar_mutator_src / "antlr-4.8-complete.jar"
+        # Download antlr4 jar if missing
+        antlr_jar = self.grammar_mutator_dir / "antlr-4.8-complete.jar"
         if not antlr_jar.exists():
             logger.info("Downloading antlr-4.8-complete.jar...")
             subprocess.run(
@@ -90,12 +51,12 @@ class MutatorManager:
                 check=True,
             )
 
-        logger.info(f"Grammar mutator ready at {self.grammar_mutator_src}")
+        logger.info(f"Grammar mutator ready at {self.grammar_mutator_dir}")
         logger.info("Run 'apatchy grammar build <name>' to build a grammar .so")
 
     def build_grammar(self, grammar_name: str) -> Optional[Path]:
         """Build libgrammarmutator-<name>.so for the given grammar."""
-        if not self.grammar_mutator_src.exists() or not any(self.grammar_mutator_src.iterdir()):
+        if not self.grammar_mutator_dir.exists() or not any(self.grammar_mutator_dir.iterdir()):
             logger.error("Grammar mutator not set up. Run 'apatchy grammar setup' first.")
             return None
 
@@ -113,18 +74,18 @@ class MutatorManager:
         ]
 
         try:
-            subprocess.run(cmd, cwd=self.grammar_mutator_src, check=True)
+            subprocess.run(cmd, cwd=self.grammar_mutator_dir, check=True)
         except subprocess.CalledProcessError:
             logger.error("Grammar mutator build failed.")
             return None
 
-        so_path = self.grammar_mutator_src / f"libgrammarmutator-{grammar_name}.so"
+        so_path = self.grammar_mutator_dir / f"libgrammarmutator-{grammar_name}.so"
         if so_path.exists():
             logger.info(f"Built: {so_path}")
             return so_path
 
         # Some versions output without the name suffix
-        fallback = self.grammar_mutator_src / "libgrammarmutator.so"
+        fallback = self.grammar_mutator_dir / "libgrammarmutator.so"
         if fallback.exists():
             logger.info(f"Built: {fallback}")
             return fallback
@@ -135,20 +96,20 @@ class MutatorManager:
     def status(self) -> Dict[str, object]:
         """Return a dict describing what's set up and what's been built."""
         src_ready = (
-            self.grammar_mutator_src.exists() and any(self.grammar_mutator_src.iterdir())
-            if self.grammar_mutator_src.exists()
+            self.grammar_mutator_dir.exists() and any(self.grammar_mutator_dir.iterdir())
+            if self.grammar_mutator_dir.exists()
             else False
         )
         info: Dict[str, object] = {
             "setup": src_ready,
-            "grammar_mutator_dir": str(self.grammar_mutator_src),
+            "grammar_mutator_dir": str(self.grammar_mutator_dir),
             "built_grammars": [],
             "built_custom_mutators": [],
         }
         if src_ready:
             info["built_grammars"] = [
                 p.stem.replace("libgrammarmutator-", "")
-                for p in self.grammar_mutator_src.glob("libgrammarmutator-*.so")
+                for p in self.grammar_mutator_dir.glob("libgrammarmutator-*.so")
             ]
         if self.custom_mutators_out.exists():
             info["built_custom_mutators"] = [p.stem for p in self.custom_mutators_out.glob("*.so")]
@@ -219,21 +180,16 @@ class MutatorManager:
 
 
     def _resolve_grammar_file(self, name: str) -> Optional[Path]:
-        """Resolve a grammar name to a .json file path."""
-        # 1. Bundled grammars/<name>.json
+        """Resolve a grammar name or path to a .json file."""
+        # Bundled grammars/<name>.json
         bundled = Config.GRAMMARS_DIR / f"{name}.json"
         if bundled.exists():
             return bundled.resolve()
 
-        # Literal path
-        literal = Path(name)
-        if literal.exists():
-            return literal.resolve()
-
-        # 3. WORK_DIR/<name>.json
-        work = self.work_dir / f"{name}.json"
-        if work.exists():
-            return work.resolve()
+        # User-supplied path
+        path = Path(name)
+        if path.exists():
+            return path.resolve()
 
         return None
 

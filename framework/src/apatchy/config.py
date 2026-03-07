@@ -35,8 +35,9 @@ class Config:
 
     # AFL++ / Mutators
     AFLPP_REPO_URL = "https://github.com/AFLplusplus/AFLplusplus"
-    GRAMMARS_DIR = Path(__file__).parent / "grammars"
-    CUSTOM_MUTATORS_DIR = Path(__file__).parent / "custom_mutators"
+    FRAMEWORK_DIR = Path(__file__).parent.parent.parent.resolve()
+    GRAMMARS_DIR = FRAMEWORK_DIR / "grammars"
+    CUSTOM_MUTATORS_DIR = FRAMEWORK_DIR / "custom_mutators"
     HARNESSES_DIR = Path(__file__).parent / "harnesses"
     EXTERNAL_MODULES_DIR = Path(__file__).parent / "external_modules"
     DEV_DIR = WORK_DIR / "dev"

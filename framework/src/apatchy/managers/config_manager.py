@@ -126,22 +126,13 @@ class ConfigManager:
         return result
 
     def get_httpd_config(self, config_name: Optional[str] = None) -> Optional[Path]:
-        """Return the path to the requested httpd config file.
-
-        Look in the package resources or a local configs directory.
-        """
+        """Return the path to the requested httpd config file."""
         if config_name is None:
             config_name = self.config_name
 
-        # 1. Try the path as given (supports relative/absolute paths)
-        direct_path = Path(config_name)
-        if direct_path.exists():
-            return direct_path.resolve()
-
-        # 2. Fall back to ./configs/<name>
-        user_config_path = Path("configs") / config_name
-        if user_config_path.exists():
-            return user_config_path.resolve()
+        config_path = Path(config_name)
+        if config_path.exists():
+            return config_path.resolve()
 
         self.logger.warning(f"Config file '{config_name}' not found")
         return None

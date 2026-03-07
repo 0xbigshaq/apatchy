@@ -297,9 +297,6 @@ class BugManager:
             candidate = Config.WORK_DIR / name
             if candidate.exists():
                 return candidate
-            candidate = Config.WORK_DIR / ".libs" / name
-            if candidate.exists():
-                return candidate
         return None
 
     @staticmethod

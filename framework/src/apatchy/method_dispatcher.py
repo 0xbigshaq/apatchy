@@ -223,12 +223,7 @@ class MethodDispatcher:
         self.config_manager = ConfigManager(engine=args.engine, config_name=args.config)
         self.fuzz_manager = FuzzManager(self.config_manager)
 
-        # With static APR linking (--disable-shared), libtool places the
-        # real binary directly in the CWD.  Fall back to .libs/ for
-        # backward compatibility with older shared-library builds.
         harness_path = Config.WORK_DIR / f"fuzz_harness_{args.engine}"
-        if not harness_path.exists():
-            harness_path = Config.WORK_DIR / ".libs" / f"fuzz_harness_{args.engine}"
         if not harness_path.exists():
             logger.error(f"Harness not found: {harness_path}. Run 'apatchy link {args.engine}' first.")
             return
@@ -258,16 +253,9 @@ class MethodDispatcher:
 
         # Find a harness binary for triage. Prefer standalone (reads from
         # stdin) over AFL (expects shared memory forkserver protocol).
-        # With static APR linking (--disable-shared), libtool places the
-        # real binary directly in the CWD.  Fall back to .libs/ for
-        # backward compatibility with older shared-library builds.
         harness_path = None
         for name in ("fuzz_harness_standalone", "fuzz_harness_afl"):
             candidate = Config.WORK_DIR / name
-            if candidate.exists():
-                harness_path = candidate
-                break
-            candidate = Config.WORK_DIR / ".libs" / name
             if candidate.exists():
                 harness_path = candidate
                 break
