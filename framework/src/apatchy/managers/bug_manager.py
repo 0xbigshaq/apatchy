@@ -149,13 +149,11 @@ class BugManager:
         logger.info("Building Apache...")
         build_manager.compile_httpd()
 
-        # 4. Link harnesses
+        # Link harnesses (always relink to match the version we just built)
         harness_name = bug.harness
         for engine in ("afl", "standalone"):
-            harness_path = Config.WORK_DIR / f"fuzz_harness_{engine}"
-            if not harness_path.exists():
-                logger.info(f"Linking {engine} harness...")
-                build_manager.build_harness(mode=engine, harness_name=harness_name)
+            logger.info(f"Linking {engine} harness...")
+            build_manager.build_harness(mode=engine, harness_name=harness_name)
 
         # Bug-specific setup
         logger.info("Running bug-specific setup...")
@@ -190,14 +188,8 @@ class BugManager:
             logger.error("No harness binary found. Run 'apatchy bug setup %s' first.", cve_id)
             return
 
-        # Check harness version against bug's target version
-        harness_version = self._detect_harness_version(harness_path)
-        if harness_version and harness_version != bug.version:
-            logger.warning(
-                f"Harness is built against Apache {harness_version}, "
-                f"but {bug.cve_id} targets {bug.version}. "
-                f"Run 'apatchy bug setup {cve_id}' to rebuild."
-            )
+        # TODO(#27): detect harness version via `fuzz_harness --version`
+        # and warn if it doesn't match bug.version
 
         # Check for custom reproduce()
         if type(bug).reproduce is not Bug.reproduce:
@@ -308,27 +300,6 @@ class BugManager:
             candidate = Config.WORK_DIR / ".libs" / name
             if candidate.exists():
                 return candidate
-        return None
-
-    @staticmethod
-    def _detect_harness_version(harness_path: Path) -> Optional[str]:
-        """Extract the Apache version baked into a harness binary."""
-        import re
-        import subprocess
-
-        try:
-            result = subprocess.run(
-                ["strings", str(harness_path)],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-            for line in result.stdout.splitlines():
-                match = re.match(r"Apache/(\d+\.\d+\.\d+)", line)
-                if match:
-                    return match.group(1)
-        except Exception:
-            pass
         return None
 
     @staticmethod
