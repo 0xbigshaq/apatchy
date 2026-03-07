@@ -10,10 +10,10 @@ references = [
 ]
 
 [build]
-sanitizers = ["asan", "ubsan"]
+sanitizers = ["asan", "ubsan", "intsan"]
 configure_flags = []
 
 [reproduce]
-timeout = 120
+timeout = 300
 suppress = "ubsan.supp"
 harness = "mod_fuzzy"
