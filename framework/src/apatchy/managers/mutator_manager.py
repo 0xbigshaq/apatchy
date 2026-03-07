@@ -79,16 +79,15 @@ class MutatorManager:
             logger.error("Grammar mutator build failed.")
             return None
 
-        so_path = self.grammar_mutator_dir / f"libgrammarmutator-{grammar_name}.so"
-        if so_path.exists():
+        # The .so may be at the root or nested (e.g. inside custom_mutators/grammar_mutator/)
+        for so_path in self.grammar_mutator_dir.rglob(f"libgrammarmutator-{grammar_name}.so"):
             logger.info(f"Built: {so_path}")
             return so_path
 
         # Some versions output without the name suffix
-        fallback = self.grammar_mutator_dir / "libgrammarmutator.so"
-        if fallback.exists():
-            logger.info(f"Built: {fallback}")
-            return fallback
+        for so_path in self.grammar_mutator_dir.rglob("libgrammarmutator.so"):
+            logger.info(f"Built: {so_path}")
+            return so_path
 
         logger.error("Build completed but .so not found.")
         return None
@@ -109,7 +108,7 @@ class MutatorManager:
         if src_ready:
             info["built_grammars"] = [
                 p.stem.replace("libgrammarmutator-", "")
-                for p in self.grammar_mutator_dir.glob("libgrammarmutator-*.so")
+                for p in self.grammar_mutator_dir.rglob("libgrammarmutator-*.so")
             ]
         if self.custom_mutators_out.exists():
             info["built_custom_mutators"] = [p.stem for p in self.custom_mutators_out.glob("*.so")]
