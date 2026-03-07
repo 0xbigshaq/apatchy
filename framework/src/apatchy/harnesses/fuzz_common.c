@@ -331,8 +331,20 @@ static apr_status_t fuzz_input_filter(
             if (rv != APR_SUCCESS && !APR_STATUS_IS_EOF(rv)) {
                 return rv;
             }
+            /* Move only the buckets before the split point (i.e. the
+             * requested amount) into the output brigade.  The rest
+             * stays in net->bb for subsequent reads. */
+            while (!APR_BRIGADE_EMPTY(net->bb)) {
+                apr_bucket *e = APR_BRIGADE_FIRST(net->bb);
+                if (e == b) {
+                    break;
+                }
+                APR_BUCKET_REMOVE(e);
+                APR_BRIGADE_INSERT_TAIL(bb, e);
+            }
+        } else {
+            APR_BRIGADE_CONCAT(bb, net->bb);
         }
-        APR_BRIGADE_CONCAT(bb, net->bb);
         return APR_SUCCESS;
     } else if (mode == AP_MODE_SPECULATIVE) {
         apr_bucket *e;
