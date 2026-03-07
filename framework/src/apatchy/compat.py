@@ -24,12 +24,9 @@ Example::
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
-
-def _parse_version(version_str: str) -> Tuple[int, ...]:
-    """Parse ``'2.4.52'`` into ``(2, 4, 52)`` for comparison."""
-    return tuple(int(p) for p in version_str.strip().split("."))
+from packaging.version import Version
 
 
 def extract_version_from_path(httpd_root: Path) -> Optional[str]:
@@ -131,16 +128,16 @@ def get_compat_flags(httpd_version: str) -> CompatResult:
         Aggregated ``cflags``, ``ldflags``, ``configure_args``, and the
         list of matched entry IDs (``applied_ids``).
     """
-    version = _parse_version(httpd_version)
+    version = Version(httpd_version)
     applied_ids: List[str] = []
     cflags: List[str] = []
     ldflags: List[str] = []
     configure_args: List[str] = []
 
     for entry in COMPAT_REGISTRY:
-        if entry.min_version is not None and version < _parse_version(entry.min_version):
+        if entry.min_version is not None and version < Version(entry.min_version):
             continue
-        if entry.max_version is not None and version > _parse_version(entry.max_version):
+        if entry.max_version is not None and version > Version(entry.max_version):
             continue
         applied_ids.append(entry.id)
         cflags.extend(entry.cflags)
