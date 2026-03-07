@@ -1,0 +1,19 @@
+[bug]
+id = "CVE-2021-44790"
+description = "Integer underflow in mod_lua (lua_request.c)"
+modules = ["mod_lua"]
+version = "2.4.51"
+type = "integer-underflow"
+references = [
+    "https://httpd.apache.org/security/vulnerabilities_24.html",
+    "https://www.zerodayinitiative.com/blog/2022/1/25/cve-2021-44790-code-execution-on-apache-via-an-integer-underflow",
+]
+
+[build]
+sanitizers = ["asan", "ubsan"]
+configure_flags = []
+
+[reproduce]
+timeout = 10
+suppress = "ubsan.supp"
+harness = "mod_fuzzy"
