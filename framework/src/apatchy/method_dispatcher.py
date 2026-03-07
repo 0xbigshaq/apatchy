@@ -434,7 +434,7 @@ class MethodDispatcher:
 
         action = getattr(args, "action", None)
         if not action:
-            logger.error("No harness sub-command specified. Use: list, use")
+            logger.error("No harness sub-command specified. Use: list")
             return
 
         if action == "list":
@@ -448,14 +448,6 @@ class MethodDispatcher:
             for h in harnesses:
                 table.add_row(h["name"], h["description"] or "(no description)")
             console.print(table)
-
-        elif action == "use":
-            name = args.name
-            try:
-                dest = HarnessBuilder.use_harness(name)
-                console.print(f"[green]Harness '{name}' copied to {dest}[/green]")
-            except FileNotFoundError as e:
-                logger.error(str(e))
 
     def _handle_coverage(self, args: argparse.Namespace) -> None:
         action = getattr(args, "action", None)
@@ -790,8 +782,6 @@ class MethodDispatcher:
         # Build artifacts (always cleaned)
         build_patterns = [
             "fuzz_harness_*",  # compiled harness binaries
-            "fuzz_harness.c",  # copied harness source
-            "fuzz_common.[cho]",  # copied companion files
             "fuzz_common.lo",
             "fuzz_harness.o",
             "fuzz_harness.lo",

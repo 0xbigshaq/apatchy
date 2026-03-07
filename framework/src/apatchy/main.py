@@ -245,8 +245,6 @@ def main():
     harness_parser = _sub(subparsers, "harness", help="Manage fuzzing harnesses")
     harness_sub = harness_parser.add_subparsers(dest="action")
     _sub(harness_sub, "list", help="List available harnesses")
-    harness_use = _sub(harness_sub, "use", help="Select a harness for building")
-    harness_use.add_argument("name", help="Harness name (e.g. 'mod_fuzzy')")
 
     # Module (external DSO modules)
     module_parser = _sub(subparsers, "module", help="Manage external Apache modules")

@@ -1,7 +1,7 @@
 """Build, link, and manage fuzzing harness binaries.
 
-:class:`HarnessBuilder` compiles ``fuzz_harness.c`` against the Apache
-build tree and links it with all statically-built modules, producing a
+:class:`HarnessBuilder` compiles harness sources against the Apache
+build tree and links them with all statically-built modules, producing a
 self-contained binary for AFL++, LibFuzzer, or standalone execution.
 """
 
@@ -65,7 +65,6 @@ class HarnessBuilder:
         Resolution order:
         - Bundled: HARNESSES_DIR/<name>.c
         - Literal path: <name> as file path
-        3. Work dir: WORK_DIR/<name>.c
         """
         # Bundled
         bundled = Config.HARNESSES_DIR / f"{name}.c"
@@ -75,22 +74,7 @@ class HarnessBuilder:
         literal = Path(name)
         if literal.exists():
             return literal
-        # 3. Work dir
-        work = Config.WORK_DIR / f"{name}.c"
-        if work.exists():
-            return work
         return None
-
-    @staticmethod
-    def use_harness(name):
-        """Copy a harness to the CWD as fuzz_harness.c."""
-        path = HarnessBuilder.resolve_harness(name)
-        if not path:
-            raise FileNotFoundError(f"Harness '{name}' not found")
-        dest = Path("fuzz_harness.c")
-        shutil.copy(path, dest)
-        logger.info(f"Using harness: {path.name} -> {dest}")
-        return dest
 
     def build(self, mode="standalone", cflags="", ldflags="", harness_name=None, cc=None, bear=False):
         """Compile and link the harness for the given fuzzing engine.
@@ -105,7 +89,8 @@ class HarnessBuilder:
         ldflags : str
             Extra linker flags.
         harness_name : str, optional
-            Name of a bundled harness to copy before building.
+            Name of a bundled harness or path to a harness source file.
+            Defaults to ``"mod_fuzzy"`` if not provided.
         cc : str, optional
             Override the compiler (defaults to :data:`COMPILERS` lookup).
         bear : bool
@@ -142,40 +127,33 @@ class HarnessBuilder:
         elif mode == "libfuzzer":
             cflags = f"-DLIBFUZZER {cflags}"
 
-        # If a harness name was provided, copy it to CWD first
-        if harness_name:
-            self.use_harness(harness_name)
+        # Resolve harness source file
+        if not harness_name:
+            harness_name = "mod_fuzzy"
+        harness_src = self.resolve_harness(harness_name)
+        if harness_src is None:
+            self.logger.error(f"Harness '{harness_name}' not found")
+            raise FileNotFoundError(f"Harness '{harness_name}' not found")
+        harness_src = harness_src.resolve()
+        self.logger.info(f"Using harness: {harness_src}")
 
-        # Ensure harness source exists
-        src = Path("fuzz_harness.c")
-        if not src.exists():
-            # Default to mod_fuzzy harness
-            default_harness = Config.HARNESSES_DIR / "mod_fuzzy.c"
-            if default_harness.exists():
-                self.logger.info(f"Copying default harness from {default_harness}")
-                shutil.copy(default_harness, src)
-            else:
-                self.logger.error("fuzz_harness.c not found and no default harness available!")
-                raise FileNotFoundError("fuzz_harness.c not found")
+        # Check if the harness uses fuzz_common.h
+        has_fuzz_common = '"fuzz_common.h"' in harness_src.read_text()
 
-        # If the harness uses fuzz_common.h, copy companion files before compiling
-        has_fuzz_common = False
-        harness_text = Path("fuzz_harness.c").read_text()
-        if '"fuzz_common.h"' in harness_text:
-            for companion in ("fuzz_common.c", "fuzz_common.h"):
-                companion_src = Config.HARNESSES_DIR / companion
-                companion_dest = Path(companion)
-                if companion_src.exists() and not companion_dest.exists():
-                    shutil.copy(companion_src, companion_dest)
-                    self.logger.info(f"Copied companion: {companion}")
-            has_fuzz_common = True
+        # Add harness directory to include path so #include "fuzz_common.h" works
+        harness_dir = harness_src.parent
+        cflags = f"-I{harness_dir} {cflags}"
 
         # Compile harness object
-        self._compile_object("fuzz_harness.c", "fuzz_harness.lo", cflags, cc, bear=bear)
+        self._compile_object(str(harness_src), "fuzz_harness.lo", cflags, cc, bear=bear)
 
         # Compile fuzz_common if needed
         if has_fuzz_common:
-            self._compile_object("fuzz_common.c", "fuzz_common.lo", cflags, cc, bear=bear)
+            fuzz_common_src = harness_dir / "fuzz_common.c"
+            if not fuzz_common_src.exists():
+                self.logger.error(f"fuzz_common.c not found in {harness_dir}")
+                raise FileNotFoundError(f"fuzz_common.c not found in {harness_dir}")
+            self._compile_object(str(fuzz_common_src), "fuzz_common.lo", cflags, cc, bear=bear)
 
         # Compile buildmark.c (provides ap_get_server_built)
         buildmark_src = self.httpd_root / "server" / "buildmark.c"

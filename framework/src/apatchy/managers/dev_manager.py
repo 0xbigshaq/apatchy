@@ -70,10 +70,6 @@ class DevManager:
             logger.error(f"Project '{name}' not found at {project_dir}")
             raise FileNotFoundError(f"Project '{name}' not found")
 
-        # Copy harness.c -> fuzz_harness.c (what HarnessBuilder expects)
-        fuzz_harness = project_dir / "fuzz_harness.c"
-        shutil.copy(harness_src, fuzz_harness)
-
         # Regenerate compile_commands.json
         self._generate_compile_commands(project_dir)
 
@@ -90,7 +86,7 @@ class DevManager:
         else:
             harness_builder = self.harness_builder
 
-        # Build in the project directory (HarnessBuilder writes relative to CWD)
+        # Build in the project directory (libtool writes .lo files relative to CWD)
         config_manager = ConfigManager()
         config = config_manager.generate_build_config()
         cflags = config["CFLAGS"]
@@ -103,6 +99,7 @@ class DevManager:
                 mode=engine,
                 cflags=cflags,
                 ldflags=ldflags,
+                harness_name=str(harness_src),
             )
         finally:
             os.chdir(original_cwd)
