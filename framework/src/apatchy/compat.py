@@ -28,6 +28,9 @@ from typing import List, Optional
 
 from packaging.version import Version
 
+_HARNESS_DIR = Path(__file__).resolve().parent / "harnesses"
+OPENSSL3_COMPAT_H = str(_HARNESS_DIR / "openssl3_compat.h")
+
 
 def extract_version_from_path(httpd_root: Path) -> Optional[str]:
     """Extract the HTTPD version from a directory name.
@@ -107,6 +110,22 @@ COMPAT_REGISTRY: List[CompatEntry] = [
         ),
         max_version="2.4.58",
         cflags=["-Wno-error=deprecated-declarations"],
+    ),
+    # TODO: Issue #30
+    CompatEntry(
+        id="openssl3-removed-api",
+        description=(
+            "httpd <= 2.4.51 calls ERR_GET_FUNC which was removed "
+            "(not just deprecated) in OpenSSL 3.0, causing a linker "
+            "error.  Also uses implicit function declarations that "
+            "newer clang treats as errors."
+        ),
+        max_version="2.4.51",
+        cflags=[
+            "-Wno-error=deprecated-declarations",
+            "-Wno-implicit-function-declaration",
+            f"-include {OPENSSL3_COMPAT_H}",
+        ],
     ),
 ]
 
