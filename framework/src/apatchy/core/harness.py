@@ -144,8 +144,15 @@ class HarnessBuilder:
         harness_dir = harness_src.parent
         cflags = f"-I{harness_dir} {cflags}"
 
+        # bear output goes into the harness source directory so .clangd can find it
+        bear_output = None
+        if bear:
+            bear_cdb = harness_dir / "compile_commands.json"
+            bear_cdb.unlink(missing_ok=True)
+            bear_output = str(bear_cdb)
+
         # Compile harness object
-        self._compile_object(str(harness_src), "fuzz_harness.lo", cflags, cc, bear=bear)
+        self._compile_object(str(harness_src), "fuzz_harness.lo", cflags, cc, bear_output=bear_output)
 
         # Compile fuzz_common if needed
         if has_fuzz_common:
@@ -153,16 +160,16 @@ class HarnessBuilder:
             if not fuzz_common_src.exists():
                 self.logger.error(f"fuzz_common.c not found in {harness_dir}")
                 raise FileNotFoundError(f"fuzz_common.c not found in {harness_dir}")
-            self._compile_object(str(fuzz_common_src), "fuzz_common.lo", cflags, cc, bear=bear)
+            self._compile_object(str(fuzz_common_src), "fuzz_common.lo", cflags, cc, bear_output=bear_output)
 
         # Compile buildmark.c (provides ap_get_server_built)
         buildmark_src = self.httpd_root / "server" / "buildmark.c"
-        self._compile_object(str(buildmark_src), "buildmark.lo", cflags, cc, bear=bear)
+        self._compile_object(str(buildmark_src), "buildmark.lo", cflags, cc)
 
         # Compile modules.c (provides ap_prelinked_modules, ap_prelinked_module_symbols)
         modules_src = self.httpd_root / "modules.c"
         if modules_src.exists():
-            self._compile_object(str(modules_src), "modules.lo", cflags, cc, bear=bear)
+            self._compile_object(str(modules_src), "modules.lo", cflags, cc)
 
         # All harness modes provide their own main() which conflicts with
         # Apache's main() in libmain.a. Use -z muldefs to allow both;
@@ -234,12 +241,12 @@ class HarnessBuilder:
                     includes.append(f"-I{p}")
         return includes
 
-    def _compile_object(self, src, dest, cflags, cc="clang", bear=False):
+    def _compile_object(self, src, dest, cflags, cc="clang", bear_output=None):
         includes = self.get_include_paths()
 
         cmd = [str(self.libtool), "--mode=compile", cc, *cflags.split(), *includes, "-c", src, "-o", dest]
-        if bear:
-            cmd = ["bear", "--append", "--"] + cmd
+        if bear_output:
+            cmd = ["bear", "--output", bear_output, "--append", "--"] + cmd
         src_name = Path(src).name
         self.runner.run_build(cmd, label=f"Compiling {src_name}")
 
