@@ -2,29 +2,36 @@
 
 from pathlib import Path
 
+from packaging.version import Version
+
 from apatchy.compat import (
     CompatEntry,
-    _parse_version,
     extract_version_from_path,
     get_compat_flags,
 )
 
-# --- _parse_version ---
+# --- Version parsing ---
 
 
-def test_parse_version_three_parts():
-    """_parse_version handles standard X.Y.Z strings."""
-    assert _parse_version("2.4.52") == (2, 4, 52)
+def test_version_three_parts():
+    """Version handles standard X.Y.Z strings."""
+    v = Version("2.4.52")
+    assert v.major == 2
+    assert v.minor == 4
+    assert v.micro == 52
 
 
-def test_parse_version_large_patch():
-    """_parse_version handles large patch numbers."""
-    assert _parse_version("2.4.999") == (2, 4, 999)
+def test_version_large_patch():
+    """Version handles large patch numbers."""
+    v = Version("2.4.999")
+    assert v.micro == 999
 
 
-def test_parse_version_single_digit():
-    """_parse_version handles single-digit components."""
-    assert _parse_version("1.0.0") == (1, 0, 0)
+def test_version_comparison():
+    """Version comparison works correctly."""
+    assert Version("2.4.52") < Version("2.4.53")
+    assert Version("2.4.52") > Version("2.4.51")
+    assert Version("2.4.52") == Version("2.4.52")
 
 
 # --- extract_version_from_path ---

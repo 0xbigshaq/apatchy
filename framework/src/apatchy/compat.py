@@ -28,8 +28,9 @@ from typing import List, Optional
 
 from packaging.version import Version
 
-_HARNESS_DIR = Path(__file__).resolve().parent / "harnesses"
-OPENSSL3_COMPAT_H = str(_HARNESS_DIR / "openssl3_compat.h")
+from apatchy.config import Config
+
+OPENSSL3_COMPAT_H = str(Config.HARNESSES_DIR / "openssl3_compat.h")
 
 
 def extract_version_from_path(httpd_root: Path) -> Optional[str]:

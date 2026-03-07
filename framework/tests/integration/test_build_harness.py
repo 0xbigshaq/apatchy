@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 
-from apatchy.config import Config
 from apatchy.core.harness import HarnessBuilder
 
 
@@ -127,16 +126,11 @@ def test_all_harnesses_compile(httpd: Path, build_dir: Path, mp: pytest.MonkeyPa
     skip = {"fuzz_common"}
     harness_names = [h["name"] for h in harnesses if h["name"] not in skip]
 
-    # Copy companion files that harnesses may #include
-    for companion in ("fuzz_common.c", "fuzz_common.h"):
-        src = Config.HARNESSES_DIR / companion
-        if src.exists():
-            shutil.copy(src, build_dir / companion)
-
     for name in harness_names:
-        # Copy harness to CWD and compile the object (not full link)
-        builder.use_harness(name)
-        builder._compile_object("fuzz_harness.c", f"{name}.lo", "-g -O0", "clang")
+        harness_src = builder.resolve_harness(name)
+        assert harness_src is not None, f"Could not resolve harness: {name}"
+        cflags = f"-I{harness_src.parent} -g -O0"
+        builder._compile_object(str(harness_src), f"{name}.lo", cflags, "clang")
         # The .lo file (libtool descriptor) should exist
         lo_file = build_dir / f"{name}.lo"
         assert lo_file.exists(), f"Failed to compile harness: {name}"
