@@ -180,20 +180,6 @@ class BugManager:
         """
         bug = self.get_bug_instance(cve_id)
 
-        # Warn on version mismatch
-        expected_version = bug.version
-        httpd_dir = Config.get_apache_dir(expected_version)
-        if not httpd_dir.exists():
-            # Check what version is actually built
-            built_dirs = [d for d in Config.WORK_DIR.glob("httpd-*") if not d.name.endswith(("-cov", "-standalone"))]
-            if built_dirs:
-                built_versions = [d.name.replace("httpd-", "") for d in built_dirs]
-                logger.warning(
-                    f"{bug.cve_id} targets Apache {expected_version}, "
-                    f"but only {', '.join(built_versions)} found. "
-                    f"Run 'apatchy bug setup {cve_id}' to build the correct version."
-                )
-
         if not bug.seeds_dir.exists() or not any(bug.seeds_dir.iterdir()):
             logger.info("No seeds found, generating...")
             bug.generate_seeds()
@@ -203,6 +189,15 @@ class BugManager:
         if harness_path is None:
             logger.error("No harness binary found. Run 'apatchy bug setup %s' first.", cve_id)
             return
+
+        # Check harness version against bug's target version
+        harness_version = self._detect_harness_version(harness_path)
+        if harness_version and harness_version != bug.version:
+            logger.warning(
+                f"Harness is built against Apache {harness_version}, "
+                f"but {bug.cve_id} targets {bug.version}. "
+                f"Run 'apatchy bug setup {cve_id}' to rebuild."
+            )
 
         # Check for custom reproduce()
         if type(bug).reproduce is not Bug.reproduce:
@@ -313,6 +308,27 @@ class BugManager:
             candidate = Config.WORK_DIR / ".libs" / name
             if candidate.exists():
                 return candidate
+        return None
+
+    @staticmethod
+    def _detect_harness_version(harness_path: Path) -> Optional[str]:
+        """Extract the Apache version baked into a harness binary."""
+        import re
+        import subprocess
+
+        try:
+            result = subprocess.run(
+                ["strings", str(harness_path)],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            for line in result.stdout.splitlines():
+                match = re.match(r"Apache/(\d+\.\d+\.\d+)", line)
+                if match:
+                    return match.group(1)
+        except Exception:
+            pass
         return None
 
     @staticmethod
