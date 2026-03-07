@@ -156,7 +156,9 @@ def main():
     fuzz_parser = _sub(subparsers, "fuzz", help="Start fuzzing")
     fuzz_parser.add_argument("--engine", choices=["afl", "libfuzzer"], default="afl", help="Fuzzing engine")
     fuzz_parser.add_argument("--config", default="fuzz.conf", help="Httpd config file to use")
-    fuzz_parser.add_argument("--mutator", "-m", help="Comma-separated AFL++ custom mutator .so libraries (chained in order)")
+    fuzz_parser.add_argument(
+        "--mutator", "-m", help="Comma-separated AFL++ custom mutator .so libraries (chained in order)"
+    )
     fuzz_parser.add_argument("--grammar", "-g", help="Path to grammar file (sets GRAMMAR_FILE env var)")
     fuzz_parser.add_argument("--resume", action="store_true", help="Resume from existing AFL output directory")
     fuzz_parser.add_argument("--output-dir", default="afl-output", help="AFL output directory (default: afl-output)")
