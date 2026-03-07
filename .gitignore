@@ -48,6 +48,9 @@ afl-output/
 afl-pwn-*/
 afl-cov-report-*/
 
+# Generated bug seeds (created by `apatchy bug setup`)
+framework/bugs/*/seeds/
+
 # Generated grammar seeds (created by `apatchy fuzz --grammar`)
 framework/afl-input/grammar_*.txt
 

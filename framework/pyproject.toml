@@ -53,6 +53,7 @@ ignore = [
     "D104",  # missing docstring in public package
     "D203",  # one-blank-line-before-class (conflicts with D211)
     "D213",  # multi-line-summary-second-line (conflicts with D212)
+    "N801",  # class name convention
 ]
 
 [tool.ruff.lint.pydocstyle]

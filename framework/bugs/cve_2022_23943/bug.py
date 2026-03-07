@@ -74,11 +74,7 @@ class CVE_2022_23943(Bug):
             logger.info(f"{seed_path} already exists, skipping")
             return
 
-        request = (
-            "GET /poc.html HTTP/1.1\r\n"
-            "Host: localhost\r\n"
-            "\r\n"
-        ).encode()
+        request = (b"GET /poc.html HTTP/1.1\r\nHost: localhost\r\n\r\n")
         seed_path.write_bytes(request)
         logger.info(f"wrote {seed_path}")
 
