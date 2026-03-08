@@ -401,6 +401,8 @@ class ReportManager:
         config_name: str = "fuzz.conf",
         output_dir: str = "coverage-report",
         harness_name: str = None,
+        include_sources: list[str] | None = None,
+        exclude_regexes: list[str] | None = None,
     ) -> None:
         """Full coverage pipeline: build harness, replay corpus, merge, generate report."""
         # Detect LLVM toolchain (matched compiler + analysis tools)
@@ -482,6 +484,11 @@ class ReportManager:
 
         self.logger.info("Generating HTML coverage report...")
         extra_objects = [f"--object={so}" for so in cov_modules]
+        source_filters = []
+        for src in include_sources or []:
+            source_filters.append(f"-sources={src}")
+        for regex in exclude_regexes or []:
+            source_filters.append(f"-ignore-filename-regex={regex}")
         show_cmd = [
             cov_bin,
             "show",
@@ -492,6 +499,7 @@ class ReportManager:
             f"-output-dir={html_dir}",
             "-show-line-counts-or-regions",
             "-show-instantiations=false",
+            *source_filters,
         ]
         try:
             subprocess.run(show_cmd, check=True, capture_output=True, text=True)
@@ -507,6 +515,7 @@ class ReportManager:
             str(harness),
             *extra_objects,
             f"-instr-profile={merged_profdata}",
+            *source_filters,
         ]
         try:
             result = subprocess.run(report_cmd, check=True, capture_output=True, text=True)
