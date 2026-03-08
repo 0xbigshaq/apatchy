@@ -21,6 +21,7 @@ from rich.live import Live
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
+from apatchy.compat import extract_version_from_path, get_compat_flags
 from apatchy.core import toolchain_config
 from apatchy.core.harness import HarnessBuilder
 from apatchy.core.process_runner import ProcessRunner
@@ -219,11 +220,23 @@ class ReportManager:
 
         Returns the Path to the coverage httpd root.
         """
+        cflags = ["-g", "-O0", "-fno-omit-frame-pointer",
+                  "-fprofile-instr-generate", "-fcoverage-mapping", "-Wno-error"]
+        ldflags = ["-fprofile-instr-generate", "-lcrypt", "-lm"]
+
+        httpd_version = extract_version_from_path(self.httpd_root)
+        if httpd_version:
+            compat = get_compat_flags(httpd_version)
+            for entry_id in compat.applied_ids:
+                logger.info(f"Applying compat fix: {entry_id}")
+            cflags.extend(compat.cflags)
+            ldflags.extend(compat.ldflags)
+
         tree = AlternateBuildTree(self.httpd_root, "-cov")
         return tree.ensure_build(
             cc=cc,
-            cflags="-g -O0 -fno-omit-frame-pointer -fprofile-instr-generate -fcoverage-mapping -Wno-error",
-            ldflags="-fprofile-instr-generate -lcrypt -lm",
+            cflags=" ".join(cflags),
+            ldflags=" ".join(ldflags),
         )
 
     def _build_coverage_modules(self, cc: str, cov_root: Path) -> List[Path]:
