@@ -213,7 +213,9 @@ def main():
     coverage_report.add_argument("--output", default="coverage-report", help="Output directory for HTML report")
     coverage_report.add_argument("--harness", default=None, help="Harness to use (e.g. mod_fuzzy)")
     coverage_report.add_argument(
-        "--exclude", default=None, help="Path to file containing exclude regex (passed to llvm-cov -ignore-filename-regex)"
+        "--exclude",
+        default=None,
+        help="Path to file containing exclude regex (passed to llvm-cov -ignore-filename-regex)",
     )
     coverage_report.add_argument(
         "--jobs", "-j", type=int, default=1, help="Number of parallel replay workers (default: 1)"
