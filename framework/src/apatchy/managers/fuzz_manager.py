@@ -289,7 +289,7 @@ class FuzzManager:
                     return
                 resolved.append(str(p))
             env["AFL_CUSTOM_MUTATOR_LIBRARY"] = ":".join(resolved)
-            env["AFL_CUSTOM_MUTATOR_ONLY"] = "1"  # FIXME: i need to re-think about this hack
+            # env["AFL_CUSTOM_MUTATOR_ONLY"] = "1"  # FIXME: i need to re-think about this hack
             self.logger.info(f"Using custom mutator(s): {', '.join(resolved)}")
 
         # Preload only dynamically loaded modules referenced by the config
