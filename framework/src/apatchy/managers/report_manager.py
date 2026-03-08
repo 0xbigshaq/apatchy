@@ -13,12 +13,13 @@ import shutil
 import signal
 import subprocess
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import List, Optional, Tuple
 
 from rich.console import Console
 from rich.live import Live
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
 from apatchy.compat import extract_version_from_path, get_compat_flags
@@ -341,6 +342,7 @@ class ReportManager:
         config_path: Path,
         httpd_root: Optional[Path] = None,
         prof_offset: int = 0,
+        jobs: int = 1,
     ) -> int:
         """Replay AFL queue through coverage harness, producing .profraw files."""
         env = os.environ.copy()
@@ -369,23 +371,33 @@ class ReportManager:
             return 0
 
         total = len(test_cases)
-        self.logger.info(f"Replaying {total} test cases...")
+        workers = min(jobs, total)
+        self.logger.info(f"Replaying {total} test cases ({workers} workers)...")
 
         count = 0
         progress = Progress(
             SpinnerColumn(),
+            BarColumn(bar_width=20),
             TextColumn("[progress.description]{task.description}"),
             TextColumn("{task.completed}/{task.total}"),
         )
-        task_id = progress.add_task("Replaying", total=total)
+        overall_task = progress.add_task("Overall", total=total)
 
-        with Live(progress, console=Console(stderr=True), refresh_per_second=10):
-            for i, tc in enumerate(test_cases):
-                progress.update(task_id, description=f"Replaying [cyan]{tc.name}[/]", completed=i)
+        # Pre-assign test cases to workers via round-robin
+        worker_batches: list[list[tuple[int, Path]]] = [[] for _ in range(workers)]
+        for i, tc in enumerate(test_cases):
+            worker_batches[i % workers].append((i, tc))
+
+        worker_task_ids = [progress.add_task(f"  Worker {w + 1}", total=len(worker_batches[w])) for w in range(workers)]
+
+        def _run_worker(worker_id: int) -> int:
+            ok = 0
+            for i, tc in worker_batches[worker_id]:
+                name = tc.name[:70].ljust(70)
+                progress.update(worker_task_ids[worker_id], description=f"  [cyan]{name}[/]")
                 prof_file = prof_dir / f"prof-{prof_offset + i}.profraw"
                 run_env = env.copy()
                 run_env["LLVM_PROFILE_FILE"] = str(prof_file)
-
                 try:
                     with open(tc, "rb") as stdin_f:
                         subprocess.run(
@@ -396,13 +408,25 @@ class ReportManager:
                             env=run_env,
                             timeout=10,
                         )
-                    count += 1
+                    ok += 1
                 except subprocess.TimeoutExpired:
                     self.logger.warning(f"Timeout replaying {tc.name}, skipping")
                 except Exception as e:
                     self.logger.warning(f"Error replaying {tc.name}: {e}")
+                progress.advance(worker_task_ids[worker_id])
+                progress.advance(overall_task)
+            progress.update(worker_task_ids[worker_id], description="  Done")
+            return ok
 
-            progress.update(task_id, description="Done", completed=total)
+        with Live(progress, console=Console(stderr=True), refresh_per_second=10):
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                futures = [pool.submit(_run_worker, w) for w in range(workers)]
+                for future in as_completed(futures):
+                    count += future.result()
+
+            for tid in worker_task_ids:
+                progress.remove_task(tid)
+            progress.update(overall_task, description="Done", completed=total)
 
         self.logger.info(f"Replayed {count}/{total} test cases")
         return count
@@ -413,8 +437,8 @@ class ReportManager:
         config_name: str = "fuzz.conf",
         output_dir: str = "coverage-report",
         harness_name: str = None,
-        include_sources: list[str] | None = None,
-        exclude_regexes: list[str] | None = None,
+        exclude_file: str | None = None,
+        jobs: int = 1,
     ) -> None:
         """Full coverage pipeline: build harness, replay corpus, merge, generate report."""
         # Detect LLVM toolchain (matched compiler + analysis tools)
@@ -454,14 +478,14 @@ class ReportManager:
             queue_dir = instance / "queue"
             self.logger.info(f"Replaying queue from {instance.name}/ ({len(list(queue_dir.iterdir()))} entries)...")
             count += self._replay_corpus(
-                harness, queue_dir, prof_dir, config_path, httpd_root=cov_root, prof_offset=count
+                harness, queue_dir, prof_dir, config_path, httpd_root=cov_root, prof_offset=count, jobs=jobs
             )
 
             crashes_dir = instance / "crashes"
             if crashes_dir.is_dir() and any(crashes_dir.iterdir()):
                 self.logger.info(f"Replaying crashes from {instance.name}/...")
                 count += self._replay_corpus(
-                    harness, crashes_dir, prof_dir, config_path, httpd_root=cov_root, prof_offset=count
+                    harness, crashes_dir, prof_dir, config_path, httpd_root=cov_root, prof_offset=count, jobs=jobs
                 )
 
         if count == 0:
@@ -497,10 +521,15 @@ class ReportManager:
         self.logger.info("Generating HTML coverage report...")
         extra_objects = [f"--object={so}" for so in cov_modules]
         source_filters = []
-        for src in include_sources or []:
-            source_filters.append(f"-sources={src}")
-        for regex in exclude_regexes or []:
-            source_filters.append(f"-ignore-filename-regex={regex}")
+        if exclude_file:
+            exclude_path = Path(exclude_file)
+            if not exclude_path.is_file():
+                self.logger.error(f"Exclude file not found: {exclude_file}")
+                return
+            lines = [line.strip() for line in exclude_path.read_text().splitlines() if line.strip()]
+            if lines:
+                regex = "|".join(lines)
+                source_filters.append(f"--ignore-filename-regex={regex}")
         show_cmd = [
             cov_bin,
             "show",
