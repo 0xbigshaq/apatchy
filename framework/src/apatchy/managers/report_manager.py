@@ -368,31 +368,43 @@ class ReportManager:
             self.logger.error(f"No test cases found in {queue_dir}")
             return 0
 
-        self.logger.info(f"Replaying {len(test_cases)} test cases...")
+        total = len(test_cases)
+        self.logger.info(f"Replaying {total} test cases...")
 
         count = 0
-        for i, tc in enumerate(test_cases):
-            prof_file = prof_dir / f"prof-{prof_offset + i}.profraw"
-            run_env = env.copy()
-            run_env["LLVM_PROFILE_FILE"] = str(prof_file)
+        progress = Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            TextColumn("{task.completed}/{task.total}"),
+        )
+        task_id = progress.add_task("Replaying", total=total)
 
-            try:
-                with open(tc, "rb") as stdin_f:
-                    subprocess.run(
-                        harness_cmd,
-                        stdin=stdin_f,
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                        env=run_env,
-                        timeout=10,
-                    )
-                count += 1
-            except subprocess.TimeoutExpired:
-                self.logger.warning(f"Timeout replaying {tc.name}, skipping")
-            except Exception as e:
-                self.logger.warning(f"Error replaying {tc.name}: {e}")
+        with Live(progress, console=Console(stderr=True), refresh_per_second=10):
+            for i, tc in enumerate(test_cases):
+                progress.update(task_id, description=f"Replaying [cyan]{tc.name}[/]", completed=i)
+                prof_file = prof_dir / f"prof-{prof_offset + i}.profraw"
+                run_env = env.copy()
+                run_env["LLVM_PROFILE_FILE"] = str(prof_file)
 
-        self.logger.info(f"Replayed {count}/{len(test_cases)} test cases")
+                try:
+                    with open(tc, "rb") as stdin_f:
+                        subprocess.run(
+                            harness_cmd,
+                            stdin=stdin_f,
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL,
+                            env=run_env,
+                            timeout=10,
+                        )
+                    count += 1
+                except subprocess.TimeoutExpired:
+                    self.logger.warning(f"Timeout replaying {tc.name}, skipping")
+                except Exception as e:
+                    self.logger.warning(f"Error replaying {tc.name}: {e}")
+
+            progress.update(task_id, description="Done", completed=total)
+
+        self.logger.info(f"Replayed {count}/{total} test cases")
         return count
 
     def generate_coverage(
