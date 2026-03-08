@@ -220,8 +220,14 @@ class ReportManager:
 
         Returns the Path to the coverage httpd root.
         """
-        cflags = ["-g", "-O0", "-fno-omit-frame-pointer",
-                  "-fprofile-instr-generate", "-fcoverage-mapping", "-Wno-error"]
+        cflags = [
+            "-g",
+            "-O0",
+            "-fno-omit-frame-pointer",
+            "-fprofile-instr-generate",
+            "-fcoverage-mapping",
+            "-Wno-error",
+        ]
         ldflags = ["-fprofile-instr-generate", "-lcrypt", "-lm"]
 
         httpd_version = extract_version_from_path(self.httpd_root)
