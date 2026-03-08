@@ -37,4 +37,4 @@ jobs:
           sudo apt-get install -y clang-format-17
 
       - name: clang-format check
-        run: find src/apatchy/harnesses src/apatchy/custom_mutators -name '*.c' -o -name '*.h' | xargs clang-format-17 --dry-run --Werror
+        run: find harnesses/ custom_mutators/ -name '*.c' -o -name '*.h' | xargs clang-format-17 --dry-run --Werror
