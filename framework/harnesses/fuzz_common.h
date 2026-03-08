@@ -12,6 +12,9 @@
 #include <stddef.h>
 #include "apr_pools.h"
 
+/* Forward declaration - full definition in httpd.h */
+typedef struct server_rec server_rec;
+
 /*
  * Initialize the fuzzer: APR, Apache config, hooks, modules.
  * Call once before any fuzz_one_input().
@@ -30,6 +33,14 @@ int fuzz_one_input(const char *data, size_t size);
  * Valid after fuzz_init() returns 0.
  */
 extern apr_pool_t *g_pool;
+
+/*
+ * Global server record - exposed for config patching in specialized
+ * harnesses (e.g. config-fuzzing harnesses that modify module configs
+ * between iterations).
+ * Valid after fuzz_init() returns 0.
+ */
+extern server_rec *g_server;
 
 /*
  * Exit the harness process, flushing LLVM coverage data first.

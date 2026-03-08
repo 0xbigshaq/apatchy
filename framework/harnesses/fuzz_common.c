@@ -537,7 +537,7 @@ static void fuzz_mpm_hooks(apr_pool_t *p)
 static int g_initialized = 0;
 static apr_pool_t *g_pconf = NULL;
 static apr_pool_t *g_plog = NULL;
-static server_rec *g_server = NULL;
+server_rec *g_server = NULL;
 
 int fuzz_init(const char *confname, const char *server_root)
 {
