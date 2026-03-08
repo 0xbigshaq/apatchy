@@ -1,0 +1,6 @@
+POST /track/payload HTTP/1.1
+Host: localhost
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 11
+
+key=value42
