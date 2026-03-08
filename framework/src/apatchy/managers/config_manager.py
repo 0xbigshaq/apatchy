@@ -49,9 +49,15 @@ class ConfigManager:
         (``configs/intsan.ignorelist``) is applied automatically to
         suppress false positives in APR internals.
         """
-        cflags = ["-g", "-O0", "-fno-omit-frame-pointer"]
         ldflags = []
         cc = None
+
+        # Fuzz builds use -O2 for throughput; debug/coverage/standalone
+        # builds use -O0 -g for accurate crash triage and debugging.
+        if self.build_mode == "fuzz":
+            cflags = ["-O2", "-fno-omit-frame-pointer"]
+        else:
+            cflags = ["-g", "-O0", "-fno-omit-frame-pointer"]
 
         def both(flag: str):
             (cflags.append(flag), ldflags.append(flag))
