@@ -213,13 +213,10 @@ def main():
     coverage_report.add_argument("--output", default="coverage-report", help="Output directory for HTML report")
     coverage_report.add_argument("--harness", default=None, help="Harness to use (e.g. mod_fuzzy)")
     coverage_report.add_argument(
-        "--include", action="append", default=[], help="Source file/dir to include (repeatable, passed to llvm-cov -sources)"
+        "--exclude", default=None, help="Path to file containing exclude regex (passed to llvm-cov -ignore-filename-regex)"
     )
     coverage_report.add_argument(
-        "--exclude",
-        action="append",
-        default=[],
-        help="Regex of filenames to exclude (repeatable, passed to llvm-cov -ignore-filename-regex)",
+        "--jobs", "-j", type=int, default=1, help="Number of parallel replay workers (default: 1)"
     )
 
     # Grammar mutator
