@@ -32,14 +32,13 @@ typedef struct my_mutator {
 #define MAX_BUF (1024 * 1024)
 static uint8_t tmp_buf[MAX_BUF];
 
-static const char *methods[] = {
-    "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD", "TRACE"
-};
+static const char *methods[] = {"GET",   "POST",    "PUT",  "DELETE",
+                                "PATCH", "OPTIONS", "HEAD", "TRACE"};
 static const int num_methods = 8;
 
 static const char *content_lengths[] = {
-    "0", "1", "-1", "99999999", "4294967295", "2147483647",
-    "2147483648", "18446744073709551615", "aaaa"
+    "0",   "1", "-1", "99999999", "4294967295", "2147483647", "2147483648", "18446744073709551615",
+    "aaaa"
 };
 static const int num_cls = 9;
 
@@ -60,10 +59,20 @@ static const char *interesting_headers[] = {
 static const int num_interesting = 12;
 
 static const char *query_params[] = {
-    "name=test", "id=42", "action=delete", "token=abc123",
-    "q=search%20term", "page=-1", "sort=<script>", "debug=true",
-    "format=json", "callback=alert(1)", "file=../../../etc/passwd",
-    "lang=%00", "type=null", "user=admin' OR 1=1",
+    "name=test",
+    "id=42",
+    "action=delete",
+    "token=abc123",
+    "q=search%20term",
+    "page=-1",
+    "sort=<script>",
+    "debug=true",
+    "format=json",
+    "callback=alert(1)",
+    "file=../../../etc/passwd",
+    "lang=%00",
+    "type=null",
+    "user=admin' OR 1=1",
 };
 static const int num_params = 14;
 
@@ -89,8 +98,7 @@ static size_t find_headers_end(const uint8_t *buf, size_t buf_size)
     if (buf_size < 4)
         return 0;
     for (size_t i = 0; i <= buf_size - 4; i++) {
-        if (buf[i] == '\r' && buf[i + 1] == '\n' &&
-            buf[i + 2] == '\r' && buf[i + 3] == '\n') {
+        if (buf[i] == '\r' && buf[i + 1] == '\n' && buf[i + 2] == '\r' && buf[i + 3] == '\n') {
             return i;
         }
     }
@@ -168,7 +176,8 @@ static size_t mutate_query(const uint8_t *buf, size_t buf_size, uint8_t *out, si
     int qlen = 0;
     int nparams = 1 + rand() % 4;
     for (int i = 0; i < nparams; i++) {
-        if (i > 0) query[qlen++] = '&';
+        if (i > 0)
+            query[qlen++] = '&';
         const char *p = query_params[rand() % num_params];
         int plen = strlen(p);
         if (qlen + plen >= (int)sizeof(query) - 1)
@@ -195,8 +204,8 @@ static size_t mutate_query(const uint8_t *buf, size_t buf_size, uint8_t *out, si
 }
 
 /* Strategy 3: Corrupt Content-Length */
-static size_t corrupt_content_length(const uint8_t *buf, size_t buf_size,
-                                     uint8_t *out, size_t max_size)
+static size_t
+corrupt_content_length(const uint8_t *buf, size_t buf_size, uint8_t *out, size_t max_size)
 {
     /* Find "Content-Length:" in headers */
     const char *needle = "Content-Length:";
@@ -255,8 +264,7 @@ static size_t corrupt_content_length(const uint8_t *buf, size_t buf_size,
 }
 
 /* Strategy 4: Inject interesting header */
-static size_t inject_header(const uint8_t *buf, size_t buf_size,
-                            uint8_t *out, size_t max_size)
+static size_t inject_header(const uint8_t *buf, size_t buf_size, uint8_t *out, size_t max_size)
 {
     size_t hend = find_headers_end(buf, buf_size);
     if (hend == 0)
@@ -276,8 +284,7 @@ static size_t inject_header(const uint8_t *buf, size_t buf_size,
 }
 
 /* Strategy 5: Duplicate a random existing header */
-static size_t duplicate_header(const uint8_t *buf, size_t buf_size,
-                               uint8_t *out, size_t max_size)
+static size_t duplicate_header(const uint8_t *buf, size_t buf_size, uint8_t *out, size_t max_size)
 {
     size_t hend = find_headers_end(buf, buf_size);
     if (hend == 0)
@@ -322,8 +329,7 @@ static size_t duplicate_header(const uint8_t *buf, size_t buf_size,
 }
 
 /* Strategy 6: Inject long value into a header */
-static size_t inject_long_value(const uint8_t *buf, size_t buf_size,
-                                uint8_t *out, size_t max_size)
+static size_t inject_long_value(const uint8_t *buf, size_t buf_size, uint8_t *out, size_t max_size)
 {
     size_t hend = find_headers_end(buf, buf_size);
     if (hend == 0)
@@ -334,8 +340,7 @@ static size_t inject_long_value(const uint8_t *buf, size_t buf_size,
     char pattern = 'A' + rand() % 26;
 
     char hdr_name[32];
-    const char *names[] = {"Cookie", "User-Agent", "Referer", "Accept",
-                           "Authorization", "X-Fuzz"};
+    const char *names[] = {"Cookie", "User-Agent", "Referer", "Accept", "Authorization", "X-Fuzz"};
     snprintf(hdr_name, sizeof(hdr_name), "%s", names[rand() % 6]);
 
     /* name: <pattern * vlen>\r\n */
@@ -361,8 +366,8 @@ static size_t inject_long_value(const uint8_t *buf, size_t buf_size,
 }
 
 size_t afl_custom_fuzz(
-    void *data, uint8_t *buf, size_t buf_size, uint8_t **out_buf,
-    uint8_t *add_buf, size_t add_buf_size, size_t max_size
+    void *data, uint8_t *buf, size_t buf_size, uint8_t **out_buf, uint8_t *add_buf,
+    size_t add_buf_size, size_t max_size
 )
 {
     *out_buf = tmp_buf;

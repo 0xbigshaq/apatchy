@@ -34,16 +34,12 @@ typedef struct my_mutator {
 static uint8_t tmp_buf[MAX_BUF];
 
 /* Short boundaries that stress parsers */
-static const char *boundaries[] = {
-    "a", "ab", "x", "--", "boundary", "fuzzboundary",
-    "AAAA", "----", "0", "\r\n"
-};
+static const char *boundaries[] = {"a",    "ab",   "x", "--",  "boundary", "fuzzboundary",
+                                   "AAAA", "----", "0", "\r\n"};
 static const int num_boundaries = 10;
 
-static const char *field_names[] = {
-    "name", "file", "data", "upload", "content", "field",
-    "pew", "test", "x", "input"
-};
+static const char *field_names[] = {"name",  "file", "data", "upload", "content",
+                                    "field", "pew",  "test", "x",      "input"};
 static const int num_fields = 10;
 
 static const char *dispositions[] = {
@@ -78,8 +74,7 @@ static size_t find_headers_end(const uint8_t *buf, size_t buf_size)
     if (buf_size < 4)
         return 0;
     for (size_t i = 0; i <= buf_size - 4; i++) {
-        if (buf[i] == '\r' && buf[i + 1] == '\n' &&
-            buf[i + 2] == '\r' && buf[i + 3] == '\n') {
+        if (buf[i] == '\r' && buf[i + 1] == '\n' && buf[i + 2] == '\r' && buf[i + 3] == '\n') {
             return i;
         }
     }
@@ -107,8 +102,7 @@ static const uint8_t *find_boundary_value(const uint8_t *buf, size_t hend, size_
 }
 
 /* Strategy 1: Replace boundary with a short/tricky one */
-static size_t swap_boundary(const uint8_t *buf, size_t buf_size,
-                            uint8_t *out, size_t max_size)
+static size_t swap_boundary(const uint8_t *buf, size_t buf_size, uint8_t *out, size_t max_size)
 {
     size_t hend = find_headers_end(buf, buf_size);
     if (hend == 0)
@@ -128,8 +122,7 @@ static size_t swap_boundary(const uint8_t *buf, size_t buf_size,
 
     while (pos < buf_size && out_pos < max_size) {
         /* Check if old boundary starts here */
-        if (pos + old_blen <= buf_size &&
-            memcmp(buf + pos, old_bval, old_blen) == 0) {
+        if (pos + old_blen <= buf_size && memcmp(buf + pos, old_bval, old_blen) == 0) {
             if (out_pos + new_blen > max_size)
                 return 0;
             memcpy(out + out_pos, new_boundary, new_blen);
@@ -145,8 +138,8 @@ static size_t swap_boundary(const uint8_t *buf, size_t buf_size,
 
 /* Strategy 2: Generate a minimal multipart body with tight spacing
  * This targets the CVE-2021-44790 pattern where end - crlf < 8 */
-static size_t generate_tight_multipart(const uint8_t *buf, size_t buf_size,
-                                       uint8_t *out, size_t max_size)
+static size_t
+generate_tight_multipart(const uint8_t *buf, size_t buf_size, uint8_t *out, size_t max_size)
 {
     size_t hend = find_headers_end(buf, buf_size);
     if (hend == 0)
@@ -158,8 +151,8 @@ static size_t generate_tight_multipart(const uint8_t *buf, size_t buf_size,
 
     /* Build Content-Type header */
     char ct_hdr[128];
-    int ct_len = snprintf(ct_hdr, sizeof(ct_hdr),
-                          "Content-Type: multipart/form-data; boundary=%s\r\n", b);
+    int ct_len =
+        snprintf(ct_hdr, sizeof(ct_hdr), "Content-Type: multipart/form-data; boundary=%s\r\n", b);
     if (ct_len <= 0)
         return 0;
 
@@ -182,49 +175,57 @@ static size_t generate_tight_multipart(const uint8_t *buf, size_t buf_size,
 
     if (variant == 0) {
         /* CVE-2021-44790 variant: boundary char appears in Content-Disposition */
-        bpos = snprintf(body, sizeof(body),
-                        "--%s\r\n"
-                        "Content-Disposition: form-data; name=\"pew\"\r\n"
-                        "%s\r\n"
-                        "\r\n"
-                        "--%s--\r\n",
-                        b, b, b);
+        bpos = snprintf(
+            body, sizeof(body),
+            "--%s\r\n"
+            "Content-Disposition: form-data; name=\"pew\"\r\n"
+            "%s\r\n"
+            "\r\n"
+            "--%s--\r\n",
+            b, b, b
+        );
     } else if (variant == 1) {
         /* Two parts, empty bodies, tight boundaries */
-        bpos = snprintf(body, sizeof(body),
-                        "--%s\r\n"
-                        "\r\n"
-                        "\r\n"
-                        "--%s\r\n"
-                        "z\r\n"
-                        "\r\n"
-                        "---%s--\r\n"
-                        "\r\n",
-                        b, b, b);
+        bpos = snprintf(
+            body, sizeof(body),
+            "--%s\r\n"
+            "\r\n"
+            "\r\n"
+            "--%s\r\n"
+            "z\r\n"
+            "\r\n"
+            "---%s--\r\n"
+            "\r\n",
+            b, b, b
+        );
     } else if (variant == 2) {
         /* Single part, no Content-Disposition, minimal content */
-        bpos = snprintf(body, sizeof(body),
-                        "--%s\r\n"
-                        "\r\n"
-                        "x\r\n"
-                        "--%s--\r\n",
-                        b, b);
+        bpos = snprintf(
+            body, sizeof(body),
+            "--%s\r\n"
+            "\r\n"
+            "x\r\n"
+            "--%s--\r\n",
+            b, b
+        );
     } else {
         /* Three parts, some empty, varying dash counts */
-        bpos = snprintf(body, sizeof(body),
-                        "--%s\r\n"
-                        "Content-Disposition: form-data; name=\"a\"\r\n"
-                        "\r\n"
-                        "\r\n"
-                        "--%s\r\n"
-                        "\r\n"
-                        "\r\n"
-                        "--%s\r\n"
-                        "Content-Disposition: form-data; name=\"b\"\r\n"
-                        "\r\n"
-                        "v\r\n"
-                        "--%s--\r\n",
-                        b, b, b, b);
+        bpos = snprintf(
+            body, sizeof(body),
+            "--%s\r\n"
+            "Content-Disposition: form-data; name=\"a\"\r\n"
+            "\r\n"
+            "\r\n"
+            "--%s\r\n"
+            "\r\n"
+            "\r\n"
+            "--%s\r\n"
+            "Content-Disposition: form-data; name=\"b\"\r\n"
+            "\r\n"
+            "v\r\n"
+            "--%s--\r\n",
+            b, b, b, b
+        );
     }
     if (bpos <= 0)
         return 0;
@@ -258,8 +259,8 @@ static size_t generate_tight_multipart(const uint8_t *buf, size_t buf_size,
 }
 
 /* Strategy 3: Add extra dashes to boundary markers in body */
-static size_t mutate_boundary_dashes(const uint8_t *buf, size_t buf_size,
-                                     uint8_t *out, size_t max_size)
+static size_t
+mutate_boundary_dashes(const uint8_t *buf, size_t buf_size, uint8_t *out, size_t max_size)
 {
     size_t hend = find_headers_end(buf, buf_size);
     if (hend == 0)
@@ -289,8 +290,8 @@ static size_t mutate_boundary_dashes(const uint8_t *buf, size_t buf_size,
 }
 
 /* Strategy 4: Corrupt Content-Disposition in a multipart part */
-static size_t corrupt_disposition(const uint8_t *buf, size_t buf_size,
-                                  uint8_t *out, size_t max_size)
+static size_t
+corrupt_disposition(const uint8_t *buf, size_t buf_size, uint8_t *out, size_t max_size)
 {
     /* Find "Content-Disposition:" in the body area */
     size_t hend = find_headers_end(buf, buf_size);
@@ -337,8 +338,8 @@ static size_t corrupt_disposition(const uint8_t *buf, size_t buf_size,
 }
 
 /* Strategy 5: Inject a boundary-like sequence inside a part value */
-static size_t inject_fake_boundary(const uint8_t *buf, size_t buf_size,
-                                   uint8_t *out, size_t max_size)
+static size_t
+inject_fake_boundary(const uint8_t *buf, size_t buf_size, uint8_t *out, size_t max_size)
 {
     size_t hend = find_headers_end(buf, buf_size);
     if (hend == 0)
@@ -388,8 +389,8 @@ static size_t inject_fake_boundary(const uint8_t *buf, size_t buf_size,
 }
 
 size_t afl_custom_fuzz(
-    void *data, uint8_t *buf, size_t buf_size, uint8_t **out_buf,
-    uint8_t *add_buf, size_t add_buf_size, size_t max_size
+    void *data, uint8_t *buf, size_t buf_size, uint8_t **out_buf, uint8_t *add_buf,
+    size_t add_buf_size, size_t max_size
 )
 {
     *out_buf = tmp_buf;

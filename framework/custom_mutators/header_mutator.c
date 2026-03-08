@@ -69,11 +69,11 @@ static const int num_dates = 12;
 
 /* Authorization payloads targeting r:basic_auth_pw */
 static const char *auth_payloads[] = {
-    "Basic YWRtaW46cGFzcw==",       /* admin:pass */
-    "Basic dGVzdA==",                /* test (no colon) */
-    "Basic ====",                    /* invalid b64 */
-    "Basic ",                        /* empty credentials */
-    "Bearer eyJhbGciOiJIUzI1NiJ9",  /* JWT-like */
+    "Basic YWRtaW46cGFzcw==",      /* admin:pass */
+    "Basic dGVzdA==",              /* test (no colon) */
+    "Basic ====",                  /* invalid b64 */
+    "Basic ",                      /* empty credentials */
+    "Bearer eyJhbGciOiJIUzI1NiJ9", /* JWT-like */
     "Digest username=\"admin\"",
     "NTLM TlRMTVNTUA==",
     "",
@@ -89,8 +89,8 @@ static const char *malformed_headers[] = {
     "X-Space: \r\n",
     "X-Null: \x00value\r\n",
     "X-Tab:\tvalue\r\n",
-    "X-Multi: val1\r\n\t continued\r\n",    /* obs-fold */
-    "X-Multi: val1\r\n continued\r\n",      /* obs-fold with space */
+    "X-Multi: val1\r\n\t continued\r\n", /* obs-fold */
+    "X-Multi: val1\r\n continued\r\n",   /* obs-fold with space */
     " X-Leading-Space: value\r\n",
     "X-CRLF: before\r\nInjected: after\r\n", /* header injection */
 };
@@ -117,8 +117,7 @@ static size_t find_headers_end(const uint8_t *buf, size_t buf_size)
     if (buf_size < 4)
         return 0;
     for (size_t i = 0; i <= buf_size - 4; i++) {
-        if (buf[i] == '\r' && buf[i + 1] == '\n' &&
-            buf[i + 2] == '\r' && buf[i + 3] == '\n') {
+        if (buf[i] == '\r' && buf[i + 1] == '\n' && buf[i + 2] == '\r' && buf[i + 3] == '\n') {
             return i;
         }
     }
@@ -126,16 +125,17 @@ static size_t find_headers_end(const uint8_t *buf, size_t buf_size)
 }
 
 /* Insert a header string before \r\n\r\n */
-static size_t insert_before_body(const uint8_t *buf, size_t buf_size,
-                                 uint8_t *out, size_t max_size,
-                                 const char *header, size_t hlen)
+static size_t insert_before_body(
+    const uint8_t *buf, size_t buf_size, uint8_t *out, size_t max_size, const char *header,
+    size_t hlen
+)
 {
     size_t hend = find_headers_end(buf, buf_size);
     if (hend == 0)
         return 0;
 
     /* Insert after existing headers (before the blank line) */
-    size_t insert_at = hend + 2; /* after the first \r\n of \r\n\r\n */
+    size_t insert_at = hend + 2;                  /* after the first \r\n of \r\n\r\n */
     size_t suffix_len = buf_size - insert_at + 2; /* +2 to keep final \r\n */
 
     /* Actually insert right at hend+2 (between the two \r\n pairs) */
@@ -152,8 +152,7 @@ static size_t insert_before_body(const uint8_t *buf, size_t buf_size,
 }
 
 /* Strategy 1: Inject Cookie header */
-static size_t inject_cookie(const uint8_t *buf, size_t buf_size,
-                            uint8_t *out, size_t max_size)
+static size_t inject_cookie(const uint8_t *buf, size_t buf_size, uint8_t *out, size_t max_size)
 {
     const char *cookie = cookie_payloads[rand() % num_cookies];
     char hdr[512];
@@ -164,8 +163,7 @@ static size_t inject_cookie(const uint8_t *buf, size_t buf_size,
 }
 
 /* Strategy 2: Inject Date or If-Modified-Since */
-static size_t inject_date(const uint8_t *buf, size_t buf_size,
-                          uint8_t *out, size_t max_size)
+static size_t inject_date(const uint8_t *buf, size_t buf_size, uint8_t *out, size_t max_size)
 {
     const char *date = date_payloads[rand() % num_dates];
     const char *name = (rand() % 2) ? "Date" : "If-Modified-Since";
@@ -177,8 +175,7 @@ static size_t inject_date(const uint8_t *buf, size_t buf_size,
 }
 
 /* Strategy 3: Inject Authorization header */
-static size_t inject_auth(const uint8_t *buf, size_t buf_size,
-                          uint8_t *out, size_t max_size)
+static size_t inject_auth(const uint8_t *buf, size_t buf_size, uint8_t *out, size_t max_size)
 {
     const char *auth = auth_payloads[rand() % num_auths];
     char hdr[256];
@@ -189,22 +186,20 @@ static size_t inject_auth(const uint8_t *buf, size_t buf_size,
 }
 
 /* Strategy 4: Inject malformed header */
-static size_t inject_malformed(const uint8_t *buf, size_t buf_size,
-                               uint8_t *out, size_t max_size)
+static size_t inject_malformed(const uint8_t *buf, size_t buf_size, uint8_t *out, size_t max_size)
 {
     const char *hdr = malformed_headers[rand() % num_malformed];
     return insert_before_body(buf, buf_size, out, max_size, hdr, strlen(hdr));
 }
 
 /* Strategy 5: Inject very long header value */
-static size_t inject_long_header(const uint8_t *buf, size_t buf_size,
-                                 uint8_t *out, size_t max_size)
+static size_t inject_long_header(const uint8_t *buf, size_t buf_size, uint8_t *out, size_t max_size)
 {
     size_t hend = find_headers_end(buf, buf_size);
     if (hend == 0)
         return 0;
 
-    const char *names[] = {"Cookie", "User-Agent", "Accept", "Referer",
+    const char *names[] = {"Cookie",        "User-Agent",    "Accept", "Referer",
                            "Authorization", "If-None-Match", "X-Fuzz"};
     const char *name = names[rand() % 7];
     size_t nlen = strlen(name);
@@ -247,24 +242,18 @@ static size_t inject_long_header(const uint8_t *buf, size_t buf_size,
 }
 
 /* Strategy 6: Duplicate the Host header with different values */
-static size_t duplicate_host(const uint8_t *buf, size_t buf_size,
-                             uint8_t *out, size_t max_size)
+static size_t duplicate_host(const uint8_t *buf, size_t buf_size, uint8_t *out, size_t max_size)
 {
     const char *hosts[] = {
-        "Host: localhost\r\n",
-        "Host: 127.0.0.1\r\n",
-        "Host: evil.com\r\n",
-        "Host: localhost:80\r\n",
-        "Host: \r\n",
-        "Host: localhost\x00evil.com\r\n",
+        "Host: localhost\r\n",    "Host: 127.0.0.1\r\n", "Host: evil.com\r\n",
+        "Host: localhost:80\r\n", "Host: \r\n",          "Host: localhost\x00evil.com\r\n",
     };
     const char *hdr = hosts[rand() % 6];
     return insert_before_body(buf, buf_size, out, max_size, hdr, strlen(hdr));
 }
 
 /* Strategy 7: Inject multiple headers at once */
-static size_t inject_multi(const uint8_t *buf, size_t buf_size,
-                           uint8_t *out, size_t max_size)
+static size_t inject_multi(const uint8_t *buf, size_t buf_size, uint8_t *out, size_t max_size)
 {
     size_t hend = find_headers_end(buf, buf_size);
     if (hend == 0)
@@ -279,21 +268,28 @@ static size_t inject_multi(const uint8_t *buf, size_t buf_size,
         int which = rand() % 5;
         int added = 0;
         if (which == 0)
-            added = snprintf(block + blen, sizeof(block) - blen,
-                             "Cookie: %s\r\n", cookie_payloads[rand() % num_cookies]);
+            added = snprintf(
+                block + blen, sizeof(block) - blen, "Cookie: %s\r\n",
+                cookie_payloads[rand() % num_cookies]
+            );
         else if (which == 1)
-            added = snprintf(block + blen, sizeof(block) - blen,
-                             "Date: %s\r\n", date_payloads[rand() % num_dates]);
+            added = snprintf(
+                block + blen, sizeof(block) - blen, "Date: %s\r\n",
+                date_payloads[rand() % num_dates]
+            );
         else if (which == 2)
-            added = snprintf(block + blen, sizeof(block) - blen,
-                             "Authorization: %s\r\n", auth_payloads[rand() % num_auths]);
+            added = snprintf(
+                block + blen, sizeof(block) - blen, "Authorization: %s\r\n",
+                auth_payloads[rand() % num_auths]
+            );
         else if (which == 3)
-            added = snprintf(block + blen, sizeof(block) - blen,
-                             "Accept-Encoding: %s\r\n",
-                             (const char *[]){"gzip", "deflate", "br", "*", "identity"}[rand() % 5]);
+            added = snprintf(
+                block + blen, sizeof(block) - blen, "Accept-Encoding: %s\r\n",
+                (const char *[]){"gzip", "deflate", "br", "*", "identity"}[rand() % 5]
+            );
         else
-            added = snprintf(block + blen, sizeof(block) - blen,
-                             "If-None-Match: \"%08x\"\r\n", rand());
+            added =
+                snprintf(block + blen, sizeof(block) - blen, "If-None-Match: \"%08x\"\r\n", rand());
 
         if (added > 0)
             blen += added;
@@ -303,8 +299,8 @@ static size_t inject_multi(const uint8_t *buf, size_t buf_size,
 }
 
 size_t afl_custom_fuzz(
-    void *data, uint8_t *buf, size_t buf_size, uint8_t **out_buf,
-    uint8_t *add_buf, size_t add_buf_size, size_t max_size
+    void *data, uint8_t *buf, size_t buf_size, uint8_t **out_buf, uint8_t *add_buf,
+    size_t add_buf_size, size_t max_size
 )
 {
     *out_buf = tmp_buf;
