@@ -75,6 +75,9 @@ coverage-report*/
 cov-*/
 .coverage
 
+# Callgrind profiling output
+callgrind-out/
+
 # Pytest
 .pytest_cache/
 .test_cache/
