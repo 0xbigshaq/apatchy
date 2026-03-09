@@ -7,11 +7,13 @@ provides :meth:`~ReportManager.triage_crash` for reproducing
 individual crash inputs.
 """
 
+import contextlib
 import os
 import re
 import shutil
 import signal
 import subprocess
+import threading
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -567,6 +569,264 @@ class ReportManager:
 
         self.logger.info(f"HTML report: {html_dir / 'index.html'}")
         self.logger.info("Coverage report complete. AFL build is untouched.")
+
+    def _ensure_profile_build(self, cc: str) -> Path:
+        """Ensure a separate profile tree is configured and compiled.
+
+        The profile tree uses ``-g -O0 -fno-omit-frame-pointer`` with no
+        sanitizers or coverage instrumentation, producing clean binaries
+        for valgrind/callgrind profiling.
+
+        Returns the Path to the profile httpd root.
+        """
+        cflags = [
+            "-g",
+            "-gdwarf-4",
+            "-O0",
+            "-fno-omit-frame-pointer",
+            "-Wno-error",
+        ]
+        ldflags = ["-lcrypt", "-lm"]
+
+        httpd_version = extract_version_from_path(self.httpd_root)
+        if httpd_version:
+            compat = get_compat_flags(httpd_version)
+            for entry_id in compat.applied_ids:
+                logger.info(f"Applying compat fix: {entry_id}")
+            cflags.extend(compat.cflags)
+            ldflags.extend(compat.ldflags)
+
+        tree = AlternateBuildTree(self.httpd_root, "-prof")
+        return tree.ensure_build(
+            cc=cc,
+            cflags=" ".join(cflags),
+            ldflags=" ".join(ldflags),
+        )
+
+    def _build_profile_harness(self, cc: str, harness_name: str = None) -> Tuple[Path, Path]:
+        """Build fuzz_harness_profile with debug symbols and no sanitizers.
+
+        Uses a separate ``-prof`` build tree so the AFL build is untouched.
+        Returns (harness_path, prof_httpd_root).
+        """
+        prof_root = self._ensure_profile_build(cc)
+
+        build_config = self.config_manager.generate_build_config()
+        cflags = build_config.get("CFLAGS", "")
+        ldflags = build_config.get("LDFLAGS", "")
+
+        # Strip any sanitizer flags - they conflict with valgrind
+        cflags = " ".join(t for t in cflags.split() if not t.startswith(("-fsanitize", "-fno-sanitize")))
+        ldflags = " ".join(t for t in ldflags.split() if not t.startswith(("-fsanitize", "-fno-sanitize")))
+
+        harness = self.work_dir / "fuzz_harness_profile"
+        libmain = prof_root / "server" / "libmain.la"
+        if harness.exists() and libmain.exists() and harness.stat().st_mtime > libmain.stat().st_mtime:
+            self.logger.info(f"Profile harness up to date: {harness}")
+            return harness, prof_root
+
+        builder = HarnessBuilder(prof_root)
+        self.logger.info("Building profile harness (debug symbols, no sanitizers)...")
+        builder.build(mode="profile", cflags=cflags, ldflags=ldflags, cc=cc, harness_name=harness_name)
+
+        harness = self.work_dir / "fuzz_harness_profile"
+        if not harness.exists():
+            raise FileNotFoundError("Failed to build fuzz_harness_profile")
+
+        self.logger.info(f"Profile harness built: {harness}")
+        return harness, prof_root
+
+    def _replay_corpus_callgrind(
+        self,
+        harness: Path,
+        queue_dir: Path,
+        output_dir: Path,
+        config_path: Path,
+        prof_offset: int = 0,
+        jobs: int = 1,
+        timeout: int = 120,
+    ) -> int:
+        """Replay AFL queue through harness under callgrind, producing .callgrind files."""
+        env = os.environ.copy()
+        env["FUZZ_CONF"] = str(config_path)
+        env["FUZZ_ROOT"] = str(self.work_dir)
+
+        harness_cmd = [
+            str(harness),
+            "-f",
+            str(config_path),
+            "-d",
+            str(self.work_dir),
+        ]
+
+        test_cases = sorted(queue_dir.glob("id:*"))
+        if not test_cases:
+            test_cases = sorted(f for f in queue_dir.iterdir() if f.is_file() and f.name != ".state")
+
+        if not test_cases:
+            self.logger.error(f"No test cases found in {queue_dir}")
+            return 0
+
+        total = len(test_cases)
+        workers = min(jobs, total)
+        self.logger.info(f"Replaying {total} test cases under callgrind ({workers} workers)...")
+
+        count = 0
+        cancel = threading.Event()
+        worker_batches: list[list[tuple[int, Path]]] = [[] for _ in range(workers)]
+        for i, tc in enumerate(test_cases):
+            worker_batches[i % workers].append((i, tc))
+
+        with Progress(
+            SpinnerColumn(),
+            BarColumn(bar_width=20),
+            TextColumn("[progress.description]{task.description}"),
+            TextColumn("{task.completed}/{task.total}"),
+            console=Console(stderr=True),
+            refresh_per_second=4,
+        ) as progress:
+            overall_task = progress.add_task("Overall", total=total)
+            worker_task_ids = [
+                progress.add_task(f"  Worker {w + 1}", total=len(worker_batches[w])) for w in range(workers)
+            ]
+
+            def _run_worker(worker_id: int) -> int:
+                ok = 0
+                for i, tc in worker_batches[worker_id]:
+                    if cancel.is_set():
+                        break
+                    name = tc.name[:70].ljust(70)
+                    progress.update(worker_task_ids[worker_id], description=f"  [cyan]{name}[/]")
+                    callgrind_out = output_dir / f"callgrind.out.{prof_offset + i}"
+                    cmd = [
+                        "valgrind",
+                        "--tool=callgrind",
+                        f"--callgrind-out-file={callgrind_out}",
+                        "--collect-jumps=yes",
+                        *harness_cmd,
+                    ]
+                    try:
+                        with open(tc, "rb") as stdin_f:
+                            proc = subprocess.Popen(
+                                cmd,
+                                stdin=stdin_f,
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL,
+                                env=env,
+                            )
+                            try:
+                                proc.wait(timeout=timeout)
+                            except subprocess.TimeoutExpired:
+                                proc.kill()
+                                proc.wait()
+                                self.logger.warning(f"Timeout replaying {tc.name}, skipping")
+                        if proc.returncode is not None:
+                            ok += 1
+                    except Exception as e:
+                        self.logger.warning(f"Error replaying {tc.name}: {e}")
+                    progress.advance(worker_task_ids[worker_id])
+                    progress.advance(overall_task)
+                progress.update(worker_task_ids[worker_id], description="  Done")
+                return ok
+
+            try:
+                with ThreadPoolExecutor(max_workers=workers) as pool:
+                    futures = [pool.submit(_run_worker, w) for w in range(workers)]
+                    for future in as_completed(futures):
+                        count += future.result()
+            except KeyboardInterrupt:
+                cancel.set()
+                for future in futures:
+                    future.cancel()
+                for future in futures:
+                    if not future.cancelled():
+                        with contextlib.suppress(Exception):
+                            count += future.result(timeout=5)
+                return -1
+
+            for tid in worker_task_ids:
+                progress.remove_task(tid)
+
+        self.logger.info(f"Replayed {count}/{total} test cases")
+        return count
+
+    def generate_callgrind(
+        self,
+        afl_dir: str = "afl-output",
+        config_name: str = "fuzz.conf",
+        output_dir: str = "callgrind-out",
+        harness_name: str = None,
+        jobs: int = 1,
+        timeout: int = 120,
+    ) -> None:
+        """Replay AFL corpus under callgrind and collect output for kcachegrind.
+
+        Automatically builds a dedicated ``-prof`` Apache tree with debug
+        symbols, no sanitizers, and no coverage instrumentation so that
+        callgrind output is clean and all function names are visible.
+        """
+        # Check valgrind is available
+        if not shutil.which("valgrind"):
+            self.logger.error("valgrind not found. Install with: apt install valgrind")
+            return
+
+        # Find AFL instances
+        instances = self._find_afl_instances(afl_dir)
+        if not instances:
+            return
+
+        # Build profile harness (separate -prof tree, no sanitizers)
+        try:
+            harness_path, prof_root = self._build_profile_harness("clang", harness_name=harness_name)
+        except Exception as e:
+            self.logger.error(f"Failed to build profile harness: {e}")
+            return
+
+        # Resolve httpd config
+        config_path = self.config_manager.get_httpd_config(config_name)
+        if not config_path:
+            self.logger.error(f"Config '{config_name}' not found")
+            return
+
+        # Replay corpus under callgrind
+        out_path = Path(output_dir).resolve()
+        out_path.mkdir(parents=True, exist_ok=True)
+
+        count = 0
+        interrupted = False
+        for instance in instances:
+            queue_dir = instance / "queue"
+            self.logger.info(f"Replaying queue from {instance.name}/ ({len(list(queue_dir.iterdir()))} entries)...")
+            result = self._replay_corpus_callgrind(
+                harness_path, queue_dir, out_path, config_path, prof_offset=count, jobs=jobs, timeout=timeout
+            )
+            if result < 0:
+                interrupted = True
+                break
+            count += result
+
+        if interrupted:
+            return
+
+        if count == 0:
+            self.logger.error("No test cases were replayed successfully")
+            return
+
+        callgrind_files = sorted(f for f in out_path.glob("callgrind.out.*") if f.stat().st_size > 0)
+        self.logger.info(f"Generated {len(callgrind_files)} callgrind output files in {out_path}")
+
+        first_file = out_path / "callgrind.out.0"
+        is_wsl = "microsoft" in Path("/proc/version").read_text().lower() if Path("/proc/version").exists() else False
+        viewer = "qcachegrind.exe" if is_wsl else "kcachegrind"
+        self.logger.info(f"View with: {viewer} {first_file}")
+
+        answer = input("\nOpen in viewer now? [y/N] ").strip().lower()
+        if answer == "y":
+            subprocess.Popen(
+                [viewer, str(first_file)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
 
     def _triage_env(
         self,

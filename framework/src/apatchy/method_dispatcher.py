@@ -63,6 +63,8 @@ class MethodDispatcher:
             self._handle_triage(args)
         elif command == "coverage":
             self._handle_coverage(args)
+        elif command == "profile":
+            self._handle_profile(args)
         elif command == "setup":
             self._handle_setup(args)
         elif command == "grammar":
@@ -468,6 +470,25 @@ class MethodDispatcher:
         else:
             logger.error("No coverage sub-command specified. Use: report")
 
+    def _handle_profile(self, args: argparse.Namespace) -> None:
+        action = getattr(args, "action", None)
+        if action == "callgrind":
+            httpd_root = self._get_active_httpd()
+            if not httpd_root:
+                return
+            self.config_manager = ConfigManager(config_name=args.config)
+            self.report_manager = ReportManager(httpd_root, self.config_manager)
+            self.report_manager.generate_callgrind(
+                afl_dir=args.afl_dir,
+                config_name=args.config,
+                output_dir=args.output,
+                harness_name=getattr(args, "harness", None),
+                jobs=getattr(args, "jobs", 1),
+                timeout=getattr(args, "timeout", 120),
+            )
+        else:
+            logger.error("No profile sub-command specified. Use: callgrind")
+
     def _handle_module(self, args: argparse.Namespace) -> None:
         from rich.console import Console
         from rich.table import Table
@@ -689,7 +710,7 @@ class MethodDispatcher:
         target = Config.get_apache_dir(version)
         if not target.exists():
             # Try finding any httpd-*
-            dirs = [d for d in Config.WORK_DIR.glob("httpd-*") if not d.name.endswith(("-cov", "-standalone"))]
+            dirs = [d for d in Config.WORK_DIR.glob("httpd-*") if not d.name.endswith(("-cov", "-standalone", "-prof"))]
             if len(dirs) == 1:
                 return dirs[0]
             elif len(dirs) > 1:
@@ -799,6 +820,7 @@ class MethodDispatcher:
             "modules",
             ".libs",
             "coverage-report",
+            "callgrind-out",
         ]
         build_globs = [
             "afl-input/grammar_*.txt",  # generated grammar seeds

@@ -221,6 +221,21 @@ def main():
         "--jobs", "-j", type=int, default=1, help="Number of parallel replay workers (default: 1)"
     )
 
+    # Profile
+    profile_parser = _sub(subparsers, "profile", help="Profile harness execution")
+    profile_sub = profile_parser.add_subparsers(dest="action")
+    profile_callgrind = _sub(profile_sub, "callgrind", help="Replay AFL corpus under callgrind for kcachegrind")
+    profile_callgrind.add_argument("--afl-dir", default="afl-output", help="AFL output directory")
+    profile_callgrind.add_argument("--config", default="fuzz.conf", help="Httpd config for corpus replay")
+    profile_callgrind.add_argument("--output", default="callgrind-out", help="Output directory for callgrind files")
+    profile_callgrind.add_argument("--harness", default=None, help="Harness to use (e.g. mod_fuzzy)")
+    profile_callgrind.add_argument(
+        "--jobs", "-j", type=int, default=1, help="Number of parallel replay workers (default: 1)"
+    )
+    profile_callgrind.add_argument(
+        "--timeout", type=int, default=120, help="Per-testcase timeout in seconds (default: 120, callgrind is slow)"
+    )
+
     # Grammar mutator
     grammar_parser = _sub(subparsers, "grammar", help="Manage AFL++ grammar mutators")
     grammar_sub = grammar_parser.add_subparsers(dest="action", help="Grammar sub-commands")

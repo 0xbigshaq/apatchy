@@ -22,6 +22,7 @@ COMPILERS = {
     "libfuzzer": "clang",
     "standalone": "clang",
     "coverage": "clang",
+    "profile": "clang",
 }
 
 
@@ -180,7 +181,7 @@ class HarnessBuilder:
         # instrumentation, so afl-compiler-rt.o is unnecessary and harmful.
         # Standalone links against the existing (possibly AFL-instrumented)
         # tree and needs the runtime.
-        skip_afl_rt = mode == "coverage"
+        skip_afl_rt = mode in ("coverage", "profile")
 
         # AFL-instrumented Apache objects use SanCov with non-PIC
         # R_X86_64_32S relocations. Disable PIE to avoid linker errors.
