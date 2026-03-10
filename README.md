@@ -30,6 +30,12 @@ apatchy fuzz --config rewrite.conf
 
 ## Documentation
 
+>Note: **This is still in progress**/not complete. I know the CLI needs more attention.
+
+* The documentation is live at https://pwner.gg/apatchy/
+* You can generate it locally via `apatchy docs --serve`
+
+
 Full docs live in [`docs/`](docs/README.md) - architecture, Apache internals, CLI reference, and guides for targeting specific modules.
 
 ## License

@@ -1,0 +1,333 @@
+/* ==========================================================================
+   Custom CSS for mod_fuzzy Sphinx documentation
+   ========================================================================== */
+
+
+/* ── General ────────────────────────────────────────────────────────────── */
+
+p {
+    margin-bottom: 10px;
+}
+
+
+/* ── Mermaid diagrams ───────────────────────────────────────────────────── */
+
+.mermaid {
+    width: 100%;
+    max-width: none;
+    overflow-x: auto;
+}
+
+.mermaid-container > pre > svg {
+    height: auto !important;
+    max-height: auto;
+}
+
+
+/* ── Sidebar logo ───────────────────────────────────────────────────────── */
+
+.wy-side-nav-search > a.icon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.wy-side-nav-search > a.icon img.logo {
+    order: -1;
+    width: 50%;
+    height: auto;
+    margin-top: 0;
+    margin-bottom: 0.5em;
+}
+
+
+/* ── Doxylink references: render as code snippets ───────────────────────── */
+
+a.reference.external[href*="/doxygen/"],
+a.reference.external[href^="doxygen/"] {
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 85%;
+    padding: 2px 5px;
+    background: #fff;
+    border: 1px solid #e1e4e5;
+    border-radius: 3px;
+}
+
+
+/* ── Sphinx-Design: tab-set ─────────────────────────────────────────────── */
+
+.sd-tab-set > label {
+    font-size: 0.85em;
+}
+
+.sd-tab-set > .sd-tab-content {
+    background: #f8f9fa;
+    border: 1px solid #e1e4e8;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    padding: 1.2em 1.5em;
+}
+
+
+/* ── Pan & Zoom widget ──────────────────────────────────────────────────── */
+
+.pz-wrapper {
+    position: relative;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin: 1em 0;
+    background: #fafafa;
+}
+
+.pz-viewport {
+    overflow: hidden;
+    cursor: grab;
+    min-height: 120px;
+    background-color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pz-viewport svg {
+    transform-origin: 0 0;
+    transition: transform 0.1s ease-out;
+    display: block;
+}
+
+.pz-toolbar {
+    display: flex;
+    gap: 4px;
+    justify-content: flex-end;
+    padding: 4px 6px;
+}
+
+.pz-btn {
+    width: 28px;
+    height: 28px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+    padding: 0;
+}
+
+.pz-btn:hover {
+    background: #e8e8e8;
+}
+
+.pz-toggle {
+    font-size: 14px;
+    margin-right: auto;
+    opacity: 0.5;
+}
+
+.pz-toggle.active {
+    opacity: 1;
+    background: #dbeafe;
+    border-color: #93c5fd;
+}
+
+
+/* ── Pan & Zoom: fullscreen overlay ─────────────────────────────────────── */
+
+.pz-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pz-fs-viewport {
+    overflow: hidden;
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 90vw;
+    height: 90vh;
+}
+
+.pz-fs-viewport svg {
+    transform-origin: center center;
+    transition: transform 0.1s ease-out;
+    background: #ffffff;
+    border-radius: 6px;
+    padding: 16px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+}
+
+.pz-fs-toolbar {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    opacity: 0.8;
+}
+
+.pz-fs-toolbar:hover {
+    opacity: 1;
+}
+
+
+/* ==========================================================================
+   Dark mode overrides  (sphinx-rtd-dark-mode: [data-theme="dark"])
+   ========================================================================== */
+
+
+/* ── Dark: Doxylink references ──────────────────────────────────────────── */
+
+[data-theme="dark"] a.reference.external[href*="/doxygen/"],
+[data-theme="dark"] a.reference.external[href^="doxygen/"] {
+    background: #1a1a2e;
+    border-color: #444;
+}
+
+
+/* ── Dark: Sphinx-Design tab-set ────────────────────────────────────────── */
+
+[data-theme="dark"] {
+    --sd-color-tabs-label-active: hsla(221, 99%, 72%, 1);
+    --sd-color-tabs-label-hover: hsla(221, 99%, 72%, 1);
+    --sd-color-tabs-label-inactive: hsl(0, 0%, 55%);
+    --sd-color-tabs-underline-active: hsla(221, 99%, 72%, 1);
+    --sd-color-tabs-underline-hover: rgba(100, 149, 237, 0.4);
+    --sd-color-tabs-overline: #444;
+    --sd-color-tabs-underline: #444;
+}
+
+[data-theme="dark"] .sd-tab-set > label {
+    color: var(--sd-color-tabs-label-inactive);
+}
+
+[data-theme="dark"] .sd-tab-set > input:checked + label {
+    color: var(--sd-color-tabs-label-active);
+}
+
+[data-theme="dark"] .sd-tab-set > .sd-tab-content {
+    background: #1a1a2e;
+    border-color: #444;
+}
+
+
+/* ── Dark: Sphinx-Design dropdown ───────────────────────────────────────── */
+
+[data-theme="dark"] .sd-dropdown {
+    --sd-color-card-border: #444;
+    --sd-color-card-background: #1a1a2e;
+    --sd-color-card-header: #222240;
+}
+
+[data-theme="dark"] .sd-dropdown .sd-card-header {
+    border-bottom-color: #444;
+}
+
+[data-theme="dark"] .sd-dropdown .sd-card-body {
+    color: #ddd;
+}
+
+
+/* ── Dark: Pan & Zoom widget ────────────────────────────────────────────── */
+
+[data-theme="dark"] .pz-wrapper {
+    border-color: #444;
+    background: #2b2b2b;
+}
+
+[data-theme="dark"] .pz-viewport {
+    background-color: #1a1a1a;
+}
+
+[data-theme="dark"] .pz-btn {
+    background: #333;
+    border-color: #555;
+    color: #ddd;
+}
+
+[data-theme="dark"] .pz-btn:hover {
+    background: #444;
+}
+
+[data-theme="dark"] .pz-toggle.active {
+    background: #1e3a5f;
+    border-color: #3b82f6;
+}
+
+
+/* ── Dark: Pan & Zoom fullscreen ────────────────────────────────────────── */
+
+[data-theme="dark"] .pz-overlay {
+    background: rgba(0, 0, 0, 0.75);
+}
+
+[data-theme="dark"] .pz-fs-viewport svg {
+    background: #1a1a1a;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+
+/* ── Dark: Python API signatures ────────────────────────────────────────── */
+
+/* Top-level signatures (class, function, etc.) */
+html[data-theme="dark"].writer-html5 .rst-content dl[class]:not(.option-list):not(.field-list):not(.footnote):not(.citation):not(.glossary):not(.simple) > dt {
+    background-color: #1a1a2e;
+    color: #38e06f;
+    border-color: #5a5acd;
+}
+
+/* Nested signatures (methods, attributes inside a class) */
+html[data-theme="dark"].writer-html4 .rst-content dl:not(.docutils) dl:not(.option-list):not(.field-list):not(.footnote):not(.citation):not(.glossary):not(.simple) > dt,
+html[data-theme="dark"].writer-html5 .rst-content dl[class]:not(.option-list):not(.field-list):not(.footnote):not(.citation):not(.glossary):not(.simple) dl:not(.option-list):not(.field-list):not(.footnote):not(.citation):not(.glossary):not(.simple) > dt {
+    background-color: #222240;
+    color: #ddd;
+    border-color: #5a5acd;
+}
+
+/* Signature inner spans (fallback) */
+[data-theme="dark"] .rst-content dt .sig-name,
+[data-theme="dark"] .rst-content dt .descname,
+[data-theme="dark"] .rst-content dt .descclassname,
+[data-theme="dark"] .rst-content dt .sig-paren,
+[data-theme="dark"] .rst-content dt .sig-param {
+    color: #ddd !important;
+}
+
+/* Signature name text (high specificity override) */
+html[data-theme="dark"].writer-html4 .rst-content dl:not(.docutils) .descclassname,
+html[data-theme="dark"].writer-html4 .rst-content dl:not(.docutils) .descname,
+html[data-theme="dark"].writer-html4 .rst-content dl:not(.docutils) .sig-name,
+html[data-theme="dark"].writer-html5 .rst-content dl[class]:not(.option-list):not(.field-list):not(.footnote):not(.citation):not(.glossary):not(.simple) .descclassname,
+html[data-theme="dark"].writer-html5 .rst-content dl[class]:not(.option-list):not(.field-list):not(.footnote):not(.citation):not(.glossary):not(.simple) .descname,
+html[data-theme="dark"].writer-html5 .rst-content dl[class]:not(.option-list):not(.field-list):not(.footnote):not(.citation):not(.glossary):not(.simple) .sig-name {
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, Courier, monospace;
+    color: #ffee00 !important;
+}
+
+
+/* ── Dark: Syntax highlighting ──────────────────────────────────────────── */
+
+[data-theme="dark"] .highlight .nf,
+[data-theme="dark"] .highlight .fm,
+[data-theme="dark"] .highlight .nc {
+    color: #9696f8;
+}
+
+[data-theme="dark"] .highlight .vm {
+    color: #f7f7f7;
+}
+
+[data-theme="dark"] .highlight .sd {
+    color: #da8500;
+}
+
+[data-theme="dark"] .highlight .bp {
+    color: #00e100;
+}

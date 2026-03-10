@@ -1,0 +1,56 @@
+# Minimal Doxyfile – generate a tag file for Apache HTTPD.
+# Used by sphinxcontrib-doxylink to cross-reference Apache API symbols.
+# The HTTPD_SRC env var must point to the httpd source tree.
+
+PROJECT_NAME           = "Apache HTTPD"
+
+# Source paths (set HTTPD_SRC before invoking doxygen)
+INPUT                  = $(HTTPD_SRC)/include \
+                         $(HTTPD_SRC)/modules \
+                         $(HTTPD_SRC)/server \
+                         $(HTTPD_SRC)/srclib/apr \
+                         $(HTTPD_SRC)/srclib/apr-util
+RECURSIVE              = YES
+FILE_PATTERNS          = *.h *.c
+
+# Generate tag file (for doxylink) and HTML (self-hosted API docs)
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+SEARCHENGINE           = NO
+GENERATE_TREEVIEW      = NO
+GENERATE_LATEX         = NO
+GENERATE_XML           = NO
+GENERATE_TAGFILE       = httpd.tag
+
+# Extract everything so the tag file is comprehensive
+EXTRACT_ALL            = YES
+EXTRACT_STATIC         = YES
+
+# Expand macros so AP_DECLARE_HOOK-generated functions (ap_get_brigade,
+# ap_run_handler, etc.) and APR_DECLARE wrappers are indexed as real symbols.
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = YES
+INCLUDE_PATH           = $(HTTPD_SRC)/include \
+                         $(HTTPD_SRC)/srclib/apr/include \
+                         $(HTTPD_SRC)/srclib/apr-util/include
+
+# Source browsing (enables hyperlinked source alongside docs)
+SOURCE_BROWSER         = YES
+
+# Graphviz dot graphs (requires 'dot' from graphviz package)
+# Uncomment for better docs (slower builds)
+HAVE_DOT               = NO
+#HAVE_DOT               = YES
+#DOT_MULTI_TARGETS      = YES
+#CLASS_DIAGRAMS         = YES
+#CALL_GRAPH             = YES
+#CALLER_GRAPH           = YES
+#INCLUDE_GRAPH          = YES
+#INCLUDED_BY_GRAPH      = YES
+#DIRECTORY_GRAPH        = YES
+#DOT_IMAGE_FORMAT       = svg
+#INTERACTIVE_SVG        = YES
+
+# Quieter output
+QUIET                  = YES
+WARNINGS               = NO

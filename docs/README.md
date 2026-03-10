@@ -1,3 +1,0 @@
-# Documentation
-
-Work in progress.
