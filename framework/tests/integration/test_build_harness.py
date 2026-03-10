@@ -10,7 +10,6 @@ import pytest
 from apatchy.core.harness import HarnessBuilder
 
 
-
 def test_include_paths_exist(httpd: Path) -> None:
     """Every -I path from get_include_paths() is a real directory."""
     builder = HarnessBuilder(httpd)
@@ -28,8 +27,6 @@ def test_include_paths_have_headers(httpd: Path) -> None:
     assert (include / "httpd.h").exists()
     assert (include / "http_config.h").exists()
     assert (include / "ap_config.h").exists()
-
-
 
 
 def test_build_standalone_harness(httpd: Path, build_dir: Path, mp: pytest.MonkeyPatch) -> None:
@@ -68,8 +65,6 @@ def test_build_standalone_mod_fuzzy(httpd: Path, build_dir: Path, mp: pytest.Mon
     assert binary.exists(), "mod_fuzzy standalone binary not produced"
 
 
-
-
 @pytest.mark.skipif(
     not shutil.which("afl-clang-fast"),
     reason="afl-clang-fast not found",
@@ -85,8 +80,6 @@ def test_build_afl_harness(httpd: Path, build_dir: Path, mp: pytest.MonkeyPatch)
     if not binary.exists():
         binary = build_dir / ".libs" / "fuzz_harness_afl"
     assert binary.exists(), "AFL harness binary not produced"
-
-
 
 
 def test_linked_libraries_resolve(httpd: Path, build_dir: Path, mp: pytest.MonkeyPatch) -> None:
@@ -111,8 +104,6 @@ def test_linked_libraries_resolve(httpd: Path, build_dir: Path, mp: pytest.Monke
         text=True,
     )
     assert "not found" not in result.stdout, f"Missing libraries:\n{result.stdout}"
-
-
 
 
 def test_all_harnesses_compile(httpd: Path, build_dir: Path, mp: pytest.MonkeyPatch) -> None:
