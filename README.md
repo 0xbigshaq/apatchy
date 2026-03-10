@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/apatchy-logo-transparent.png" alt="apatchy" width="200">
+</p>
+
 <h1 align="center">apatchy</h1>
 
 <p align="center">
