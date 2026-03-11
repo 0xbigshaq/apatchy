@@ -918,7 +918,7 @@ class ReportManager:
             names = [name for name, _ in failed]
             self.logger.warning(f"{len(failed)} files failed to compile:")
             for i in range(0, len(names), 4):
-                batch = ", ".join(names[i:i+4])
+                batch = ", ".join(names[i : i + 4])
                 self.logger.warning(f"   {batch}")
             self.logger.info(f"Full error log: {log_file.name}")
         else:

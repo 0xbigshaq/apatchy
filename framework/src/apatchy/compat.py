@@ -99,7 +99,6 @@ class CompatResult:
     applied_ids: List[str]
 
 
-
 COMPAT_REGISTRY: List[CompatEntry] = [
     CompatEntry(
         id="openssl3-deprecations",
