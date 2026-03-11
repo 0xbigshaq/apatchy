@@ -28,7 +28,6 @@ class MutatorManager:
         self.grammar_mutator_dir = self.work_dir / "grammar_mutator"
         self.custom_mutators_out = Config.CUSTOM_MUTATORS_DIR
 
-
     def setup(self) -> None:
         """Clone grammar-mutator repo and download antlr4 jar."""
         self._check_deps(["git", "make", "g++"])
@@ -127,7 +126,6 @@ class MutatorManager:
                 found[p.stem] = p
         return sorted(found.keys())
 
-
     def build_custom_mutator(self, name: Optional[str] = None) -> None:
         """Compile .c sources from bundled custom_mutators/ into .so files."""
         self.custom_mutators_out.mkdir(exist_ok=True)
@@ -176,7 +174,6 @@ class MutatorManager:
                 }
             )
         return results
-
 
     def _resolve_grammar_file(self, name: str) -> Optional[Path]:
         """Resolve a grammar name or path to a .json file."""

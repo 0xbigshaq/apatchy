@@ -40,7 +40,6 @@ class BugManager:
         self.bugs_dir = bugs_dir or Config.WORK_DIR / "bugs"
         self.verbose = verbose
 
-
     def list_bugs(self) -> List[Dict[str, Any]]:
         """Return metadata for every bug that has a ``bug.toml``.
 
@@ -102,7 +101,6 @@ class BugManager:
                 return bug_cls(bug_dir, manifest)
 
         return Bug(bug_dir, manifest)
-
 
     def setup(self, cve_id: str) -> None:
         """Full setup for a bug: download, configure, build, link, seeds.
@@ -167,7 +165,6 @@ class BugManager:
         logger.info(f"  Config: {bug.httpd_config}")
         logger.info(f"  Fuzz:   apatchy fuzz --config {bug.httpd_config}")
 
-
     def reproduce(self, cve_id: str) -> None:
         """Reproduce a bug by triaging its seeds.
 
@@ -226,7 +223,6 @@ class BugManager:
                 suppress=bug.suppress_file,
                 timeout=bug.triage_timeout,
             )
-
 
     def _resolve_bug_dir(self, cve_id: str) -> Path:
         """Resolve a CVE ID to a bug directory path.

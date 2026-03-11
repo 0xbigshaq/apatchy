@@ -65,7 +65,6 @@ class ToolchainManager:
         self.aflpp_dir = self.toolchain_dir / "aflplusplus"
         self.runner = ProcessRunner(verbose=verbose)
 
-
     def check(self) -> List[DepStatus]:
         """Return structured status for all dependencies."""
         deps: List[DepStatus] = []
@@ -168,7 +167,6 @@ class ToolchainManager:
 
         return deps
 
-
     def setup_afl(self) -> None:
         """Clone and build AFL++ into toolchain/aflplusplus/."""
         afl_fuzz = self.aflpp_dir / "afl-fuzz"
@@ -207,7 +205,6 @@ class ToolchainManager:
             self._write_afl_paths()
         else:
             logger.error("Build completed but afl-fuzz binary not found.")
-
 
     def setup_llvm(self, standalone: bool = False) -> None:
         """Detect clang version, download missing LLVM tools to toolchain/.
@@ -310,7 +307,6 @@ class ToolchainManager:
         logger.info("  https://apt.llvm.org/")
         logger.info(f"  wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && sudo ./llvm.sh {clang_ver}")
 
-
     def _detect_clang_major_version(self) -> Optional[str]:
         """Detect the major version of clang in PATH."""
         clang = shutil.which("clang")
@@ -396,7 +392,6 @@ class ToolchainManager:
                 return DepStatus(name, category, True, path=str(Path(inc_dir, header)))
 
         return DepStatus(name, category, False, install_hint=install_hint)
-
 
     def _find_local_llvm_binary(self, llvm_dir: Path, name: str) -> Optional[str]:
         """Check if a tool already exists in the local toolchain/llvm-{ver}/ directory."""
@@ -513,7 +508,6 @@ class ToolchainManager:
             logger.warning(f"  Binary not found after extraction: {t}")
 
         return found
-
 
     def _write_afl_paths(self) -> None:
         """Write AFL++ binary paths to toolchain.config [fuzzing] section."""
