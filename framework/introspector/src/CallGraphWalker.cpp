@@ -1,29 +1,40 @@
 // recursive call tree extraction
 #include "CallGraphWalker.h"
+#include "CallTreeNode.h"
 #include "FunctionInfo.h"
 #include "llvm/Analysis/CallGraph.h"
+#include <llvm-18/llvm/IR/Metadata.h>
 
-void CallGraphWalker::walkNode(
-    CallGraphNode *node, unsigned depth, SmallPtrSet<Function *, 32> &visited
-)
+CallTreeNode
+CallGraphWalker::walkNode(CallGraphNode *node, unsigned depth, SmallPtrSet<Function *, 32> &visited)
 {
-    for (auto &CR : *node) {
-        CallGraphNode *callee = CR.second;
-        if (Function *f = callee->getFunction()) {
-          
-            // CR.first is the CallBase* (the call/invoke instruction)
-            unsigned call_line = 0;
-            if (CR.first) {
-                if (auto *cb = dyn_cast<llvm::CallBase>(*CR.first)) {
-                    if (const DebugLoc &loc = cb->getDebugLoc()) {
-                        call_line = loc.getLine();
-                        // f.set_callsite(line);
+    CallTreeNode tree_node;
+    if (Function *f = node->getFunction()) {
+        tree_node.name = f->getName().str();
+
+        for (auto &CR : *node) {
+            CallGraphNode *callee_node = CR.second;
+            if (Function *callee = callee_node->getFunction()) {
+                if (visited.insert(callee).second) {
+                    CallTreeNode child = walkNode(callee_node, depth + 1, visited);
+
+                    // set call site from CR.first
+                    if (CR.first) {
+                        if (auto *cb = dyn_cast<llvm::CallBase>(*CR.first)) {
+                            if (const DebugLoc &loc = cb->getDebugLoc()) {
+                                child.site_line = loc.getLine();
+                                child.site_file = loc->getFilename().str();
+                            }
+                        }
                     }
+
+                    tree_node.children.push_back(child);
+                    visited.erase(callee);
                 }
             }
-
         }
     }
+    return tree_node;
 }
 
 void CallGraphWalker::walk(const std::string &entry_name)
@@ -39,5 +50,6 @@ void CallGraphWalker::walk(const std::string &entry_name)
 
     SmallPtrSet<Function *, 32> visited;
     visited.insert(entry_func);
-    walkNode(entry_node, 0, visited);
+    CallTreeNode root = walkNode(entry_node, 0, visited);
+    llvm::outs() << "root: " << root.name << ", children: " << root.children.size() << "\n";
 }
