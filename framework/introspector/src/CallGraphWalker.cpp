@@ -2,6 +2,7 @@
 #include "CallGraphWalker.h"
 #include "CallTreeNode.h"
 #include "FunctionInfo.h"
+#include "JsonOutput.h"
 #include "llvm/Analysis/CallGraph.h"
 #include <llvm-18/llvm/IR/Metadata.h>
 
@@ -23,6 +24,7 @@ CallGraphWalker::walkNode(CallGraphNode *node, unsigned depth, SmallPtrSet<Funct
                         if (auto *cb = dyn_cast<llvm::CallBase>(*CR.first)) {
                             if (const DebugLoc &loc = cb->getDebugLoc()) {
                                 child.site_line = loc.getLine();
+                                child.site_loc = loc.getCol();
                                 child.site_file = loc->getFilename().str();
                             }
                         }
@@ -51,5 +53,8 @@ void CallGraphWalker::walk(const std::string &entry_name)
     SmallPtrSet<Function *, 32> visited;
     visited.insert(entry_func);
     CallTreeNode root = walkNode(entry_node, 0, visited);
-    llvm::outs() << "root: " << root.name << ", children: " << root.children.size() << "\n";
+    // llvm::outs() << "root: " << root.name << ", children: " << root.children.size() << "\n";
+    JsonOutput json_output;
+    llvm::json::Object tree = json_output.nodeToJson(root);
+    llvm::outs() << llvm::json::Value(std::move(tree)) << "\n";
 }
