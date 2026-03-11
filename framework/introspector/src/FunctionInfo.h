@@ -1,3 +1,5 @@
+#ifndef FUNCTION_INFO_H
+#define FUNCTION_INFO_H
 // FunctionInfo struct + extraction logic
 #include <llvm/Analysis/CallGraph.h>
 #include <llvm/IR/DebugInfoMetadata.h>
@@ -14,3 +16,5 @@ class FunctionInfo
   private:
     llvm::Function &m_func;
 };
+
+#endif // FUNCTION_INFO_H
