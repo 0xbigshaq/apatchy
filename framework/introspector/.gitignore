@@ -1,0 +1,6 @@
+testprog/
+build/
+.vscode/
+tmp-*/
+tmpf-*
+combined.bc
