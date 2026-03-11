@@ -32,7 +32,7 @@ from apatchy.core.process_runner import ProcessRunner
 from apatchy.managers.config_manager import ConfigManager
 from apatchy.utils.build_tree import AlternateBuildTree
 from apatchy.utils.logger import get_logger
-from apatchy.utils.ui import UI
+from apatchy.utils.ui import UI, run_stream_panel
 
 logger = get_logger(__name__)
 
@@ -468,9 +468,6 @@ class ReportManager:
         # Build coverage-instrumented external modules (e.g. mod_pwn.so)
         cov_modules = self._build_coverage_modules(cc, cov_root)
 
-        if with_introspect:
-            self._emit_llvm_bitcode(cc)
-
         # Resolve httpd config
         config_path = self.config_manager.get_httpd_config(config_name)
         if not config_path:
@@ -559,7 +556,10 @@ class ReportManager:
         # Print summary. If the user chose the introspect option,
         # it's better off to keep the output log clean since there
         # are more steps to be executed down the flow.
-        if not with_introspect:
+        if with_introspect:
+            self.logger.info("Merging LLVM bitcode files")
+            self._merge_llvm_bitcode(cc)
+        else:
             self.logger.info("Coverage summary:")
             report_cmd = [
                 cov_bin,
@@ -837,129 +837,240 @@ class ReportManager:
                 stderr=subprocess.DEVNULL,
             )
 
-    def _emit_llvm_bitcode(self, cc: str) -> List[Path]:
-        bc_path = Path(self.httpd_root / "bitcode")
-        base_path = self.httpd_root
-        sources = list(base_path.glob("**/*.c"))
-        for subdir in ["server", "modules"]:
-            sources.extend((base_path / subdir).rglob("*.c"))
-        if not sources:
-            return []
+    @staticmethod
+    def _parse_config_vars(path: Path) -> dict:
+        config_vars = {}
+        if not path.exists():
+            return config_vars
+        for line in path.read_text().splitlines():
+            m = re.match(r"^(\w+)\s*=\s*(.*)", line)
+            if m:
+                config_vars[m.group(1)] = m.group(2).strip()
+        return config_vars
+
+    def _merge_llvm_bitcode(self, cc: str) -> None:
+        import json
+
+        cov_root = Path(str(self.httpd_root) + "-cov")
+        bc_path = cov_root / "bitcode"
         bc_path.mkdir(exist_ok=True)
 
-        built = []
-        config_vars = {}
-        cv_path = base_path / "build" / "config_vars.mk"
-        if cv_path.exists():
-            for line in cv_path.read_text().splitlines():
-                m = re.match(r"^(\w+)\s*=\s*(.*)", line)
-                if m:
-                    config_vars[m.group(1)] = m.group(2).strip()
+        exclude_dirs = {
+            "test",
+            "tests",
+            "support",
+            "tools",
+            "build",
+            "examples",
+            "benchmark",
+            "win32",
+            "os2",
+            "netware",
+            "beos",
+        }
+        exclude_files = {"modules.bc", "gen_test_char.bc", "exports.bc"}
 
-        # FIXME: we shouldn't do it like that, see #1
-        raw_includes = config_vars.get("EXTRA_INCLUDES", "")
-        raw_defines = config_vars.get("EXTRA_CPPFLAGS", "") + " " + config_vars.get("NOTEST_CPPFLAGS", "")
-
-        # Resolve $(top_srcdir) and $(top_builddir) to the actual httpd root
-        raw_includes = raw_includes.replace("$(top_srcdir)", str(base_path)).replace("$(top_builddir)", str(base_path))
-
-        includes = [f for f in raw_includes.split() if f.startswith("-I")]
-        defines = [f for f in raw_defines.split() if f.startswith("-D")]
-        extra = config_vars.get("EXTRA_CFLAGS", "").split()
-
-        failed = []
-        spinner = Progress(BarColumn(), SpinnerColumn(), TextColumn("{task.description}"))
-        task_id = spinner.add_task("[yellow] Emitting bitcode...", total=len(sources))
-        console = Console()
-
-        with Live(spinner, console=console, refresh_per_second=12):
-            for src in sources:
-                dst = src.relative_to(base_path)
-                name = src.stem
-                output = bc_path / dst.with_suffix(".bc")
-                output.parent.mkdir(parents=True, exist_ok=True)
-                cmd = [
-                    cc,
-                    "-g",
-                    "-O0",
-                    "-emit-llvm",
-                    "-c",
-                    str(src),
-                    "-o",
-                    str(output),
-                    f"-I{base_path}/include",
-                    f"-I{base_path}/srclib/apr/include",
-                    f"-I{base_path}/srclib/apr-util/include",
-                    f"-I{base_path}/os/unix",
-                    f"-I{base_path}/server",
-                    *includes,
-                    *defines,
-                    *extra,
-                ]
-                # self.logger.info(includes)
-                # self.logger.info(defines)
-                # exit(0)
-                spinner.update(
-                    task_id, description=f"({len(built)}/{len(sources)}) [yellow]Emitting LLVM bitcode: {src.name}"
-                )
-                try:
-                    subprocess.run(cmd, check=True, capture_output=True, text=True)
-                    built.append(output)
-                except subprocess.CalledProcessError as e:
-                    failed.append((src.name, e.stderr))
-                    # self.logger.error(e.stderr)
-                    # raise e
-                spinner.advance(task_id)
-        if failed:
-            with tempfile.NamedTemporaryFile(
-                prefix="bitcode_errors_", suffix=".log", delete=False, mode="w"
-            ) as log_file:
-                for name, err in failed:
-                    log_file.write(f"### {name} error:\n{err}\n\n")
-                log_file.close()
-
-            names = [name for name, _ in failed]
-            self.logger.warning(f"{len(failed)} files failed to compile:")
-            for i in range(0, len(names), 4):
-                batch = ", ".join(names[i : i + 4])
-                self.logger.warning(f"   {batch}")
-            self.logger.info(f"Full error log: {log_file.name}")
-        else:
-            UI.print_success(f"Bitcode emitted for {len(built)} files in {bc_path}")
-
-        llvm_link = self._resolve_llvm_tool("llvm-link", cc)
-        combined = bc_path / "combined.bc"
-        try:
+        compile_db = cov_root / "compile_commands.json"  # god bless this file!! saved us so much time
+        if not compile_db.exists():
+            config_vars = self._parse_config_vars(cov_root / "build" / "config_vars.mk")
+            cflags = config_vars.get("CFLAGS", "")
+            jobs = os.cpu_count() or 4
+            bear_cmd = [
+                "bear",
+                "--",
+                "make",
+                f"-j{jobs}",
+                f"CC={cc}",
+                f"CFLAGS={cflags}",
+            ]
             subprocess.run(
-                [llvm_link, "--only-needed", *[str(p) for p in built if p.name != "modules.bc"], "-o", str(combined)],
-                check=True,
+                ["make", "clean"],
+                cwd=cov_root,
                 capture_output=True,
                 text=True,
             )
+            rc, _ = run_stream_panel(
+                bear_cmd,
+                cwd=str(cov_root),
+                label="Tracing objects for introspection",
+            )
+            if rc != 0:
+                self.logger.error("bear failed")
+                return
+
+        if not compile_db.exists():
+            self.logger.error("compile_commands.json not generated")
+            return
+
+        entries = json.loads(compile_db.read_text())
+        filtered = []
+        for e in entries:
+            if not e.get("file", "").endswith(".c"):
+                continue
+            src = Path(e["file"])
+            try:
+                rel = src.relative_to(cov_root)
+            except ValueError:
+                try:
+                    rel = src.relative_to(self.httpd_root)
+                except ValueError:
+                    continue
+            if set(rel.parts) & exclude_dirs:
+                continue
+            filtered.append(e)
+        entries = filtered
+
+        if not entries:
+            self.logger.warning("No compilation entries found")
+            return
+
+        built = []
+        failed = []
+        from rich.console import Group as RichGroup
+
+        status = Progress(SpinnerColumn(), TextColumn("{task.description}"))
+        bar = Progress(BarColumn())
+        status_task = status.add_task("[yellow]Emitting LLVM bitcode...")
+        bar_task = bar.add_task("", total=len(entries))
+        console = Console()
+
+        with Live(RichGroup(status, bar), console=console, refresh_per_second=12):
+            for entry in entries:
+                src = Path(entry["file"])
+                try:
+                    dst = src.relative_to(cov_root)
+                except ValueError:
+                    try:
+                        dst = src.relative_to(self.httpd_root)
+                    except ValueError:
+                        bar.advance(bar_task)
+                        continue
+                output = bc_path / dst.with_suffix(".bc")
+                output.parent.mkdir(parents=True, exist_ok=True)
+
+                args = list(entry.get("arguments", []))
+                if not args:
+                    cmd_str = entry.get("command", "")
+                    args = cmd_str.split()
+                if not args:
+                    bar.advance(bar_task)
+                    continue
+
+                args[0] = cc
+                new_args = []
+                skip_next = False
+                for i, arg in enumerate(args):
+                    if skip_next:
+                        skip_next = False
+                        continue
+                    if arg == "-o" and i + 1 < len(args):
+                        new_args.extend(["-o", str(output)])
+                        skip_next = True
+                        continue
+                    new_args.append(arg)
+                if "-emit-llvm" not in new_args:
+                    new_args.insert(1, "-emit-llvm")
+                if "-w" not in new_args:
+                    new_args.insert(1, "-w")
+
+                status.update(
+                    status_task,
+                    description=f"[yellow]Emitting LLVM bitcode: {src.name} ({len(built)}/{len(entries)})",
+                )
+                try:
+                    subprocess.run(
+                        new_args,
+                        cwd=entry.get("directory", str(cov_root)),
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                    )
+                    built.append(output)
+                except subprocess.CalledProcessError as e:
+                    failed.append((src.name, e.stderr))
+                bar.advance(bar_task)
+
+        if failed:
+            with tempfile.NamedTemporaryFile(
+                prefix="bitcode_errors_",
+                suffix=".log",
+                delete=False,
+                mode="w",
+            ) as log_file:
+                for name, err in failed:
+                    log_file.write(f"--- {name} ---\n{err}\n\n")
+                log_path = log_file.name
+            self.logger.warning(f"{len(failed)} files failed to compile:")
+            for i in range(0, len(failed), 4):
+                batch = ", ".join(n for n, _ in failed[i : i + 4])
+                self.logger.warning(f"  {batch}")
+            self.logger.info(f"Full error log: {log_path}")
+
+        UI.print_success(f"Bitcode emitted for {len(built)}/{len(entries)} files")
+
+        if not built:
+            return
+
+        major = self._clang_major_version(cc)
+        llvm_link = shutil.which(f"llvm-link-{major}") or shutil.which("llvm-link")
+        if not llvm_link:
+            self.logger.error("llvm-link not found")
+            return
+
+        combined = bc_path / "combined.bc"
+        llvm_nm = shutil.which(f"llvm-nm-{major}") or shutil.which("llvm-nm")
+        candidates = [p for p in built if p.name not in exclude_files]
+
+        seen_globals = {}
+        link_targets = []
+        skipped = []
+        for bc_file in candidates:
+            if not llvm_nm:
+                link_targets.append(bc_file)
+                continue
+            try:
+                result = subprocess.run(
+                    [llvm_nm, "--defined-only", str(bc_file)],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                symbols = set()
+                for line in result.stdout.splitlines():
+                    parts = line.split()
+                    if len(parts) >= 3 and parts[1] in ("T", "D", "B"):
+                        symbols.add(parts[2])
+                conflict = False
+                for sym in symbols:
+                    if sym in seen_globals:
+                        conflict = True
+                        break
+                if conflict:
+                    skipped.append(bc_file)
+                    continue
+                for sym in symbols:
+                    seen_globals[sym] = bc_file
+                link_targets.append(bc_file)
+            except Exception:
+                link_targets.append(bc_file)
+
+        if skipped:
+            self.logger.info(f"Skipped {len(skipped)} files with duplicate symbols")
+
+        link_spinner = Progress(SpinnerColumn(), TextColumn("{task.description}"))
+        link_spinner.add_task("[yellow]Linking LLVM bitcode objects for post-processing...")
+        console = Console()
+        try:
+            with Live(link_spinner, console=console, refresh_per_second=12):
+                subprocess.run(
+                    [llvm_link, *[str(p) for p in link_targets], "-o", str(combined)],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+            UI.print_success(f"Bitcode linked -> {combined} ({len(link_targets)} modules)")
         except subprocess.CalledProcessError as e:
             self.logger.error(f"llvm-link failed: {e.stderr}")
-        UI.print_success(f"Bitcode linked -> {combined}")
-        return built
-
-    # FIXME: this is a dirty hack, the resolution logic should be in `ReportManager::_detect_llvm_toolchain`
-    def _resolve_llvm_tool(self, tool_name: str, cc: str) -> str:
-        major = self._clang_major_version(cc)
-        versioned = f"{tool_name}-{major}"
-
-        path = toolchain_config.resolve_tool(versioned)
-        if path:
-            return path
-
-        cc_dir = Path(cc).parent
-        colocated = cc_dir / versioned
-        if colocated.is_file():
-            return str(colocated)
-
-        found = shutil.which(versioned) or shutil.which(tool_name)
-        if found:
-            return found
-
-        raise FileNotFoundError(f"{tool_name} not found (tried {versioned})")
 
     def _triage_env(
         self,
