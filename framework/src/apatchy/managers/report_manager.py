@@ -556,25 +556,28 @@ class ReportManager:
             self.logger.error(f"llvm-cov show failed: {e.stderr}")
             return
 
-        # Print summary
-        self.logger.info("Coverage summary:")
-        report_cmd = [
-            cov_bin,
-            "report",
-            str(harness),
-            *extra_objects,
-            f"-instr-profile={merged_profdata}",
-            *source_filters,
-        ]
-        try:
-            result = subprocess.run(report_cmd, check=True, capture_output=True, text=True)
-            print(result.stdout)
-        except subprocess.CalledProcessError as e:
-            self.logger.error(f"llvm-cov report failed: {e.stderr}")
-            return
+        # Print summary. If the user chose the introspect option,
+        # it's better off to keep the output log clean since there
+        # are more steps to be executed down the flow.
+        if not with_introspect:
+            self.logger.info("Coverage summary:")
+            report_cmd = [
+                cov_bin,
+                "report",
+                str(harness),
+                *extra_objects,
+                f"-instr-profile={merged_profdata}",
+                *source_filters,
+            ]
+            try:
+                result = subprocess.run(report_cmd, check=True, capture_output=True, text=True)
+                print(result.stdout)
+            except subprocess.CalledProcessError as e:
+                self.logger.error(f"llvm-cov report failed: {e.stderr}")
+                return
 
         self.logger.info(f"HTML report: {html_dir / 'index.html'}")
-        self.logger.info("Coverage report complete. AFL build is untouched.")
+        self.logger.info("HTML Coverage report complete.")
 
     def _ensure_profile_build(self, cc: str) -> Path:
         """Ensure a separate profile tree is configured and compiled.
@@ -923,8 +926,40 @@ class ReportManager:
             self.logger.info(f"Full error log: {log_file.name}")
         else:
             UI.print_success(f"Bitcode emitted for {len(built)} files in {bc_path}")
-        # TODO: add merging logic
+
+        llvm_link = self._resolve_llvm_tool("llvm-link", cc)
+        combined = bc_path / "combined.bc"
+        try:
+            subprocess.run(
+                [llvm_link, "--only-needed", *[str(p) for p in built if p.name != "modules.bc"], "-o", str(combined)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"llvm-link failed: {e.stderr}")
+        UI.print_success(f"Bitcode linked -> {combined}")
         return built
+
+    # FIXME: this is a dirty hack, the resolution logic should be in `ReportManager::_detect_llvm_toolchain`
+    def _resolve_llvm_tool(self, tool_name: str, cc: str) -> str:
+        major = self._clang_major_version(cc)
+        versioned = f"{tool_name}-{major}"
+
+        path = toolchain_config.resolve_tool(versioned)
+        if path:
+            return path
+
+        cc_dir = Path(cc).parent
+        colocated = cc_dir / versioned
+        if colocated.is_file():
+            return str(colocated)
+
+        found = shutil.which(versioned) or shutil.which(tool_name)
+        if found:
+            return found
+
+        raise FileNotFoundError(f"{tool_name} not found (tried {versioned})")
 
     def _triage_env(
         self,
