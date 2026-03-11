@@ -466,6 +466,7 @@ class MethodDispatcher:
                 harness_name=getattr(args, "harness", None),
                 exclude_file=getattr(args, "exclude", None),
                 jobs=getattr(args, "jobs", 1),
+                with_introspect=getattr(args, "with_introspect", False),
             )
         else:
             logger.error("No coverage sub-command specified. Use: report")

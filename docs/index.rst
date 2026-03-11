@@ -5,7 +5,7 @@
 
 .. raw:: html
 
-   <p style="text-align: center;"><em>Making Apache A-Patchy, One Fuzz at a Time</em></p>
+   <p style="text-align: center;"><em>Making Apache Server A-Patchy Server, One Fuzz at a Time :D</em></p>
 
 .. toctree::
    :maxdepth: 1

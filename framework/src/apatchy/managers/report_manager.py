@@ -13,6 +13,7 @@ import re
 import shutil
 import signal
 import subprocess
+import tempfile
 import threading
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -31,6 +32,7 @@ from apatchy.core.process_runner import ProcessRunner
 from apatchy.managers.config_manager import ConfigManager
 from apatchy.utils.build_tree import AlternateBuildTree
 from apatchy.utils.logger import get_logger
+from apatchy.utils.ui import UI
 
 logger = get_logger(__name__)
 
@@ -441,6 +443,7 @@ class ReportManager:
         harness_name: str = None,
         exclude_file: str | None = None,
         jobs: int = 1,
+        with_introspect=False,
     ) -> None:
         """Full coverage pipeline: build harness, replay corpus, merge, generate report."""
         # Detect LLVM toolchain (matched compiler + analysis tools)
@@ -464,6 +467,9 @@ class ReportManager:
 
         # Build coverage-instrumented external modules (e.g. mod_pwn.so)
         cov_modules = self._build_coverage_modules(cc, cov_root)
+
+        if with_introspect:
+            self._emit_llvm_bitcode(cc)
 
         # Resolve httpd config
         config_path = self.config_manager.get_httpd_config(config_name)
@@ -828,6 +834,98 @@ class ReportManager:
                 stderr=subprocess.DEVNULL,
             )
 
+    def _emit_llvm_bitcode(self, cc: str) -> List[Path]:
+        bc_path = Path(self.httpd_root / "bitcode")
+        base_path = self.httpd_root
+        sources = list(base_path.glob("**/*.c"))
+        for subdir in ["server", "modules"]:
+            sources.extend((base_path / subdir).rglob("*.c"))
+        if not sources:
+            return []
+        bc_path.mkdir(exist_ok=True)
+
+        built = []
+        config_vars = {}
+        cv_path = base_path / "build" / "config_vars.mk"
+        if cv_path.exists():
+            for line in cv_path.read_text().splitlines():
+                m = re.match(r"^(\w+)\s*=\s*(.*)", line)
+                if m:
+                    config_vars[m.group(1)] = m.group(2).strip()
+
+        # FIXME: we shouldn't do it like that, see #1
+        raw_includes = config_vars.get("EXTRA_INCLUDES", "")
+        raw_defines = config_vars.get("EXTRA_CPPFLAGS", "") + " " + config_vars.get("NOTEST_CPPFLAGS", "")
+
+        # Resolve $(top_srcdir) and $(top_builddir) to the actual httpd root
+        raw_includes = raw_includes.replace("$(top_srcdir)", str(base_path)).replace("$(top_builddir)", str(base_path))
+
+        includes = [f for f in raw_includes.split() if f.startswith("-I")]
+        defines = [f for f in raw_defines.split() if f.startswith("-D")]
+        extra = config_vars.get("EXTRA_CFLAGS", "").split()
+
+        failed = []
+        spinner = Progress(BarColumn(), SpinnerColumn(), TextColumn("{task.description}"))
+        task_id = spinner.add_task("[yellow] Emitting bitcode...", total=len(sources))
+        console = Console()
+
+        with Live(spinner, console=console, refresh_per_second=12):
+            for src in sources:
+                dst = src.relative_to(base_path)
+                name = src.stem
+                output = bc_path / dst.with_suffix(".bc")
+                output.parent.mkdir(parents=True, exist_ok=True)
+                cmd = [
+                    cc,
+                    "-g",
+                    "-O0",
+                    "-emit-llvm",
+                    "-c",
+                    str(src),
+                    "-o",
+                    str(output),
+                    f"-I{base_path}/include",
+                    f"-I{base_path}/srclib/apr/include",
+                    f"-I{base_path}/srclib/apr-util/include",
+                    f"-I{base_path}/os/unix",
+                    f"-I{base_path}/server",
+                    *includes,
+                    *defines,
+                    *extra,
+                ]
+                # self.logger.info(includes)
+                # self.logger.info(defines)
+                # exit(0)
+                spinner.update(
+                    task_id, description=f"({len(built)}/{len(sources)}) [yellow]Emitting LLVM bitcode: {src.name}"
+                )
+                try:
+                    subprocess.run(cmd, check=True, capture_output=True, text=True)
+                    built.append(output)
+                except subprocess.CalledProcessError as e:
+                    failed.append((src.name, e.stderr))
+                    # self.logger.error(e.stderr)
+                    # raise e
+                spinner.advance(task_id)
+        if failed:
+            with tempfile.NamedTemporaryFile(
+                prefix="bitcode_errors_", suffix=".log", delete=False, mode="w"
+            ) as log_file:
+                for name, err in failed:
+                    log_file.write(f"### {name} error:\n{err}\n\n")
+                log_file.close()
+
+            names = [name for name, _ in failed]
+            self.logger.warning(f"{len(failed)} files failed to compile:")
+            for i in range(0, len(names), 4):
+                batch = ", ".join(names[i:i+4])
+                self.logger.warning(f"   {batch}")
+            self.logger.info(f"Full error log: {log_file.name}")
+        else:
+            UI.print_success(f"Bitcode emitted for {len(built)} files in {bc_path}")
+        # TODO: add merging logic
+        return built
+
     def _triage_env(
         self,
         no_color: bool = False,
@@ -1007,7 +1105,6 @@ class ReportManager:
             self.logger.error(f"Triage timed out ({timeout}s)")
         except Exception as e:
             self.logger.error(f"Failed to triage crash: {e}")
-
 
     _BUG_LABELS = {
         "heap-use-after-free": "UAF",
