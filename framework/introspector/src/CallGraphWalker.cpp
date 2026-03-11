@@ -7,16 +7,21 @@ void CallGraphWalker::walkNode(
     CallGraphNode *node, unsigned depth, SmallPtrSet<Function *, 32> &visited
 )
 {
-    for (unsigned i = 0; i < node->size(); i++) {
-        CallGraphNode *callee = (*node)[i];
+    for (auto &CR : *node) {
+        CallGraphNode *callee = CR.second;
         if (Function *f = callee->getFunction()) {
-            FunctionInfo finfo(*f);
-            llvm::outs() << std::string(depth * 2, ' ');
-            finfo.dump();
-            if (visited.insert(f).second) {
-                walkNode(callee, depth + 1, visited);
-                visited.erase(f);
+          
+            // CR.first is the CallBase* (the call/invoke instruction)
+            unsigned call_line = 0;
+            if (CR.first) {
+                if (auto *cb = dyn_cast<llvm::CallBase>(*CR.first)) {
+                    if (const DebugLoc &loc = cb->getDebugLoc()) {
+                        call_line = loc.getLine();
+                        // f.set_callsite(line);
+                    }
+                }
             }
+
         }
     }
 }
