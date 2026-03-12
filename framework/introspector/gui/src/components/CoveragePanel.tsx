@@ -1,5 +1,5 @@
-import type { FunctionMeta } from '../types';
 import { coverageUrl } from '../lib/coverage-url';
+import type { FunctionMeta } from '../types';
 
 type FunctionRow = FunctionMeta & { name: string };
 
@@ -7,9 +7,11 @@ interface Props {
   functions: FunctionRow[];
   selectedName: string;
   reportBaseUrl: string;
+  sourceRoot?: string;
+  onFunctionClick?: (func: FunctionRow) => void;
 }
 
-export function CoveragePanel({ functions, selectedName, reportBaseUrl }: Props) {
+export function CoveragePanel({ functions, selectedName, reportBaseUrl, sourceRoot, onFunctionClick }: Props) {
   if (functions.length === 0) {
     return (
       <div className="h-full flex items-center justify-center text-zinc-600 text-sm">
@@ -47,13 +49,14 @@ export function CoveragePanel({ functions, selectedName, reportBaseUrl }: Props)
           <tbody>
             {functions.map((f) => {
               const isActive = f.name === selectedName;
-              const url = coverageUrl(f.source_dir, f.source_file, f.line_start, reportBaseUrl);
+              const isExternal = !f.source_file;
+              const url = coverageUrl(f.source_dir, f.source_file, f.line_start, reportBaseUrl, sourceRoot);
               return (
                 <tr
                   key={f.name}
-                  className={`border-b border-zinc-800/50 ${
-                    isActive ? 'bg-zinc-700/40' : 'hover:bg-zinc-800/40'
-                  }`}
+                  onClick={() => onFunctionClick?.(f)}
+                  className={`border-b border-zinc-800/50 cursor-pointer ${isActive ? 'bg-zinc-700/40' : 'hover:bg-zinc-800/40'
+                    }`}
                 >
                   <td className="px-3 py-1 truncate max-w-xs">
                     <span className={isActive ? 'text-white' : 'text-zinc-300'}>
@@ -62,22 +65,22 @@ export function CoveragePanel({ functions, selectedName, reportBaseUrl }: Props)
                   </td>
                   <td className="px-3 py-1 text-center">
                     <span
-                      className={`inline-block w-2 h-2 rounded-full ${
-                        f.coverage.hit ? 'bg-green-500' : 'bg-red-500'
-                      }`}
+                      className={`inline-block w-2 h-2 rounded-full ${isExternal ? 'bg-zinc-500' : f.coverage.hit ? 'bg-green-500' : 'bg-red-500'
+                        }`}
+                      title={isExternal ? 'External (no coverage data)' : undefined}
                     />
                   </td>
                   <td className="px-3 py-1 text-right text-zinc-400">
-                    {f.coverage.count.toLocaleString()}
+                    {isExternal ? '-' : f.coverage.count.toLocaleString()}
                   </td>
                   <td className="px-3 py-1 text-right text-zinc-400">
-                    {f.coverage.regions_covered}/{f.coverage.regions_total}
+                    {isExternal ? '-' : `${f.coverage.regions_covered}/${f.coverage.regions_total}`}
                   </td>
                   <td className="px-3 py-1 text-right text-zinc-500">
-                    {f.line_start}
+                    {f.line_start || '-'}
                   </td>
                   <td className="px-3 py-1 text-right text-zinc-500">
-                    {f.bb_count}
+                    {f.bb_count || '-'}
                   </td>
                   <td className="px-3 py-1 text-right">
                     {url && (
@@ -87,6 +90,7 @@ export function CoveragePanel({ functions, selectedName, reportBaseUrl }: Props)
                         rel="noopener noreferrer"
                         className="text-blue-400 hover:text-blue-300"
                         title="View in coverage report"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         {'->'}
                       </a>

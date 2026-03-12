@@ -1,0 +1,211 @@
+/*
+ * Dark-mode overrides for llvm-cov HTML reports.
+ * Injected by apatchy after report generation.
+ */
+
+body {
+  background-color: #1a1a2e;
+  color: #e0e0e0;
+}
+
+pre {
+  color: #e0e0e0;
+}
+
+.source-name-title {
+  background-color: #16213e;
+  border-bottom-color: #333;
+  color: #e0e0e0;
+}
+
+.centered {
+  border-color: #333;
+  background-color: #1a1a2e;
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.centered,
+.centered table {
+  display: table;
+  width: auto;
+}
+
+.expansion-view {
+  border-color: #333;
+  background-color: #16213e;
+}
+
+.light-row {
+  background: #1a1a2e;
+  border-color: #333;
+}
+
+.light-row-bold {
+  background: #16213e;
+  border-color: #333;
+  color: #e0e0e0;
+}
+
+td.column-entry-bold {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #16213e;
+}
+
+tr:hover {
+  background-color: #222244;
+}
+
+th, td {
+  border-right-color: #333;
+  border-left-color: #333;
+  color: #e0e0e0;
+  padding: 0px 8px;
+}
+
+td.line-number {
+  color: #666;
+}
+
+td.covered-line,
+td.covered-line pre {
+  color: #4db8ff;
+}
+
+td.uncovered-line,
+td.uncovered-line pre {
+  color: #ff6655;
+}
+
+.column-entry {
+  color: #e0e0e0;
+}
+
+.column-entry-bold {
+  color: #e0e0e0;
+}
+
+.column-entry-green {
+  background-color: #1a3a1a;
+  color: #7ddf7d;
+}
+
+.column-entry-green:hover,
+tr:hover .column-entry-green {
+  background-color: #224422;
+}
+
+.column-entry-red {
+  background-color: #3a1a1a;
+  color: #ff8888;
+}
+
+.column-entry-red:hover,
+tr:hover .column-entry-red {
+  background-color: #442222;
+}
+
+.column-entry-yellow {
+  background-color: #3a3a1a;
+  color: #dddd77;
+}
+
+.column-entry-yellow:hover,
+tr:hover .column-entry-yellow {
+  background-color: #444422;
+}
+
+.column-entry-gray {
+  background-color: #252525;
+  color: #999;
+}
+
+.column-entry-gray:hover,
+tr:hover .column-entry-gray {
+  background-color: #2a2a2a;
+}
+
+.red {
+  background-color: #3a1a1a;
+}
+
+.cyan {
+  background-color: #1a3a3a;
+}
+
+.tooltip {
+  background-color: #264d73;
+  color: #e0e0e0;
+}
+
+.tooltip span.tooltip-content {
+  background: #222;
+  color: #e0e0e0;
+}
+
+.tooltip span.tooltip-content:after {
+  border-top-color: #222;
+}
+
+tr:has(> td > a:target) > td {
+  background-color: #3a3520;
+}
+
+tr:has(> td > a:target) > td.code > pre {
+  background-color: #3a3520;
+}
+
+a {
+  color: #6db3f2;
+}
+
+a:visited {
+  color: #a07de8;
+}
+
+/* Syntax highlighting for C/C++ source.
+ * llvm-cov wraps tokens in <span> with inline styles,
+ * so we override by color value. */
+
+span[style*="color:#008000"],
+span[style*="color: #008000"] {
+  color: #6a9955 !important;
+}
+
+span[style*="color:#0000ff"],
+span[style*="color: #0000ff"] {
+  color: #569cd6 !important;
+}
+
+span[style*="color:#800080"],
+span[style*="color: #800080"],
+span[style*="color:#8b008b"],
+span[style*="color: #8b008b"] {
+  color: #c586c0 !important;
+}
+
+span[style*="color:#a31515"],
+span[style*="color: #a31515"],
+span[style*="color:#800000"],
+span[style*="color: #800000"] {
+  color: #ce9178 !important;
+}
+
+span[style*="color:#098658"],
+span[style*="color: #098658"],
+span[style*="color:#09885a"],
+span[style*="color: #09885a"] {
+  color: #b5cea8 !important;
+}
+
+span[style*="color:#267f99"],
+span[style*="color: #267f99"],
+span[style*="color:#2b91af"],
+span[style*="color: #2b91af"] {
+  color: #4ec9b0 !important;
+}

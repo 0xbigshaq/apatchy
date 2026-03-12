@@ -49,6 +49,30 @@ class ReportManager:
         self.runner = ProcessRunner()
         self.work_dir = Path(".").resolve()
 
+    def _inject_dark_mode_css(self, html_dir: Path) -> None:
+        """Inject dark-mode CSS and shorten display paths in llvm-cov HTML."""
+        css_path = Path(__file__).resolve().parent.parent / "templates" / "coverage_dark.css"
+        if not css_path.is_file():
+            self.logger.warning("Dark-mode CSS not found, skipping injection")
+            return
+        dark_css = css_path.read_text()
+        style_tag = f"\n<style>\n{dark_css}</style>\n"
+        prefix = str(self.work_dir).lstrip("/") + "/"
+        display_prefix = ">" + prefix
+        display_replacement = ">"
+        count = 0
+        for html_file in html_dir.rglob("*.html"):
+            try:
+                content = html_file.read_text(encoding="utf-8", errors="surrogateescape")
+            except Exception:
+                continue
+            if "</head>" in content:
+                content = content.replace("</head>", style_tag + "</head>", 1)
+                content = content.replace(display_prefix, display_replacement)
+                html_file.write_text(content, encoding="utf-8", errors="surrogateescape")
+                count += 1
+        self.logger.info(f"Injected dark-mode CSS into {count} HTML files")
+
     @staticmethod
     def _clang_major_version(cc: str) -> Optional[int]:
         """Return the LLVM major version of a clang binary, or None."""
@@ -554,6 +578,8 @@ class ReportManager:
             self.logger.error(f"llvm-cov show failed: {e.stderr}")
             return
 
+        self._inject_dark_mode_css(html_dir)
+
         # Print summary. If the user chose the introspect option,
         # it's better off to keep the output log clean since there
         # are more steps to be executed down the flow.
@@ -773,6 +799,7 @@ class ReportManager:
             out_dir.mkdir(parents=True)
             self.logger.warning(f"GUI dist not found at {gui_dist}, output will have no viewer")
 
+        introspect.setdefault("metadata", {})["source_root"] = str(self.work_dir)
         (out_dir / "introspect.json").write_text(json.dumps(introspect, indent=2))
 
         # generate HTML coverage report directly into the output directory
@@ -794,6 +821,8 @@ class ReportManager:
         except subprocess.CalledProcessError as e:
             self.logger.warning(f"llvm-cov show failed, coverage links will not work: {e.stderr}")
 
+        self._inject_dark_mode_css(cov_html_dir)
+
         # also write standalone JSON
         out = Path(output_path)
         out.write_text(json.dumps(introspect, indent=2))
@@ -809,6 +838,7 @@ class ReportManager:
 
         def handler(*a, **kw):
             return http.server.SimpleHTTPRequestHandler(*a, directory=str(out_dir), **kw)
+
         server = http.server.HTTPServer(("", port), handler)
         try:
             server.serve_forever()
