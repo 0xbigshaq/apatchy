@@ -799,7 +799,6 @@ class ReportManager:
             out_dir.mkdir(parents=True)
             self.logger.warning(f"GUI dist not found at {gui_dist}, output will have no viewer")
 
-        introspect.setdefault("metadata", {})["source_root"] = str(self.work_dir)
         (out_dir / "introspect.json").write_text(json.dumps(introspect, indent=2))
 
         # generate HTML coverage report directly into the output directory
