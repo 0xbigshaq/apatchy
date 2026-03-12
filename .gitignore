@@ -107,3 +107,6 @@ docs/.obsidian/
 # Binary / reference files
 *.pdf
 *.bin
+
+framework/introspector/tree.json
+framework/introspector/coverage.json
