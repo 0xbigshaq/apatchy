@@ -831,6 +831,7 @@ class MethodDispatcher:
             "modules.lo",
             "*.profraw",
             "*.profdata",
+            "introspect.json",
         ]
         build_dirs = [
             "afl-output",
@@ -838,6 +839,7 @@ class MethodDispatcher:
             ".libs",
             "coverage-report",
             "callgrind-out",
+            "introspect-report",
         ]
         build_globs = [
             "afl-input/grammar_*.txt",  # generated grammar seeds
@@ -855,6 +857,7 @@ class MethodDispatcher:
             "toolchain",
             ".test_cache",
             "dev",
+            "introspector/build",
         ]
         all_globs = [
             "httpd-*",
