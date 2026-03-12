@@ -9,7 +9,7 @@ llvm::json::Object JsonOutput::nodeToJson(const struct CallTreeNode &node)
     obj["name"] = node.name;
     obj["site_file"] = node.site_file;
     obj["site_line"] = static_cast<int64_t>(node.site_line);
-    obj["site_loc"] = static_cast<int64_t>(node.site_loc);
+    obj["site_col"] = static_cast<int64_t>(node.site_col);
 
     llvm::json::Array children;
     for (const CallTreeNode &child : node.children) {

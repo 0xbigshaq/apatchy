@@ -6,6 +6,8 @@
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/raw_ostream.h>
 #include "CallGraphWalker.h"
+#include "JsonOutput.h"
+#include "WalkResult.h"
 
 using namespace llvm;
 
@@ -25,7 +27,11 @@ int main(int argc, char **argv)
     }
 
     CallGraphWalker walker(*M);
-    walker.walk(std::string(argv[2]));
+    JsonOutput json_output;
+    WalkResult w_result = walker.walk(std::string(argv[2]));
+    llvm::json::Object tree = json_output.nodeToJson(w_result.root);
+    llvm::outs() << llvm::json::Value(std::move(tree)) << "\n";
+
     // Walker.walk();
     // Walker.print();
 
