@@ -63,6 +63,8 @@ class MethodDispatcher:
             self._handle_triage(args)
         elif command == "coverage":
             self._handle_coverage(args)
+        elif command == "introspect":
+            self._handle_introspect(args)
         elif command == "profile":
             self._handle_profile(args)
         elif command == "setup":
@@ -470,6 +472,20 @@ class MethodDispatcher:
             )
         else:
             logger.error("No coverage sub-command specified. Use: report")
+
+    def _handle_introspect(self, args: argparse.Namespace) -> None:
+        httpd_root = self._get_active_httpd()
+        if not httpd_root:
+            return
+        self.config_manager = ConfigManager(build_mode="coverage")
+        self.report_manager = ReportManager(httpd_root, self.config_manager)
+        self.report_manager.generate_introspect(
+            entry=args.entry,
+            profdata_path=getattr(args, "profdata", None),
+            binary_path=getattr(args, "binary", None),
+            bitcode_path=getattr(args, "bitcode", None),
+            output_path=getattr(args, "output", "introspect.json"),
+        )
 
     def _handle_profile(self, args: argparse.Namespace) -> None:
         action = getattr(args, "action", None)

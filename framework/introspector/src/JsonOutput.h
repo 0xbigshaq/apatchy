@@ -13,9 +13,7 @@
 class JsonOutput
 {
   public:
-    JsonOutput()
-    {
-    };
+    JsonOutput(){};
     llvm::json::Object nodeToJson(const struct CallTreeNode &node);
     llvm::json::Object edgeToJson(const struct CallEdge &edge);
     llvm::json::Object functionToJson(const struct FunctionMeta &meta);
