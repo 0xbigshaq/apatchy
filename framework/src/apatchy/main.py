@@ -224,6 +224,24 @@ def main():
         "--with-introspect", action="store_true", default=False, help="Emit LLVM bitcode for compiled objects"
     )
 
+    # Introspect
+    introspect_parser = _sub(subparsers, "introspect", help="Merge call tree analysis with coverage data")
+    introspect_parser.add_argument(
+        "--entry", default=None, help="Entry function name (auto-detected: main or LLVMFuzzerTestOneInput)"
+    )
+    introspect_parser.add_argument(
+        "--profdata", default=None, help="Path to merged.profdata (auto-detected from coverage-report/)"
+    )
+    introspect_parser.add_argument(
+        "--binary", default=None, help="Path to coverage binary (auto-detected: fuzz_harness_coverage)"
+    )
+    introspect_parser.add_argument(
+        "--bitcode", default=None, help="Path to combined.bc (auto-detected from coverage build tree)"
+    )
+    introspect_parser.add_argument(
+        "--output", "-o", default="introspect.json", help="Output JSON file (default: introspect.json)"
+    )
+
     # Profile
     profile_parser = _sub(subparsers, "profile", help="Profile harness execution")
     profile_sub = profile_parser.add_subparsers(dest="action")

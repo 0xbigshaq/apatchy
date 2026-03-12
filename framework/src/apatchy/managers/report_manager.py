@@ -8,6 +8,7 @@ individual crash inputs.
 """
 
 import contextlib
+import json
 import os
 import re
 import shutil
@@ -21,6 +22,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 from rich.console import Console
+from rich.console import Group as RichGroup
 from rich.live import Live
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 from rich.table import Table
@@ -178,7 +180,6 @@ class ReportManager:
                 text=True,
                 timeout=5,
             )
-            import re
 
             m = re.search(r"clang version (\d+)", out)
             if m:
@@ -579,6 +580,136 @@ class ReportManager:
         self.logger.info(f"HTML report: {html_dir / 'index.html'}")
         self.logger.info("HTML Coverage report complete.")
 
+    def generate_introspect(
+        self,
+        entry: str,
+        profdata_path: str | None = None,
+        binary_path: str | None = None,
+        bitcode_path: str | None = None,
+        output_path: str = "introspect.json",
+    ) -> None:
+        """Merge call tree analysis with coverage data into a single JSON."""
+        try:
+            _, cov_bin, cc = self._detect_llvm_toolchain()
+        except FileNotFoundError as e:
+            self.logger.error(str(e))
+            return
+
+        cov_root = Path(str(self.httpd_root) + "-cov")
+
+        # auto-detect profdata
+        profdata = Path(profdata_path) if profdata_path else Path("coverage-report") / "merged.profdata"
+        if not profdata.is_file():
+            self.logger.error(f"profdata not found: {profdata}")
+            return
+
+        # auto-detect coverage binary
+        binary = Path(binary_path) if binary_path else self.work_dir / "fuzz_harness_coverage"
+        if not binary.is_file():
+            self.logger.error(f"coverage binary not found: {binary}")
+            return
+
+        # auto-detect combined bitcode
+        bitcode = Path(bitcode_path) if bitcode_path else cov_root / "bitcode" / "combined.bc"
+        if not bitcode.is_file():
+            self.logger.error(f"bitcode not found: {bitcode}")
+            return
+
+        # auto-detect entry point
+        if not entry:
+            major = self._clang_major_version(cc)
+            llvm_nm = shutil.which(f"llvm-nm-{major}") or shutil.which("llvm-nm")
+            if llvm_nm:
+                try:
+                    result = subprocess.run(
+                        [llvm_nm, "--defined-only", str(bitcode)],
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                    )
+                    symbols = {line.split()[-1] for line in result.stdout.splitlines() if len(line.split()) >= 3}
+                    if "LLVMFuzzerTestOneInput" in symbols:
+                        entry = "LLVMFuzzerTestOneInput"
+                    elif "main" in symbols:
+                        entry = "main"
+                except Exception:
+                    pass
+            if not entry:
+                self.logger.error("could not detect entry point, use --entry")
+                return
+            self.logger.info(f"Auto-detected entry point: {entry}")
+
+        # we need to find wuxi binary
+        # TODO: should we compile it via the CLI too?
+        wuxi = Path(__file__).resolve().parent.parent.parent.parent / "introspector" / "build" / "wuxi"
+        if not wuxi.is_file():
+            self.logger.error(f"wuxi not found: {wuxi} (build the introspector first)")
+            return
+
+        self.logger.info("Exporting coverage data...")
+        cov_cmd = [
+            cov_bin,
+            "export",
+            "--format=text",
+            f"-instr-profile={profdata}",
+            str(binary),
+        ]
+        try:
+            cov_result = subprocess.run(cov_cmd, check=True, capture_output=True, text=True)
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"llvm-cov export failed: {e.stderr}")
+            return
+        cov_data = json.loads(cov_result.stdout)
+
+        # build coverage lookup: function name -> {hit, count}
+        cov_lookup = {}
+        for func in cov_data["data"][0]["functions"]:
+            name = func["name"]
+            count = func["count"]
+            regions = func.get("regions", [])
+            lines_total = len(regions)
+            lines_covered = sum(1 for r in regions if r[4] > 0)
+            cov_lookup[name] = {
+                "hit": count > 0,
+                "count": count,
+                "regions_total": lines_total,
+                "regions_covered": lines_covered,
+            }
+
+        # run our wuxi cpp tool
+        wuxi_cmd = [str(wuxi), str(bitcode), entry]
+        spinner = Progress(SpinnerColumn(), TextColumn("{task.description}"))
+        spinner.add_task(f"[yellow]Running call tree analysis for '{entry}'...")
+        console = Console()
+        try:
+            with Live(spinner, console=console, refresh_per_second=12):
+                wuxi_result = subprocess.run(wuxi_cmd, check=True, capture_output=True, text=True)
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"wuxi failed: {e.stderr}")
+            return
+        introspect = json.loads(wuxi_result.stdout)
+
+        # merge coverage into functions
+        merged_count = 0
+        for func_name, func_meta in introspect.get("functions", {}).items():
+            if func_name in cov_lookup:
+                func_meta["coverage"] = cov_lookup[func_name]
+                merged_count += 1
+            else:
+                func_meta["coverage"] = {
+                    "hit": False,
+                    "count": 0,
+                    "regions_total": 0,
+                    "regions_covered": 0,
+                }
+
+        # write output
+        out = Path(output_path)
+        out.write_text(json.dumps(introspect, indent=2))
+        total = len(introspect.get("functions", {}))
+        self.logger.info(f"Coverage merged for {merged_count}/{total} functions")
+        UI.print_success(f"Introspect output: {out}")
+
     def _ensure_profile_build(self, cc: str) -> Path:
         """Ensure a separate profile tree is configured and compiled.
 
@@ -849,7 +980,6 @@ class ReportManager:
         return config_vars
 
     def _merge_llvm_bitcode(self, cc: str) -> None:
-        import json
 
         cov_root = Path(str(self.httpd_root) + "-cov")
         bc_path = cov_root / "bitcode"
@@ -926,7 +1056,6 @@ class ReportManager:
 
         built = []
         failed = []
-        from rich.console import Group as RichGroup
 
         status = Progress(SpinnerColumn(), TextColumn("{task.description}"))
         bar = Progress(BarColumn())
