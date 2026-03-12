@@ -49,6 +49,30 @@ class ReportManager:
         self.runner = ProcessRunner()
         self.work_dir = Path(".").resolve()
 
+    def _inject_dark_mode_css(self, html_dir: Path) -> None:
+        """Inject dark-mode CSS and shorten display paths in llvm-cov HTML."""
+        css_path = Path(__file__).resolve().parent.parent / "templates" / "coverage_dark.css"
+        if not css_path.is_file():
+            self.logger.warning("Dark-mode CSS not found, skipping injection")
+            return
+        dark_css = css_path.read_text()
+        style_tag = f"\n<style>\n{dark_css}</style>\n"
+        prefix = str(self.work_dir).lstrip("/") + "/"
+        display_prefix = ">" + prefix
+        display_replacement = ">"
+        count = 0
+        for html_file in html_dir.rglob("*.html"):
+            try:
+                content = html_file.read_text(encoding="utf-8", errors="surrogateescape")
+            except Exception:
+                continue
+            if "</head>" in content:
+                content = content.replace("</head>", style_tag + "</head>", 1)
+                content = content.replace(display_prefix, display_replacement)
+                html_file.write_text(content, encoding="utf-8", errors="surrogateescape")
+                count += 1
+        self.logger.info(f"Injected dark-mode CSS into {count} HTML files")
+
     @staticmethod
     def _clang_major_version(cc: str) -> Optional[int]:
         """Return the LLVM major version of a clang binary, or None."""
@@ -554,6 +578,8 @@ class ReportManager:
             self.logger.error(f"llvm-cov show failed: {e.stderr}")
             return
 
+        self._inject_dark_mode_css(html_dir)
+
         # Print summary. If the user chose the introspect option,
         # it's better off to keep the output log clean since there
         # are more steps to be executed down the flow.
@@ -587,6 +613,8 @@ class ReportManager:
         binary_path: str | None = None,
         bitcode_path: str | None = None,
         output_path: str = "introspect.json",
+        serve: bool = True,
+        port: int = 9000,
     ) -> None:
         """Merge call tree analysis with coverage data into a single JSON."""
         try:
@@ -609,8 +637,11 @@ class ReportManager:
             self.logger.error(f"coverage binary not found: {binary}")
             return
 
-        # auto-detect combined bitcode
+        # auto-detect combined bitcode, rebuild if missing
         bitcode = Path(bitcode_path) if bitcode_path else cov_root / "bitcode" / "combined.bc"
+        if not bitcode.is_file():
+            self.logger.info("Bitcode not found, building...")
+            self._merge_llvm_bitcode(cc)
         if not bitcode.is_file():
             self.logger.error(f"bitcode not found: {bitcode}")
             return
@@ -662,19 +693,27 @@ class ReportManager:
         cov_data = json.loads(cov_result.stdout)
 
         # build coverage lookup: function name -> {hit, count}
+        # llvm-cov prefixes static function names with "file.c:func_name",
+        # wuxi uses the raw LLVM IR name without prefix. build both a
+        # direct lookup and a stripped-prefix fallback.
         cov_lookup = {}
+        cov_stripped = {}
         for func in cov_data["data"][0]["functions"]:
             name = func["name"]
             count = func["count"]
             regions = func.get("regions", [])
             lines_total = len(regions)
             lines_covered = sum(1 for r in regions if r[4] > 0)
-            cov_lookup[name] = {
+            cov_entry = {
                 "hit": count > 0,
                 "count": count,
                 "regions_total": lines_total,
                 "regions_covered": lines_covered,
             }
+            cov_lookup[name] = cov_entry
+            if ":" in name:
+                bare = name.split(":", 1)[1]
+                cov_stripped[bare] = cov_entry
 
         # run our wuxi cpp tool
         wuxi_cmd = [str(wuxi), str(bitcode), entry]
@@ -689,11 +728,12 @@ class ReportManager:
             return
         introspect = json.loads(wuxi_result.stdout)
 
-        # merge coverage into functions
+        # merge coverage into functions (try direct match, then stripped-prefix fallback)
         merged_count = 0
         for func_name, func_meta in introspect.get("functions", {}).items():
-            if func_name in cov_lookup:
-                func_meta["coverage"] = cov_lookup[func_name]
+            cov = cov_lookup.get(func_name) or cov_stripped.get(func_name)
+            if cov:
+                func_meta["coverage"] = cov
                 merged_count += 1
             else:
                 func_meta["coverage"] = {
@@ -703,12 +743,106 @@ class ReportManager:
                     "regions_covered": 0,
                 }
 
-        # write output
-        out = Path(output_path)
-        out.write_text(json.dumps(introspect, indent=2))
         total = len(introspect.get("functions", {}))
         self.logger.info(f"Coverage merged for {merged_count}/{total} functions")
-        UI.print_success(f"Introspect output: {out}")
+
+        # build per-file line coverage lookup from segments
+        # segments are a state machine: [line, col, count, hasCount, ...]
+        # a segment sets the execution count from its line until the next segment
+        line_counts = {}
+        for cov_file in cov_data["data"][0].get("files", []):
+            fname = cov_file["filename"]
+            segs = cov_file.get("segments", [])
+            if not segs:
+                continue
+            lines = {}
+            for i, seg in enumerate(segs):
+                line, _col, count, has_count = seg[0], seg[1], seg[2], seg[3]
+                if not has_count:
+                    continue
+                end_line = segs[i + 1][0] if i + 1 < len(segs) else line
+                for ln in range(line, end_line + 1):
+                    lines[ln] = max(lines.get(ln, 0), count)
+            line_counts[fname] = lines
+
+        # annotate call tree nodes with site_count
+        functions = introspect.get("functions", {})
+
+        def annotate_site_counts(node, parent_name=None):
+            site_file = node.get("site_file", "")
+            site_line = node.get("site_line", 0)
+            if site_file and site_line and parent_name:
+                caller = functions.get(parent_name, {})
+                source_dir = caller.get("source_dir", "")
+                if source_dir:
+                    full_path = source_dir.rstrip("/") + "/" + site_file
+                    file_lines = line_counts.get(full_path, {})
+                    node["site_count"] = file_lines.get(site_line, -1)
+                else:
+                    node["site_count"] = -1
+            else:
+                node["site_count"] = -1
+            for child in node.get("children", []):
+                annotate_site_counts(child, node["name"])
+
+        annotate_site_counts(introspect.get("call_tree", {}))
+
+        # assemble output directory with GUI, data, and coverage report
+        gui_dist = Path(__file__).resolve().parent.parent.parent.parent / "introspector" / "gui" / "dist"
+        out_dir = Path("introspect-report")
+        if out_dir.exists():
+            shutil.rmtree(out_dir)
+
+        if gui_dist.is_dir():
+            shutil.copytree(gui_dist, out_dir)
+        else:
+            out_dir.mkdir(parents=True)
+            self.logger.warning(f"GUI dist not found at {gui_dist}, output will have no viewer")
+
+        (out_dir / "introspect.json").write_text(json.dumps(introspect, indent=2))
+
+        # generate HTML coverage report directly into the output directory
+        cov_html_dir = out_dir / "coverage-report" / "html"
+        cov_html_dir.mkdir(parents=True, exist_ok=True)
+        self.logger.info("Generating HTML coverage report...")
+        show_cmd = [
+            cov_bin,
+            "show",
+            str(binary),
+            f"-instr-profile={profdata}",
+            "-format=html",
+            f"-output-dir={cov_html_dir}",
+            "-show-line-counts-or-regions",
+            "-show-instantiations=false",
+        ]
+        try:
+            subprocess.run(show_cmd, check=True, capture_output=True, text=True)
+        except subprocess.CalledProcessError as e:
+            self.logger.warning(f"llvm-cov show failed, coverage links will not work: {e.stderr}")
+
+        self._inject_dark_mode_css(cov_html_dir)
+
+        # also write standalone JSON
+        out = Path(output_path)
+        out.write_text(json.dumps(introspect, indent=2))
+
+        UI.print_success(f"Introspect report: {out_dir}/")
+
+        if not serve:
+            return
+
+        import http.server
+
+        self.logger.info(f"Serving introspect report on http://localhost:{port}")
+
+        def handler(*a, **kw):
+            return http.server.SimpleHTTPRequestHandler(*a, directory=str(out_dir), **kw)
+
+        server = http.server.HTTPServer(("", port), handler)
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            self.logger.info("Server stopped")
 
     def _ensure_profile_build(self, cc: str) -> Path:
         """Ensure a separate profile tree is configured and compiled.
@@ -1032,7 +1166,16 @@ class ReportManager:
             self.logger.error("compile_commands.json not generated")
             return
 
-        entries = json.loads(compile_db.read_text())
+        # harness entries first so their symbols (main, fuzz_one_input) take
+        # priority over httpd's main during duplicate-symbol resolution
+        entries = []
+        harness_cdb = self.work_dir / "harnesses" / "compile_commands.json"
+        if harness_cdb.is_file():
+            entries.extend(json.loads(harness_cdb.read_text()))
+        else:
+            self.logger.warning("Harness compile_commands.json not found, run 'apatchy link --bear' first")
+        entries.extend(json.loads(compile_db.read_text()))
+
         filtered = []
         for e in entries:
             if not e.get("file", "").endswith(".c"):
@@ -1044,7 +1187,11 @@ class ReportManager:
                 try:
                     rel = src.relative_to(self.httpd_root)
                 except ValueError:
-                    continue
+                    # harness files won't be relative to cov_root or httpd_root
+                    try:
+                        rel = src.relative_to(self.work_dir)
+                    except ValueError:
+                        continue
             if set(rel.parts) & exclude_dirs:
                 continue
             filtered.append(e)
@@ -1072,8 +1219,11 @@ class ReportManager:
                     try:
                         dst = src.relative_to(self.httpd_root)
                     except ValueError:
-                        bar.advance(bar_task)
-                        continue
+                        try:
+                            dst = src.relative_to(self.work_dir)
+                        except ValueError:
+                            bar.advance(bar_task)
+                            continue
                 output = bc_path / dst.with_suffix(".bc")
                 output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -1087,14 +1237,24 @@ class ReportManager:
 
                 args[0] = cc
                 new_args = []
-                skip_next = False
+                skip_next = 0
                 for i, arg in enumerate(args):
-                    if skip_next:
-                        skip_next = False
+                    if skip_next > 0:
+                        skip_next -= 1
                         continue
                     if arg == "-o" and i + 1 < len(args):
                         new_args.extend(["-o", str(output)])
-                        skip_next = True
+                        skip_next = 1
+                        continue
+                    # strip AFL instrumentation flags
+                    if arg == "-Xclang" and i + 3 < len(args) and args[i + 1] == "-load":
+                        skip_next = 3
+                        continue
+                    if arg.startswith("-fsanitize="):
+                        continue
+                    if arg == "-fno-experimental-new-pass-manager":
+                        continue
+                    if arg.startswith("-D__AFL_") or arg == "-DAFL_FUZZ":
                         continue
                     new_args.append(arg)
                 if "-emit-llvm" not in new_args:

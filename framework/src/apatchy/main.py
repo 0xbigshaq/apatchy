@@ -241,6 +241,10 @@ def main():
     introspect_parser.add_argument(
         "--output", "-o", default="introspect.json", help="Output JSON file (default: introspect.json)"
     )
+    introspect_parser.add_argument(
+        "--no-serve", action="store_true", default=False, help="Skip launching the GUI server"
+    )
+    introspect_parser.add_argument("--port", type=int, default=9000, help="Port for the GUI server (default: 9000)")
 
     # Profile
     profile_parser = _sub(subparsers, "profile", help="Profile harness execution")
