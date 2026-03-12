@@ -26,21 +26,13 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    std::string entry_name(argv[2]);
     CallGraphWalker walker(*M);
+    WalkResult w_result = walker.walk(entry_name);
+
     JsonOutput json_output;
-    WalkResult w_result = walker.walk(std::string(argv[2]));
-    llvm::json::Object tree = json_output.nodeToJson(w_result.root);
-    llvm::outs() << llvm::json::Value(std::move(tree)) << "\n";
-
-    // Walker.walk();
-    // Walker.print();
-
-    // FunctionInfo Info(M);
-    // Info.extract();
-    // Info.print();
-
-    // Output Output(M);
-    // Output.print();
+    llvm::json::Object output = json_output.resultToJson(w_result, entry_name);
+    llvm::outs() << llvm::json::Value(std::move(output)) << "\n";
 
     return 0;
 }
