@@ -3,13 +3,8 @@ export function coverageUrl(
   sourceFile: string,
   line: number,
   reportBaseUrl: string,
-  sourceRoot?: string
 ): string | null {
   if (!sourceDir || !sourceFile) return null;
-  let dir = sourceDir;
-  if (sourceRoot && dir.startsWith(sourceRoot)) {
-    dir = dir.slice(sourceRoot.length);
-  }
-  dir = dir.replace(/^\//, '');
+  const dir = sourceDir.replace(/^\//, '');
   return `${reportBaseUrl}/coverage/${dir}/${sourceFile}.html#L${line}`;
 }

@@ -34,7 +34,6 @@ export interface CallEdge {
 
 export interface IntrospectMetadata {
   entry_point: string;
-  source_root?: string;
 }
 
 export interface IntrospectData {

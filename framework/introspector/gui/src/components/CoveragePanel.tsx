@@ -7,11 +7,10 @@ interface Props {
   functions: FunctionRow[];
   selectedName: string;
   reportBaseUrl: string;
-  sourceRoot?: string;
   onFunctionClick?: (func: FunctionRow) => void;
 }
 
-export function CoveragePanel({ functions, selectedName, reportBaseUrl, sourceRoot, onFunctionClick }: Props) {
+export function CoveragePanel({ functions, selectedName, reportBaseUrl, onFunctionClick }: Props) {
   if (functions.length === 0) {
     return (
       <div className="h-full flex items-center justify-center text-zinc-600 text-sm">
@@ -50,7 +49,7 @@ export function CoveragePanel({ functions, selectedName, reportBaseUrl, sourceRo
             {functions.map((f) => {
               const isActive = f.name === selectedName;
               const isExternal = !f.source_file;
-              const url = coverageUrl(f.source_dir, f.source_file, f.line_start, reportBaseUrl, sourceRoot);
+              const url = coverageUrl(f.source_dir, f.source_file, f.line_start, reportBaseUrl);
               return (
                 <tr
                   key={f.name}
