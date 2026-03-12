@@ -485,6 +485,8 @@ class MethodDispatcher:
             binary_path=getattr(args, "binary", None),
             bitcode_path=getattr(args, "bitcode", None),
             output_path=getattr(args, "output", "introspect.json"),
+            serve=not getattr(args, "no_serve", False),
+            port=getattr(args, "port", 9000),
         )
 
     def _handle_profile(self, args: argparse.Namespace) -> None:

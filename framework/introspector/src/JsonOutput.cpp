@@ -42,7 +42,8 @@ llvm::json::Object JsonOutput::functionToJson(const struct FunctionMeta &meta)
     return obj;
 }
 
-llvm::json::Object JsonOutput::resultToJson(const struct WalkResult &result, const std::string &entry_name)
+llvm::json::Object
+JsonOutput::resultToJson(const struct WalkResult &result, const std::string &entry_name)
 {
     llvm::json::Object root;
 
