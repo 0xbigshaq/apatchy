@@ -1,12 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { CallTree } from './components/CallTree';
+import { CoveragePanel } from './components/CoveragePanel';
+import { SearchBar } from './components/SearchBar';
+import { SourceView } from './components/SourceView';
+import { Summary } from './components/Summary';
 import { useIntrospectData } from './hooks/useIntrospectData';
 import { useTreeState } from './hooks/useTreeState';
-import { Summary } from './components/Summary';
-import { SearchBar } from './components/SearchBar';
-import { CallTree } from './components/CallTree';
-import { SourceView } from './components/SourceView';
-import { CoveragePanel } from './components/CoveragePanel';
 import type { CallTreeNode } from './types';
 
 const REPORT_BASE_URL = './coverage-report/html';
@@ -20,6 +20,7 @@ function App() {
     callerName: string | null;
     nodeKey: string;
   } | null>(null);
+  const [panelOverrideUrl, setPanelOverrideUrl] = useState<string | null>(null);
 
   const matchCount = useMemo(() => {
     if (!data || !searchQuery) return 0;
@@ -101,7 +102,7 @@ function App() {
               functions={data.functions}
               isExpanded={isExpanded}
               onToggle={toggle}
-              onSelect={(node, callerName, nodeKey) => setSelection({ node, callerName, nodeKey })}
+              onSelect={(node, callerName, nodeKey) => { setSelection({ node, callerName, nodeKey }); setPanelOverrideUrl(null); }}
               searchQuery={searchQuery}
               selectedKey={selection?.nodeKey ?? null}
             />
@@ -124,6 +125,8 @@ function App() {
                     ? `${selection.node.site_file}:${selection.node.site_line}`
                     : null
                 }
+                reportBaseUrl={REPORT_BASE_URL}
+                overrideUrl={panelOverrideUrl}
               />
             </Panel>
 
@@ -136,6 +139,11 @@ function App() {
                   functions={fileFunctions}
                   selectedName={selection.node.name}
                   reportBaseUrl={REPORT_BASE_URL}
+                  onFunctionClick={(f) => {
+                    if (!f.source_dir || !f.source_file) return;
+                    const dir = f.source_dir.replace(/^\//, '');
+                    setPanelOverrideUrl(`${REPORT_BASE_URL}/coverage/${dir}/${f.source_file}.html#L${f.line_start}`);
+                  }}
                 />
               ) : (
                 <div className="h-full bg-zinc-900 border-t border-zinc-800" />
