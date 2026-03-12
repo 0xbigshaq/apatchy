@@ -3,6 +3,7 @@
 #define CALL_GRAPH_WALKER_H
 
 #include "CallTreeNode.h"
+#include "FunctionMeta.h"
 #include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/Analysis/CallGraph.h>
 #include <llvm/IR/Module.h>
@@ -17,8 +18,10 @@ class CallGraphWalker
     void walk(const std::string &entry_name = "main");
 
   private:
-    CallTreeNode
-    walkNode(CallGraphNode *node, unsigned depth, SmallPtrSet<Function *, 32> &visited);
+    CallTreeNode walkNode(
+        CallGraphNode *node, unsigned depth, SmallPtrSet<Function *, 32> &visited,
+        std::map<std::string, FunctionMeta> &func_map
+    );
     llvm::Module &m_module;
 };
 

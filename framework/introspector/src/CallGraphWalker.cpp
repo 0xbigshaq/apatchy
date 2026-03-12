@@ -2,22 +2,27 @@
 #include "CallGraphWalker.h"
 #include "CallTreeNode.h"
 #include "FunctionInfo.h"
+#include "FunctionMeta.h"
 #include "JsonOutput.h"
 #include "llvm/Analysis/CallGraph.h"
 #include <llvm-18/llvm/IR/Metadata.h>
 
-CallTreeNode
-CallGraphWalker::walkNode(CallGraphNode *node, unsigned depth, SmallPtrSet<Function *, 32> &visited)
+CallTreeNode CallGraphWalker::walkNode(
+    CallGraphNode *node, unsigned depth, SmallPtrSet<Function *, 32> &visited,
+    std::map<std::string, FunctionMeta> &func_map
+)
 {
     CallTreeNode tree_node;
     if (Function *f = node->getFunction()) {
         tree_node.name = f->getName().str();
+        FunctionInfo finfo(*f);
+        func_map[tree_node.name] = finfo.dump();
 
         for (auto &CR : *node) {
             CallGraphNode *callee_node = CR.second;
             if (Function *callee = callee_node->getFunction()) {
                 if (visited.insert(callee).second) {
-                    CallTreeNode child = walkNode(callee_node, depth + 1, visited);
+                    CallTreeNode child = walkNode(callee_node, depth + 1, visited, func_map);
 
                     // set call site from CR.first
                     if (CR.first) {
@@ -49,11 +54,13 @@ void CallGraphWalker::walk(const std::string &entry_name)
 
     CallGraph call_graph(m_module);
     CallGraphNode *entry_node = call_graph[entry_func];
+    std::map<std::string, FunctionMeta> func_map;
 
     SmallPtrSet<Function *, 32> visited;
     visited.insert(entry_func);
-    CallTreeNode root = walkNode(entry_node, 0, visited);
+    CallTreeNode root = walkNode(entry_node, 0, visited, func_map);
     // llvm::outs() << "root: " << root.name << ", children: " << root.children.size() << "\n";
+    llvm::outs() << "functions collected: " << func_map.size() << "\n";
     JsonOutput json_output;
     llvm::json::Object tree = json_output.nodeToJson(root);
     llvm::outs() << llvm::json::Value(std::move(tree)) << "\n";
