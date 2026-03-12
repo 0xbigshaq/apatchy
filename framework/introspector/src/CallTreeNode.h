@@ -8,7 +8,7 @@ struct CallTreeNode {
     std::string name;
     std::string site_file;
     unsigned site_line = 0;
-    unsigned site_loc = 0;
+    unsigned site_col = 0;
     std::vector<CallTreeNode> children;
 };
 
