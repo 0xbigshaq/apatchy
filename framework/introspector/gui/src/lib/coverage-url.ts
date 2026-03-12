@@ -2,7 +2,7 @@ export function coverageUrl(
   sourceDir: string,
   sourceFile: string,
   line: number,
-  reportBaseUrl: string
+  reportBaseUrl: string,
 ): string | null {
   if (!sourceDir || !sourceFile) return null;
   const dir = sourceDir.replace(/^\//, '');
