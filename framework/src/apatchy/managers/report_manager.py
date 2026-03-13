@@ -730,6 +730,14 @@ class ReportManager:
         introspect = json.loads(wuxi_out.read_text())
         wuxi_out.unlink(missing_ok=True)
 
+        # rewrite source_dir from the original tree to the -cov tree so
+        # coverage HTML links resolve correctly
+        orig_prefix = str(self.httpd_root.resolve())
+        cov_prefix = str(cov_root.resolve())
+        for func_meta in introspect.get("functions", {}).values():
+            sd = func_meta.get("source_dir", "")
+            if sd.startswith(orig_prefix):
+                func_meta["source_dir"] = cov_prefix + sd[len(orig_prefix) :]
 
         # merge coverage into functions (try direct match, then stripped-prefix fallback)
         merged_count = 0
