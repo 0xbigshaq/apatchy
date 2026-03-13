@@ -107,6 +107,16 @@ class ToolchainManager:
             )
             deps.append(self._check_binary("llvm-cov", "Coverage", "apt install llvm"))
 
+        # Profiling tools
+        is_wsl = Path("/proc/version").exists() and "microsoft" in Path("/proc/version").read_text().lower()
+        deps.append(self._check_binary("valgrind", "Profiling", "apt install valgrind"))
+        if is_wsl:
+            deps.append(
+                self._check_binary("qcachegrind.exe", "Profiling", "install QCachegrind on Windows", exists_only=True)
+            )
+        else:
+            deps.append(self._check_binary("kcachegrind", "Profiling", "apt install kcachegrind", exists_only=True))
+
         # System libraries
         deps.append(
             self._check_pkg_or_config(
@@ -326,6 +336,7 @@ class ToolchainManager:
         install_hint: str,
         fallback: Optional[str] = None,
         version_args: Optional[list[str]] = None,
+        exists_only: bool = False,
     ) -> DepStatus:
         """Check if a binary exists - config override, then PATH."""
         # Check toolchain.config first (respects user overrides)
@@ -335,6 +346,8 @@ class ToolchainManager:
             if path:
                 name = f"{name} (via {fallback})"
         if path:
+            if exists_only:
+                return DepStatus(name, category, True, path=path)
             if version_args:
                 version = self._get_binary_version_from_args(path, version_args) or ""
             else:
@@ -533,6 +546,7 @@ class ToolchainManager:
             "Fuzzing": "fuzzing",
             "Coverage": "coverage",
             "Libraries": "libraries",
+            "Profiling": "profiling",
         }
         groups: dict = {}
         for dep in deps:
