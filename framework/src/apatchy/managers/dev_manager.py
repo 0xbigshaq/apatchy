@@ -1,10 +1,3 @@
-"""Isolated developer harness projects.
-
-:class:`DevManager` lets users create self-contained harness projects
-under ``dev/<name>/``, each with its own ``harness.c``, seed corpus,
-and ``compile_commands.json`` for IDE integration.
-"""
-
 import json
 import os
 import shutil
@@ -23,7 +16,68 @@ TEMPLATE_FILE = Path(__file__).parent.parent / "templates" / "dev_harness.c"
 
 
 class DevManager:
-    """Manages isolated developer harness projects."""
+    """Scaffold, build, and manage isolated developer harness projects.
+
+    ``DevManager`` lets you create self-contained fuzzing harness projects
+    under the ``dev/`` directory. Each project gets its own directory with a
+    template ``harness.c``, a seed input directory, and a
+    ``compile_commands.json`` for IDE auto-completion. Projects can then be
+    compiled against the Apache build tree for either AFL++ or standalone
+    (stdin-based) execution.
+
+    A project directory looks like::
+
+        dev/
+          my_harness/
+            harness.c               # your fuzzing harness source
+            afl-input/              # seed corpus
+              sample.txt
+            compile_commands.json   # auto-generated for clangd
+            fuzz_harness_afl        # built binary (after build)
+            fuzz_harness_standalone # built binary (after build)
+
+    When building in standalone mode, ``DevManager`` automatically creates
+    an alternate Apache build tree compiled with plain ``clang`` (no AFL++
+    instrumentation) to avoid runtime conflicts. This tree is cached and
+    reused across builds.
+
+    Args:
+        httpd_root: Path to the Apache HTTPD source directory that harnesses
+            will link against.
+
+    CLI usage:
+
+    .. code-block:: bash
+
+        # Create a new project from the template
+        apatchy dev init my_harness
+
+        # Edit dev/my_harness/harness.c, then build
+        apatchy dev build my_harness
+        apatchy dev build my_harness --engine afl
+
+        # List all projects and their build status
+        apatchy dev list
+
+    Example:
+        .. code-block:: python
+
+            from pathlib import Path
+            from apatchy.managers.dev_manager import DevManager
+
+            dm = DevManager(Path("httpd-2.4.58"))
+
+            # Create a new project from the template
+            project_dir = dm.init_project("my_harness")
+
+            # Edit dev/my_harness/harness.c, then build
+            dm.build_project("my_harness", engine="afl")
+            dm.build_project("my_harness", engine="standalone")
+
+            # List all projects and their build status
+            for p in dm.list_projects():
+                print(f"{p['name']}  built: {p['built']}")
+    """
 
     def __init__(self, httpd_root: Path) -> None:
         self.httpd_root = httpd_root

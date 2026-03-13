@@ -1,10 +1,3 @@
-"""AFL++ grammar-mutator and custom-mutator management.
-
-:class:`MutatorManager` handles cloning the AFL++ grammar-mutator
-repository, building per-grammar ``.so`` libraries, and compiling
-simple C custom mutators.
-"""
-
 import shutil
 import subprocess
 from pathlib import Path
@@ -17,7 +10,64 @@ logger = get_logger(__name__)
 
 
 class MutatorManager:
-    """Manages AFL++ grammar mutators and simple custom mutators."""
+    """Build and manage AFL++ grammar mutators and custom mutator libraries.
+
+    ``MutatorManager`` handles two kinds of AFL++ mutator plugins:
+
+    **Grammar mutators** use the
+    `AFL++ grammar-mutator <https://github.com/AFLplusplus/grammar-mutator>`_
+    project to generate structure-aware inputs from ANTLR-style grammars.
+    The workflow is: clone the grammar-mutator repo (:meth:`setup`), then
+    compile a ``.so`` for a specific grammar (:meth:`build_grammar`). The
+    resulting ``libgrammarmutator-<name>.so`` can be passed to AFL++ via
+    ``AFL_CUSTOM_MUTATOR_LIBRARY``.
+
+    **Custom mutators** are simple C source files that implement the AFL++
+    custom mutator API. They are compiled into ``.so`` files with
+    :meth:`build_custom_mutator` and can be chained with grammar mutators.
+
+    Both types of built ``.so`` files can be passed to the ``fuzz`` command
+    via ``--mutator``.
+
+    CLI usage:
+
+    .. code-block:: bash
+
+        # Grammar mutators: setup, build, list, status
+        apatchy grammar setup
+        apatchy grammar build http
+        apatchy grammar list
+        apatchy grammar status
+
+        # Custom mutators: build, list
+        apatchy mutator build
+        apatchy mutator build my_mutator
+        apatchy mutator list
+
+        # Use a built mutator in a fuzzing run
+        apatchy fuzz --mutator mutators/my_mutator.so
+
+    Example:
+        .. code-block:: python
+
+            from apatchy.managers.mutator_manager import MutatorManager
+
+            mm = MutatorManager()
+
+            # Set up the grammar-mutator toolchain
+            mm.setup()
+
+            # Build a grammar mutator from grammars/http.json
+            so_path = mm.build_grammar("http")
+
+            # Build all custom mutators
+            mm.build_custom_mutator()
+
+            # Check what is available
+            print(mm.status())
+            print(mm.list_grammars())
+            print(mm.list_custom_mutators())
+    """
 
     GRAMMAR_MUTATOR_REPO = "https://github.com/AFLplusplus/grammar-mutator"
     ANTLR_JAR_URL = "https://www.antlr.org/download/antlr-4.8-complete.jar"

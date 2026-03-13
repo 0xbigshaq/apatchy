@@ -1,12 +1,3 @@
-"""Coverage-report generation and crash triage.
-
-:class:`ReportManager` drives the full coverage pipeline - building
-a coverage-instrumented harness, replaying the AFL corpus, merging
-profraw data, and producing an HTML report via ``llvm-cov``.  It also
-provides :meth:`~ReportManager.triage_crash` for reproducing
-individual crash inputs.
-"""
-
 import contextlib
 import json
 import os
@@ -40,7 +31,84 @@ logger = get_logger(__name__)
 
 
 class ReportManager:
-    """Generate LLVM-based coverage reports and triage crash inputs."""
+    """Generate coverage reports, triage crashes, and profile fuzzing runs.
+
+    ``ReportManager`` is the post-fuzzing analysis hub. It takes the raw
+    output from a fuzzing session and produces actionable reports:
+
+    **Coverage** (:meth:`generate_coverage`) - Rebuilds Apache with LLVM
+    source-based coverage instrumentation, replays the AFL++ corpus
+    through the harness, merges the raw profiles with ``llvm-profdata``,
+    and generates an HTML report with ``llvm-cov``. Dark-mode CSS is
+    injected automatically. Optionally chains into introspection.
+
+    **Introspection** (:meth:`generate_introspect`) - Uses the
+    :class:`~apatchy.managers.introspector_manager.IntrospectorManager`
+    to extract a call tree and per-function coverage from LLVM bitcode
+    and profdata, producing a JSON file that can be viewed in an
+    interactive web UI.
+
+    **Triage** - Replays individual crash files or entire directories
+    through the standalone harness to extract sanitizer reports:
+
+    * :meth:`triage_crash` - single file
+    * :meth:`triage_bulk` - all files in a directory (parallel)
+    * :meth:`triage_pipeline` - concatenates numbered crash files from a
+      directory and replays them as sequential HTTP requests, for bugs
+      that require multiple requests to trigger
+
+    **Profiling** (:meth:`generate_callgrind`) - Replays the corpus
+    through ``valgrind --tool=callgrind`` to produce callgrind profiles
+    for analysis with tools like KCachegrind.
+
+    Args:
+        httpd_root: Path to the Apache HTTPD source directory.
+        config_manager: A :class:`~apatchy.managers.config_manager.ConfigManager`
+            instance. For coverage, it should be created with
+            ``build_mode="coverage"``.
+
+    CLI usage:
+
+    .. code-block:: bash
+
+        # Triage a single crash file
+        apatchy triage afl-output/default/crashes/id:000000
+
+        # Triage all crashes in a directory
+        apatchy triage --bulk afl-output/default/crashes/
+
+        # Replay numbered crash files as sequential requests
+        apatchy triage --pipeline afl-output/
+
+        # Generate a coverage report from AFL++ output
+        apatchy coverage report --afl-dir afl-output/
+
+        # Coverage with introspection chained in
+        apatchy coverage report --afl-dir afl-output/ --with-introspect
+
+        # Generate introspection data with interactive viewer
+        apatchy introspect --entry ap_process_request
+
+        # Generate callgrind profiles
+        apatchy profile callgrind --afl-dir afl-output/
+
+    Example:
+        .. code-block:: python
+
+            from pathlib import Path
+            from apatchy.managers.config_manager import ConfigManager
+            from apatchy.managers.report_manager import ReportManager
+
+            # Triage a crash
+            config = ConfigManager(config_name="fuzz.conf")
+            rm = ReportManager(Path("httpd-2.4.58"), config)
+            rm.triage_crash("afl-output/default/crashes/id:000000", Path("fuzz_harness_standalone"))
+
+            # Generate coverage
+            cov_config = ConfigManager(build_mode="coverage")
+            rm = ReportManager(Path("httpd-2.4.58"), cov_config)
+            rm.generate_coverage(afl_dir="afl-output/")
+    """
 
     def __init__(self, httpd_root: Path, config_manager: ConfigManager) -> None:
         self.httpd_root = httpd_root

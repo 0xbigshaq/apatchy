@@ -9,6 +9,21 @@ p {
     margin-bottom: 10px;
 }
 
+.wy-menu-vertical li a code,
+.wy-menu-vertical li span code {
+    background-color:  inherit;
+    font-size: inherit;
+}
+
+/* .wy-nav-side {
+    width: 350px;
+    overflow-x: hidden;
+} */
+
+/* .wy-nav-content-wrap {
+    margin-left: 350px;
+} */
+
 
 /* ── Mermaid diagrams ───────────────────────────────────────────────────── */
 

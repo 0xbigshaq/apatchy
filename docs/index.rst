@@ -1,3 +1,6 @@
+Index
+=========
+
 .. image:: apatchy-logo-transparent-w-text.png
    :alt: apatchy
    :align: center
@@ -21,3 +24,9 @@
    apache-internals/07-filters-buckets
    apache-internals/08-request-pipeline
    apache-internals/09-module-anatomy
+
+.. toctree::
+   :maxdepth: 1
+   :caption: API Reference
+
+   api

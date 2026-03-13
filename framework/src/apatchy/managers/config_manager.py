@@ -1,10 +1,3 @@
-"""Compiler-flag generation and httpd config-file resolution.
-
-:class:`ConfigManager` decides which compiler (``afl-clang-fast`` vs
-``clang``) and which sanitizer/coverage flags should be used for a
-given build, and resolves the runtime ``fuzz.conf`` config file path.
-"""
-
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -16,7 +9,80 @@ logger = get_logger(__name__)
 
 
 class ConfigManager:
-    """Generate ``CFLAGS``/``LDFLAGS`` and resolve httpd config paths."""
+    """Generate compiler flags and resolve httpd config paths for a build.
+
+    ``ConfigManager`` is the central place that translates high-level build
+    intentions (fuzzing, coverage, debugging) and sanitizer choices into the
+    concrete ``CFLAGS``, ``LDFLAGS``, and ``CC`` values that
+    :class:`~apatchy.managers.build_manager.BuildManager` passes to Apache's
+    ``./configure``. It also resolves the path to the Apache config file
+    (e.g. ``fuzz.conf``) that other managers pass to the harness at runtime.
+
+    Build modes:
+
+    * ``"fuzz"`` - optimized build (``-O2``) with AFL++ instrumentation via
+      ``afl-clang-fast``.
+    * ``"coverage"`` - unoptimized build (``-O0 -g``) with LLVM source-based
+      coverage (``-fcoverage-mapping`` / ``-fprofile-instr-generate``).
+    * anything else - plain debug build (``-O0 -g``), no special instrumentation.
+
+    Sanitizers are orthogonal to the build mode and can be freely combined:
+
+    * ``asan`` - AddressSanitizer (heap/stack buffer overflows, use-after-free).
+    * ``ubsan`` - UndefinedBehaviorSanitizer (signed overflow, null deref, etc.).
+    * ``intsan`` - unsigned-integer-overflow checks. A compile-time ignorelist
+      (``configs/intsan.ignorelist``) is applied automatically to suppress
+      false positives in APR internals.
+    * ``truncsan`` - implicit-unsigned-integer-truncation checks. Noisy on
+      Apache internals, best used for targeted module auditing.
+
+    When a known httpd version is passed to :meth:`generate_build_config`,
+    version-specific compatibility flags from :mod:`apatchy.compat` are
+    appended automatically.
+
+    Args:
+        build_mode: Build profile. ``"fuzz"`` (default), ``"coverage"``, or
+            any other string for a plain debug build.
+        engine: Fuzzing engine name. Currently only used for labeling.
+        config_name: Filename of the httpd config to resolve at runtime.
+            Defaults to ``"fuzz.conf"``.
+        asan: Enable AddressSanitizer.
+        ubsan: Enable UndefinedBehaviorSanitizer.
+        intsan: Enable unsigned-integer-overflow sanitizer.
+        truncsan: Enable implicit-unsigned-integer-truncation sanitizer.
+
+    CLI usage:
+
+    ``ConfigManager`` is created implicitly by several CLI commands. The
+    ``configure`` command exposes the most options:
+
+    .. code-block:: bash
+
+        # Fuzz build with ASan + UBSan
+        apatchy configure --mode fuzz --asan --ubsan
+
+        # Coverage build for triage
+        apatchy configure --mode coverage
+
+        # Fuzz with all integer sanitizers
+        apatchy configure --mode fuzz --asan --intsan --truncsan
+
+    Example:
+        .. code-block:: python
+
+            from apatchy.managers.config_manager import ConfigManager
+
+            # Fuzz build with ASan + UBSan
+            config = ConfigManager(build_mode="fuzz", asan=True, ubsan=True)
+            flags = config.generate_build_config(httpd_version="2.4.58")
+            # flags == {"CC": "afl-clang-fast",
+            #           "CFLAGS": "-O2 -fno-omit-frame-pointer ...",
+            #           "LDFLAGS": "-no-pie -fsanitize=address ..."}
+
+            # Coverage build for triage
+            cov_config = ConfigManager(build_mode="coverage")
+            cov_flags = cov_config.generate_build_config()
+    """
 
     def __init__(
         self,

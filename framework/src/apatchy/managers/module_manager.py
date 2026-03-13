@@ -1,11 +1,3 @@
-"""Build external Apache modules as shared objects (``.so`` DSOs).
-
-:class:`ModuleManager` compiles C source files from the bundled
-``external_modules/`` directory with the same sanitizer flags as the
-main Apache build, producing ``.so`` files that Apache can ``LoadModule``
-at runtime.
-"""
-
 import shutil
 import subprocess
 from pathlib import Path
@@ -19,7 +11,63 @@ logger = get_logger(__name__)
 
 
 class ModuleManager:
-    """Builds external Apache modules as DSOs (.so) for runtime loading."""
+    """Build external Apache modules as shared objects (``.so``) for runtime loading.
+
+    ``ModuleManager`` compiles custom C modules (e.g. ``mod_pwn.c``) into
+    position-independent shared objects that Apache can load via
+    ``LoadModule`` at runtime. Module sources live in the external modules
+    directory and are compiled against the Apache build tree's headers.
+
+    The compiler defaults to ``afl-clang-fast`` so that external modules
+    receive the same AFL++ instrumentation as the harness. If AFL++ is not
+    available, it falls back to ``clang`` or ``gcc``. A custom compiler can
+    be specified via the ``cc`` argument.
+
+    Sanitizer flags (``-fsanitize=...``) are automatically extracted from
+    the Apache build's ``config_vars.mk`` and propagated to the module
+    build, so modules are instrumented identically to the main binary.
+
+    Built ``.so`` files are placed in ``<WORK_DIR>/modules/`` and can be
+    referenced from an httpd config via ``LoadModule``.
+
+    Args:
+        httpd_root: Path to the Apache HTTPD source directory whose headers
+            and build config are used for compilation.
+
+    CLI usage:
+
+    .. code-block:: bash
+
+        # Build all external modules
+        apatchy module build
+
+        # Build a specific module
+        apatchy module build mod_pwn
+
+        # Build with a specific compiler
+        apatchy module build mod_pwn --cc clang
+
+        # List available modules and their build status
+        apatchy module list
+
+    Example:
+        .. code-block:: python
+
+            from pathlib import Path
+            from apatchy.managers.module_manager import ModuleManager
+
+            mm = ModuleManager(Path("httpd-2.4.58"))
+
+            # Build all modules with default compiler
+            mm.build_module()
+
+            # Build a specific module
+            mm.build_module(name="mod_pwn")
+
+            # List what is available
+            for m in mm.list_modules():
+                print(f"{m['name']}  {m['built'] or '(not built)'}")
+    """
 
     def __init__(self, httpd_root: Path) -> None:
         self.httpd_root = httpd_root

@@ -8,7 +8,62 @@ from apatchy.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-class ToolchainManager:  # noqa: D101
+class ToolchainManager:
+    """Detect, install, and configure the external tools needed by apatchy.
+
+    ``ToolchainManager`` scans for required dependencies (compilers,
+    fuzzing tools, coverage utilities, libraries) and records their
+    resolved paths in the toolchain config file. Other managers read
+    this config to locate binaries like ``afl-clang-fast``,
+    ``llvm-profdata``, and ``libtool``.
+
+    The :meth:`check` method walks a registry of
+    :class:`~apatchy.core.toolchain.base.ToolchainTool` plugins, each of
+    which knows how to detect one or more binaries and report their
+    version. Results are written to the toolchain config so that
+    subsequent builds use the correct paths without relying on ``PATH``.
+
+    The :meth:`setup` method delegates to a tool plugin's installer.
+    Currently supported installers:
+
+    * ``afl`` - builds AFL++ from source.
+    * ``llvm`` - locates or installs a specific LLVM version.
+    * ``libtool`` - installs GNU libtool (needed for Apache's build system).
+
+    Args:
+        verbose: Show detailed output during dependency detection.
+
+    CLI usage:
+
+    .. code-block:: bash
+
+        # Check all dependencies and write the toolchain config
+        apatchy setup check
+
+        # Install / build specific tools
+        apatchy setup afl
+        apatchy setup llvm --llvm-version 18
+        apatchy setup libtool
+
+        # Force re-install
+        apatchy setup afl --force
+
+    Example:
+        .. code-block:: python
+
+            from apatchy.managers.toolchain_manager import ToolchainManager
+
+            tm = ToolchainManager()
+
+            # Scan and print all dependencies
+            for dep in tm.check():
+                status = "OK" if dep.found else "MISSING"
+                print(f"{dep.category}  {dep.name}  {status}  {dep.path or dep.install_hint}")
+
+            # Install AFL++ from source
+            tm.setup("afl")
+    """
+
     def __init__(self, verbose: bool = False) -> None:
         self.toolchain_dir = Config.TOOLCHAIN_DIR
         self._registry = build_registry(self.toolchain_dir, verbose)

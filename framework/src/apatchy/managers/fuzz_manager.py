@@ -21,14 +21,55 @@ logger = get_logger(__name__)
 
 
 class GrammarSeedGenerator:
-    """Walk a JSON grammar (keyed by non-terminal symbols) to produce concrete byte strings."""
+    r"""Walk a JSON grammar (keyed by non-terminal symbols) to produce concrete byte strings.
+
+    The grammar must be a dict where each key is a non-terminal symbol (e.g. ``<A>``,
+    ``<method>``) and each value is a list of productions. Each production is itself a
+    list of tokens that are either non-terminals (present as keys in the dict) or
+    terminals (literal strings). The special symbol ``<A>`` is the start symbol and
+    must always be present.
+
+    The generator expands the grammar recursively, picking a random production at each
+    step. To prevent unbounded recursion on cyclic grammars, expansion stops at
+    ``max_depth`` and the shortest available production is chosen as a fallback.
+
+    Args:
+        grammar: A dict mapping non-terminal names to lists of token-list productions.
+        max_depth: Maximum recursion depth before forcing the shortest production.
+            Defaults to 12.
+
+    CLI usage:
+
+    ``GrammarSeedGenerator`` is used automatically when you pass a grammar
+    file to the ``fuzz`` command:
+
+    .. code-block:: bash
+
+        # Seeds are generated from the grammar before fuzzing starts
+        apatchy fuzz --grammar grammars/http.json
+
+    Example:
+        .. code-block:: python
+
+            grammar = {
+                "<A>": [["<method>", " / HTTP/1.1\\r\\n\\r\\n"]],
+                "<method>": [["GET"], ["POST"], ["HEAD"]],
+            }
+            gen = GrammarSeedGenerator(grammar)
+            seed = gen.generate()  # e.g. b"POST / HTTP/1.1\\r\\n\\r\\n"
+    """
 
     def __init__(self, grammar: Dict[str, List[List[str]]], max_depth: int = 12) -> None:
         self.grammar = grammar
         self.max_depth = max_depth
 
     def generate(self) -> bytes:
-        """Generate one concrete string from the grammar starting at <A>."""
+        """Generate a mutated HTTP request by expanding from the ``<A>`` start symbol.
+
+        Returns
+        -------
+            A raw HTTP request as bytes.
+        """
         return self._expand("<A>", 0).encode("latin-1")
 
     def _expand(self, symbol: str, depth: int) -> str:
@@ -59,7 +100,75 @@ class GrammarSeedGenerator:
 
 
 class FuzzManager:
-    """Prepare corpus, generate seeds, and launch AFL++ or LibFuzzer."""
+    """Prepare the corpus and launch a fuzzing session with AFL++ or LibFuzzer.
+
+    ``FuzzManager`` is the main entry point for starting a fuzzing run. It handles:
+
+    * Creating and seeding the input/output corpus directories.
+    * Optionally expanding a JSON grammar into concrete seed files before the
+      fuzzer starts (via :class:`GrammarSeedGenerator`).
+    * Building the ``afl-fuzz`` command line, including parallel-mode flags
+      (``-M`` / ``-S``), custom mutator libraries, per-execution timeouts, and
+      UBSan options.
+    * Migrating a solo AFL++ corpus (``default/``) to a named instance directory
+      when switching to parallel mode.
+    * Launching LibFuzzer as an alternative engine.
+
+    Args:
+        config_manager: A :class:`~apatchy.managers.config_manager.ConfigManager`
+            instance used to locate the httpd config file. The config path is
+            passed to the harness via the ``FUZZ_CONF`` environment variable so
+            Apache's configuration pipeline is active during fuzzing.
+
+    CLI usage:
+
+    .. code-block:: bash
+
+        # Basic fuzzing run
+        apatchy fuzz
+
+        # Fuzz with a custom config and grammar seeds
+        apatchy fuzz --config bugs/cve_2022_23943/httpd.conf --grammar grammars/http.json
+
+        # Resume a previous session
+        apatchy fuzz --resume
+
+        # Parallel mode: start main and secondary instances
+        apatchy fuzz --role main --name main01
+        apatchy fuzz --role secondary --name sec01
+
+        # Custom mutator with per-execution timeout
+        apatchy fuzz --mutator mutators/my_mutator.so --timeout 5
+
+        # UBSan suppression file
+        apatchy fuzz --suppress configs/ubsan.supp
+
+    Example:
+        .. code-block:: python
+
+            from apatchy.managers.config_manager import ConfigManager
+            from apatchy.managers.fuzz_manager import FuzzManager
+            from pathlib import Path
+
+            config = ConfigManager()
+            fm = FuzzManager(config)
+
+            # Start a solo AFL++ run with a grammar-based corpus
+            fm.start_fuzzer(
+                harness_path=Path("build/harness"),
+                engine="afl",
+                grammar="grammars/http.json",
+            )
+
+            # Start the main instance of a parallel run, resuming a previous session
+            fm.start_fuzzer(
+                harness_path=Path("build/harness"),
+                engine="afl",
+                role="main",
+                name="main01",
+                resume=True,
+            )
+    """
 
     def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
@@ -144,7 +253,32 @@ class FuzzManager:
         timeout: Optional[int] = None,
         debug: bool = False,
     ) -> None:
-        """Launch the fuzzing engine with the configured harness and corpus."""
+        """Launch the fuzzing engine with the configured harness and corpus.
+
+        Prepares the corpus, optionally generates grammar-based seeds, and
+        then hands off to either :meth:`_start_afl` or :meth:`_start_libfuzzer`.
+
+        Args:
+            harness_path: Path to the compiled fuzzing harness binary.
+            engine: Fuzzing engine to use. ``"afl"`` (default) or ``"libfuzzer"``.
+            mutator: One or more paths to AFL++ custom mutator ``.so`` libraries.
+                Multiple libraries are chained with ``:``.
+            grammar: Path to a JSON grammar file. If provided and no grammar seeds
+                exist yet, seeds are generated before the fuzzer starts.
+            resume: If ``True``, sets ``AFL_AUTORESUME=1`` so AFL++ picks up a
+                previous session automatically.
+            output_dir: Name of the AFL++ output directory relative to the working
+                directory. Defaults to ``"afl-output"``.
+            role: Parallel-mode role. ``"main"`` maps to AFL's ``-M`` flag,
+                ``"secondary"`` maps to ``-S``.
+            name: Instance name used with ``-M`` / ``-S``. Auto-derived from
+                ``role`` if not given (``"main01"`` / ``"sec01"``).
+            suppress: Path to a UBSan suppressions file. Passed via
+                ``UBSAN_OPTIONS=suppressions=<path>``.
+            timeout: Per-execution timeout in seconds. Converted to milliseconds
+                for AFL's ``-t`` flag.
+            debug: If ``True``, sets ``AFL_DEBUG_CHILD=1`` to print child output.
+        """
         input_dir, out_dir = self.prepare_corpus(output_dir=output_dir)
 
         # Generate grammar-based seeds before starting the fuzzer (skip if

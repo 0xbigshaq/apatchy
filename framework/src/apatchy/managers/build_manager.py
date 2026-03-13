@@ -1,11 +1,3 @@
-"""High-level build orchestration for Apache HTTPD and fuzzing harnesses.
-
-:class:`BuildManager` ties together :class:`~apatchy.managers.config_manager.ConfigManager`
-(compiler/flag selection) and :class:`~apatchy.core.harness.HarnessBuilder`
-(harness compilation) behind the ``configure``, ``make``, and ``link``
-CLI commands.
-"""
-
 import contextlib
 import os
 import shutil
@@ -28,7 +20,69 @@ def _bear_available() -> bool:
 
 
 class BuildManager:
-    """Orchestrate Apache ``./configure``, ``make``, and harness linking."""
+    """High-level build orchestration for Apache HTTPD and fuzzing harnesses.
+
+    ``BuildManager`` drives the three main build steps: ``configure``,
+    ``make``, and ``link``. It delegates flag generation to
+    :class:`~apatchy.managers.config_manager.ConfigManager` and harness
+    compilation to :class:`~apatchy.core.harness.HarnessBuilder`, adding
+    dependency detection (PCRE, Expat), version-specific compat flags, and
+    optional ``bear`` integration for ``compile_commands.json`` generation.
+
+    The configure step (:meth:`configure_httpd`) runs Apache's
+    ``./configure`` with a static-only, all-modules build. It automatically
+    detects PCRE and Expat locations, enables APR pool debug mode when ASan
+    is active (so ASan can track individual pool allocations), and appends
+    any version-specific flags from the :mod:`apatchy.compat` registry.
+
+    The compile step (:meth:`compile_httpd`) runs ``make`` with parallel
+    jobs (defaults to CPU count). When ``bear=True``, it wraps the build
+    with ``bear`` to produce a ``compile_commands.json`` and updates
+    the ``.clangd`` config for IDE integration.
+
+    The link step (:meth:`build_harness`) compiles and links the fuzzing
+    harness against the Apache build tree. Two modes are supported:
+
+    * ``"afl"`` - compiled with ``afl-clang-fast`` for AFL++ fuzzing.
+    * ``"standalone"`` - compiled with plain ``clang`` to produce a binary
+      that reads from stdin, used for crash triage and debugging.
+
+    Args:
+        httpd_root: Path to the Apache HTTPD source directory
+            (e.g. ``httpd-2.4.58/``).
+        config_manager: A :class:`~apatchy.managers.config_manager.ConfigManager`
+            instance that provides the compiler flags and sanitizer settings.
+        verbose: Show full build output instead of a progress spinner.
+
+    CLI usage:
+
+    .. code-block:: bash
+
+        # Configure Apache for fuzzing with ASan
+        apatchy configure --mode fuzz --asan
+
+        # Compile with bear for IDE support
+        apatchy compile --bear
+
+        # Link the AFL++ and standalone harnesses
+        apatchy link --engine afl
+        apatchy link --engine standalone
+
+    Example:
+        .. code-block:: python
+
+            from pathlib import Path
+            from apatchy.managers.config_manager import ConfigManager
+            from apatchy.managers.build_manager import BuildManager
+
+            config = ConfigManager(build_mode="fuzz", asan=True)
+            bm = BuildManager(Path("httpd-2.4.58"), config)
+
+            bm.configure_httpd()
+            bm.compile_httpd(bear=True)
+            bm.build_harness(mode="afl")
+            bm.build_harness(mode="standalone")
+    """
 
     def __init__(self, httpd_root: Path, config_manager: ConfigManager, verbose: bool = False) -> None:
         self.httpd_root = httpd_root

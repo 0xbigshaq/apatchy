@@ -1,9 +1,3 @@
-"""LLVM bitcode preparation for the introspector tool.
-
-:class:`IntrospectorManager` compiles sources to LLVM bitcode and links
-them into a single combined module consumed by the ``wuxi`` introspector.
-"""
-
 import json
 import os
 import re
@@ -48,7 +42,60 @@ def _resolve_src_rel(src: Path, roots: list) -> Optional[Path]:
 
 
 class IntrospectorManager:
-    """Manage Introspector build."""
+    """Compile Apache C sources into LLVM bitcode and link them for introspection.
+
+    ``IntrospectorManager`` is used by
+    :class:`~apatchy.managers.report_manager.ReportManager` to produce the
+    LLVM bitcode that the introspection pipeline needs for call-tree
+    extraction and per-function coverage analysis.
+
+    The workflow has two phases:
+
+    1. **Emit bitcode** - Reads the ``compile_commands.json`` from the
+       coverage build tree (``<httpd_root>-cov``). If the file does not
+       exist, it runs ``bear`` to trace a fresh ``make`` and generate one.
+       Each ``.c`` entry is re-compiled with ``-emit-llvm`` to produce a
+       ``.bc`` file under ``<httpd_root>-cov/bitcode/``. Test, support,
+       and platform-specific directories are excluded automatically.
+
+    2. **Link bitcode** - All emitted ``.bc`` files are linked into a
+       single ``combined.bc`` with ``llvm-link``. Before linking,
+       ``llvm-nm`` is used to detect and skip files with duplicate global
+       symbols to avoid link errors. The combined bitcode is consumed by
+       the introspector C++ tool to build a call tree and by ``llvm-cov``
+       to map coverage back to functions.
+
+    ``IntrospectorManager`` is not invoked directly from the CLI. It is
+    called internally when the user runs:
+
+    .. code-block:: bash
+
+        # Coverage report with introspection chained in
+        apatchy coverage report --afl-dir afl-output/ --with-introspect
+
+        # Standalone introspection (auto-builds bitcode if missing)
+        apatchy introspect ap_process_request_internal
+
+    Args:
+        httpd_root: Path to the Apache HTTPD source directory. The
+            coverage build tree is expected at ``<httpd_root>-cov``.
+        work_dir: Working directory where build artifacts, harnesses,
+            and output files are stored.
+
+    Example:
+        .. code-block:: python
+
+            from pathlib import Path
+            from apatchy.managers.introspector_manager import IntrospectorManager
+
+            im = IntrospectorManager(
+                httpd_root=Path("httpd-2.4.58"),
+                work_dir=Path("work"),
+            )
+
+            # Emit per-file .bc and link into combined.bc
+            im.build_bitcode(cc="clang-18")
+    """
 
     def __init__(self, httpd_root: Path, work_dir: Path) -> None:
         self.httpd_root = httpd_root

@@ -1,10 +1,3 @@
-"""Manager for 1day bug reproduction targets.
-
-Discovers bug directories under ``bugs/``, parses their ``bug.toml``
-manifests, dynamically loads contributor :class:`~apatchy.bugs.base.Bug`
-subclasses, and orchestrates setup / reproduce workflows.
-"""
-
 import importlib.util
 import inspect
 import sys
@@ -27,13 +20,52 @@ except ModuleNotFoundError:
 class BugManager:
     """Discover, load, and orchestrate 1day bug reproductions.
 
-    Parameters
-    ----------
-    bugs_dir : Path, optional
-        Root directory containing bug subdirectories.  Defaults to
-        ``<WORK_DIR>/bugs/``.
-    verbose : bool
-        Forward verbose flag to build operations.
+    ``BugManager`` manages the full lifecycle of known (1day) Apache HTTPD bugs:
+    listing what is available, setting up a reproduction environment, and running
+    the actual triage. Each bug lives in its own subdirectory under ``bugs/`` and
+    is described by a ``bug.toml`` manifest. An optional ``bug.py`` can subclass
+    :class:`~apatchy.bugs.base.Bug` to add custom setup, seed generation, or
+    reproduction logic.
+
+    A typical bug directory looks like::
+
+        bugs/
+          cve_xxxx_yyyyy/
+            bug.toml        # manifest (id, version, modules, sanitizers, ...)
+            bug.py          # optional Bug subclass with custom logic
+            httpd.conf      # Apache config that triggers the bug
+            gen_seed.py     # optional seed generator script
+            seeds/          # generated seed inputs (created by setup)
+
+    The setup flow performed by :meth:`setup` is:
+
+    1. Download the vulnerable Apache version if not already present.
+    2. Configure and build Apache with the sanitizers listed in the manifest.
+    3. Link the fuzzing harnesses (AFL++ and standalone).
+    4. Run any bug-specific setup (e.g. creating files in DocumentRoot).
+    5. Generate seed inputs.
+
+    Args:
+        bugs_dir: Root directory containing bug subdirectories. Defaults to
+            ``<WORK_DIR>/bugs/``.
+        verbose: Forward verbose flag to build operations.
+
+    Example:
+        .. code-block:: python
+
+            from apatchy.managers.bug_manager import BugManager
+
+            bm = BugManager()
+
+            # List all available bugs
+            for bug in bm.list_bugs():
+                print(f"{bug['id']}  {bug['description']}")
+
+            # Set up a bug (download, build, seed)
+            bm.setup("CVE-2022-23943")
+
+            # Reproduce it by triaging the generated seeds
+            bm.reproduce("CVE-2022-23943")
     """
 
     def __init__(self, bugs_dir: Optional[Path] = None, verbose: bool = False) -> None:
