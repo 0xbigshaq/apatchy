@@ -16,6 +16,7 @@ interface Props {
 export function SourceView({ definitionUrl, callSiteUrl, functionName, callSiteLabel, reportBaseUrl, overrideUrl }: Props) {
   const [mode, setMode] = useState<ViewMode>('callsite');
   const [covLines, setCovLines] = useState<CovLine[]>([]);
+  const [scrollRatio, setScrollRatio] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const indexUrl = `${reportBaseUrl}/index.html`;
 
@@ -49,7 +50,10 @@ export function SourceView({ definitionUrl, callSiteUrl, functionName, callSiteL
       const lines: CovLine[] = [];
       rows.forEach((row) => {
         const countCell = row.querySelector('td.covered-line, td.uncovered-line');
-        if (!countCell) return;
+        if (!countCell) {
+          lines.push('none');
+          return;
+        }
         if (countCell.classList.contains('covered-line')) {
           lines.push('hit');
         } else if (countCell.classList.contains('uncovered-line')) {
@@ -60,6 +64,15 @@ export function SourceView({ definitionUrl, callSiteUrl, functionName, callSiteL
         }
       });
       setCovLines(lines);
+
+      const onScroll = () => {
+        const el = doc.scrollingElement || doc.documentElement;
+        const max = el.scrollHeight - el.clientHeight;
+        setScrollRatio(max > 0 ? el.scrollTop / max : 0);
+      };
+      doc.addEventListener('scroll', onScroll);
+      onScroll();
+      (iframe as any).__cleanupScroll = () => doc.removeEventListener('scroll', onScroll);
     } catch { /* cross-origin, ignore */ }
   }, []);
 
@@ -100,7 +113,7 @@ export function SourceView({ definitionUrl, callSiteUrl, functionName, callSiteL
           />
         )}
       </div>
-      {covLines.length > 0 && <NavBand lines={covLines} onClick={handleBandClick} />}
+      {covLines.length > 0 && <NavBand lines={covLines} scrollRatio={scrollRatio} onClick={handleBandClick} />}
       <iframe
         ref={iframeRef}
         key={activeUrl}
@@ -113,7 +126,7 @@ export function SourceView({ definitionUrl, callSiteUrl, functionName, callSiteL
   );
 }
 
-function NavBand({ lines, onClick }: { lines: CovLine[]; onClick: (ratio: number) => void }) {
+function NavBand({ lines, scrollRatio, onClick }: { lines: CovLine[]; scrollRatio: number; onClick: (ratio: number) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -138,23 +151,31 @@ function NavBand({ lines, onClick }: { lines: CovLine[]; onClick: (ratio: number
       } else if (line === 'miss') {
         ctx.fillStyle = '#ef4444';
       } else {
-        ctx.fillStyle = '#27272a';
+        ctx.fillStyle = '#3f3f46';
       }
       ctx.fillRect(x, 0, 1, height);
     }
   }, [lines]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="w-full cursor-pointer flex-shrink-0"
-      style={{ height: 18 }}
-      onClick={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const ratio = (e.clientX - rect.left) / rect.width;
-        onClick(ratio);
-      }}
-    />
+    <div className="relative flex-shrink-0">
+      <div
+        className="absolute text-zinc-400 text-[8px] leading-none select-none pointer-events-none"
+        style={{ left: `${scrollRatio * 100}%`, top: 0, transform: 'translateX(-50%)' }}
+      >
+        v
+      </div>
+      <canvas
+        ref={canvasRef}
+        className="w-full cursor-pointer"
+        style={{ height: 18, marginTop: 10 }}
+        onClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const ratio = (e.clientX - rect.left) / rect.width;
+          onClick(ratio);
+        }}
+      />
+    </div>
   );
 }
 
