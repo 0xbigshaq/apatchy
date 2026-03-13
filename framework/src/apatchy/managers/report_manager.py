@@ -1268,6 +1268,8 @@ class ReportManager:
                     if arg.startswith("-D__AFL_") or arg == "-DAFL_FUZZ":
                         continue
                     new_args.append(arg)
+                if "-o" not in new_args:
+                    new_args.extend(["-o", str(output)])
                 if "-emit-llvm" not in new_args:
                     new_args.insert(1, "-emit-llvm")
                 if "-w" not in new_args:
@@ -1364,6 +1366,13 @@ class ReportManager:
 
         if skipped:
             self.logger.info(f"Skipped {len(skipped)} files with duplicate symbols")
+
+        missing_bc = [p for p in link_targets if not p.exists()]
+        if missing_bc:
+            self.logger.error(f"{len(missing_bc)} .bc files missing, first: {missing_bc[0]}")
+            return
+
+        cmd = [llvm_link, *[str(p) for p in link_targets], "-o", str(combined)]
 
         link_spinner = Progress(SpinnerColumn(), TextColumn("{task.description}"))
         link_spinner.add_task("[yellow]Linking LLVM bitcode objects for post-processing...")
