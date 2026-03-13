@@ -13,7 +13,7 @@ from apatchy.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-class AflTool(ToolchainTool):
+class AflTool(ToolchainTool):  # noqa: D101
     name = "afl"
 
     def __init__(self, toolchain_dir: Path, verbose: bool = False) -> None:
@@ -21,19 +21,19 @@ class AflTool(ToolchainTool):
         self._aflpp_dir = toolchain_dir / "aflplusplus"
         self._runner = ProcessRunner(verbose=verbose)
 
-    def detect(self) -> Optional[str]:
+    def detect(self) -> Optional[str]:  # noqa: D102
         path = toolchain_config.resolve_tool("afl-fuzz")
         if path:
             return get_binary_version(path) or "unknown"
         return None
 
-    def check(self) -> List[DepStatus]:
+    def check(self) -> List[DepStatus]:  # noqa: D102
         return (
             BinaryTool("afl-fuzz", "Fuzzing", "apatchy setup afl", self.toolchain_dir, self.verbose).check()
             + BinaryTool("afl-clang-fast", "Fuzzing", "apatchy setup afl", self.toolchain_dir, self.verbose).check()
         )
 
-    def setup(self, force: bool = False, **kwargs) -> None:
+    def setup(self, force: bool = False, **kwargs) -> None:  # noqa: D102
         afl_fuzz = self._aflpp_dir / "afl-fuzz"
         if afl_fuzz.exists() and not force:
             logger.info(f"AFL++ already built at {self._aflpp_dir}")
