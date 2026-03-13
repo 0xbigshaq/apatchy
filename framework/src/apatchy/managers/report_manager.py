@@ -736,7 +736,7 @@ class ReportManager:
         cov_prefix = str(cov_root.resolve())
         for func_meta in introspect.get("functions", {}).values():
             sd = func_meta.get("source_dir", "")
-            if sd.startswith(orig_prefix):
+            if sd.startswith(orig_prefix + "/") or sd == orig_prefix:
                 func_meta["source_dir"] = cov_prefix + sd[len(orig_prefix) :]
 
         # merge coverage into functions (try direct match, then stripped-prefix fallback)
@@ -1143,7 +1143,7 @@ class ReportManager:
             "netware",
             "beos",
         }
-        exclude_files = {"modules.bc", "gen_test_char.bc", "exports.bc"}
+        exclude_files = {"modules.bc", "gen_test_char.bc", "exports.bc", "main.bc"}
 
         compile_db = cov_root / "compile_commands.json"  # god bless this file!! saved us so much time
         if not compile_db.exists():
