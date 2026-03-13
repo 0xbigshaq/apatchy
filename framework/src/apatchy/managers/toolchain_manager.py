@@ -43,6 +43,7 @@ LLVM_CORE_TOOLS = (
     "llvm-ar-{ver}",
     "llvm-config-{ver}",
     "llvm-cov-{ver}",
+    "llvm-link-{ver}",
     "llvm-nm-{ver}",
     "llvm-objcopy-{ver}",
     "llvm-objdump-{ver}",
@@ -308,11 +309,15 @@ class ToolchainManager:
         logger.info(f"  wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && sudo ./llvm.sh {clang_ver}")
 
     def _detect_clang_major_version(self) -> Optional[str]:
-        """Detect the major version of clang in PATH."""
-        clang = shutil.which("clang")
-        if not clang:
-            return None
-        return self._get_binary_version(clang, major_only=True)
+        """Detect the major version of clang in PATH, preferring newest."""
+        candidates = [f"clang-{v}" for v in range(20, 10, -1)] + ["clang"]
+        for name in candidates:
+            path = shutil.which(name)
+            if path:
+                ver = self._get_binary_version(path, major_only=True)
+                if ver:
+                    return ver
+        return None
 
     def _check_binary(
         self,
@@ -421,7 +426,7 @@ class ToolchainManager:
             if not p.is_file():
                 continue
             name = p.name
-            path = str(p)
+            path = str(p.resolve())
 
             if name.startswith("clang"):
                 build_entries[name] = path
@@ -451,8 +456,9 @@ class ToolchainManager:
                 pkg_set.add(f"lld-{clang_ver}")
             elif t.startswith("clang"):
                 pkg_set.add(f"clang-{clang_ver}")
-                # clang needs its compiler-rt libs (ASan, UBSan, etc.)
+                # clang needs its compiler-rt libs (ASan, UBSan, profile, etc.)
                 pkg_set.add(f"libclang-common-{clang_ver}-dev")
+                pkg_set.add(f"libclang-rt-{clang_ver}-dev")
             else:
                 pkg_set.add(f"llvm-{clang_ver}")
         pkg_names = sorted(pkg_set)
@@ -498,7 +504,7 @@ class ToolchainManager:
             for search_dir in search_dirs:
                 p = search_dir / tool
                 if p.exists():
-                    found[tool] = str(p)
+                    found[tool] = str(p.resolve())
                     break
 
         if found:

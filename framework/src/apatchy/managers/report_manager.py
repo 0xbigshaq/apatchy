@@ -1312,13 +1312,21 @@ class ReportManager:
             return
 
         major = self._clang_major_version(cc)
-        llvm_link = shutil.which(f"llvm-link-{major}") or shutil.which("llvm-link")
+        llvm_link = (
+            toolchain_config.resolve_tool(f"llvm-link-{major}")
+            or shutil.which(f"llvm-link-{major}")
+            or shutil.which("llvm-link")
+        )
         if not llvm_link:
             self.logger.error("llvm-link not found")
             return
 
         combined = bc_path / "combined.bc"
-        llvm_nm = shutil.which(f"llvm-nm-{major}") or shutil.which("llvm-nm")
+        llvm_nm = (
+            toolchain_config.resolve_tool(f"llvm-nm-{major}")
+            or shutil.which(f"llvm-nm-{major}")
+            or shutil.which("llvm-nm")
+        )
         candidates = [p for p in built if p.name not in exclude_files]
 
         seen_globals = {}
@@ -1362,15 +1370,14 @@ class ReportManager:
         console = Console()
         try:
             with Live(link_spinner, console=console, refresh_per_second=12):
-                subprocess.run(
-                    [llvm_link, *[str(p) for p in link_targets], "-o", str(combined)],
-                    check=True,
-                    capture_output=True,
-                    text=True,
-                )
+                subprocess.run(cmd, check=True, capture_output=True, text=True)
             UI.print_success(f"Bitcode linked -> {combined} ({len(link_targets)} modules)")
         except subprocess.CalledProcessError as e:
-            self.logger.error(f"llvm-link failed: {e.stderr}")
+            self.logger.error(f"llvm-link failed (rc={e.returncode}): {e.stderr}")
+        except FileNotFoundError as e:
+            self.logger.error(f"llvm-link binary not found: {e}")
+        except OSError as e:
+            self.logger.error(f"llvm-link OS error: {e}")
 
     def _triage_env(
         self,
