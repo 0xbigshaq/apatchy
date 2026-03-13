@@ -716,17 +716,20 @@ class ReportManager:
                 cov_stripped[bare] = cov_entry
 
         # run our wuxi cpp tool
-        wuxi_cmd = [str(wuxi), str(bitcode), entry]
-        spinner = Progress(SpinnerColumn(), TextColumn("{task.description}"))
-        spinner.add_task(f"[yellow]Running call tree analysis for '{entry}'...")
-        console = Console()
-        try:
-            with Live(spinner, console=console, refresh_per_second=12):
-                wuxi_result = subprocess.run(wuxi_cmd, check=True, capture_output=True, text=True)
-        except subprocess.CalledProcessError as e:
-            self.logger.error(f"wuxi failed: {e.stderr}")
+        from apatchy.utils.ui import run_stream_panel
+
+        wuxi_out = Path(tempfile.mktemp(suffix=".json"))
+        wuxi_cmd = [str(wuxi), str(bitcode), entry, "-f", str(wuxi_out)]
+        returncode, _ = run_stream_panel(
+            wuxi_cmd,
+            label=f"Running call tree analysis for '{entry}'...",
+        )
+        if returncode != 0:
+            self.logger.error("wuxi failed")
             return
-        introspect = json.loads(wuxi_result.stdout)
+        introspect = json.loads(wuxi_out.read_text())
+        wuxi_out.unlink(missing_ok=True)
+
 
         # merge coverage into functions (try direct match, then stripped-prefix fallback)
         merged_count = 0
