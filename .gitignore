@@ -110,3 +110,6 @@ docs/.obsidian/
 
 framework/introspector/tree.json
 framework/introspector/coverage.json
+
+framework/introspect.json
+framework/introspect-report/
