@@ -9,6 +9,7 @@ interface Props {
   onSelect: (node: CallTreeNodeType, callerName: string | null, nodeKey: string) => void;
   searchQuery: string;
   selectedKey: string | null;
+  hideIntrinsics: boolean;
 }
 
 export function CallTree({
@@ -19,6 +20,7 @@ export function CallTree({
   onSelect,
   searchQuery,
   selectedKey,
+  hideIntrinsics,
 }: Props) {
   return (
     <div className="flex-1 overflow-auto py-1">
@@ -33,6 +35,7 @@ export function CallTree({
         onSelect={onSelect}
         searchQuery={searchQuery}
         selectedKey={selectedKey}
+        hideIntrinsics={hideIntrinsics}
       />
     </div>
   );

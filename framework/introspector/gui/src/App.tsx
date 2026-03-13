@@ -21,6 +21,7 @@ function App() {
     nodeKey: string;
   } | null>(null);
   const [panelOverrideUrl, setPanelOverrideUrl] = useState<string | null>(null);
+  const [hideIntrinsics, setHideIntrinsics] = useState(true);
 
   const matchCount = useMemo(() => {
     if (!data || !searchQuery) return 0;
@@ -96,6 +97,15 @@ function App() {
               >
                 collapse all
               </button>
+              <label className="flex items-center gap-1 ml-auto cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hideIntrinsics}
+                  onChange={(e) => setHideIntrinsics(e.target.checked)}
+                  className="accent-zinc-500 w-3 h-3"
+                />
+                <span className="text-xs text-zinc-500">hide llvm.*</span>
+              </label>
             </div>
             <CallTree
               root={data.call_tree}
@@ -105,6 +115,7 @@ function App() {
               onSelect={(node, callerName, nodeKey) => { setSelection({ node, callerName, nodeKey }); setPanelOverrideUrl(null); }}
               searchQuery={searchQuery}
               selectedKey={selection?.nodeKey ?? null}
+              hideIntrinsics={hideIntrinsics}
             />
           </div>
         </Panel>

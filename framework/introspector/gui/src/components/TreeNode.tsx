@@ -11,6 +11,7 @@ interface Props {
   onSelect: (node: CallTreeNode, callerName: string | null, nodeKey: string) => void;
   searchQuery: string;
   selectedKey: string | null;
+  hideIntrinsics: boolean;
 }
 
 export function TreeNode({
@@ -24,6 +25,7 @@ export function TreeNode({
   onSelect,
   searchQuery,
   selectedKey,
+  hideIntrinsics,
 }: Props) {
   const expanded = isExpanded(nodeKey, depth);
   const func = functions[node.name];
@@ -39,15 +41,15 @@ export function TreeNode({
     searchQuery && !matchesSearch && !hasMatchingDescendant(node, searchQuery);
 
   if (isHidden) return null;
+  if (hideIntrinsics && node.name.startsWith('llvm.lifetime.')) return null;
 
+  const hasSiteCount = node.site_count !== undefined && node.site_count !== -1;
   const siteHit = node.site_count > 0;
 
-  const colorDot = isExternal
+  const colorDot = hasSiteCount
     ? siteHit
       ? 'bg-green-500'
-      : node.site_count === 0
-        ? 'bg-red-500'
-        : 'bg-zinc-600'
+      : 'bg-red-500'
     : isHit
       ? 'bg-green-500'
       : 'bg-red-500';
@@ -129,6 +131,7 @@ export function TreeNode({
             onSelect={onSelect}
             searchQuery={searchQuery}
             selectedKey={selectedKey}
+            hideIntrinsics={hideIntrinsics}
           />
         ))}
     </div>
