@@ -24,6 +24,10 @@ class CallGraphWalker
         CallGraphNode *node, unsigned depth, SmallPtrSet<Function *, 32> &visited,
         std::map<std::string, FunctionMeta> &func_map, std::vector<CallEdge> &edges
     );
+    CallTreeNode shallowNode(
+        CallGraphNode *node, unsigned max_depth,
+        std::map<std::string, FunctionMeta> &func_map
+    );
     llvm::Module &m_module;
 };
 

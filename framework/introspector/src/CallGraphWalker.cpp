@@ -9,9 +9,9 @@
 #include "llvm/Analysis/CallGraph.h"
 #include <llvm-18/llvm/IR/Metadata.h>
 
-CallTreeNode CallGraphWalker::walkNode(
-    CallGraphNode *node, unsigned depth, SmallPtrSet<Function *, 32> &visited,
-    std::map<std::string, FunctionMeta> &func_map, std::vector<CallEdge> &edges
+CallTreeNode CallGraphWalker::shallowNode(
+    CallGraphNode *node, unsigned max_depth,
+    std::map<std::string, FunctionMeta> &func_map
 )
 {
     CallTreeNode tree_node;
@@ -20,35 +20,73 @@ CallTreeNode CallGraphWalker::walkNode(
         FunctionInfo finfo(*f);
         func_map[tree_node.name] = finfo.dump();
 
-        for (auto &CR : *node) {
-            CallGraphNode *callee_node = CR.second;
-            if (Function *callee = callee_node->getFunction()) {
-                if (visited.insert(callee).second) {
-                    CallTreeNode child = walkNode(callee_node, depth + 1, visited, func_map, edges);
-
-                    // set call site from CR.first
+        if (max_depth > 0) {
+            for (auto &CR : *node) {
+                CallGraphNode *callee_node = CR.second;
+                if (Function *callee = callee_node->getFunction()) {
+                    CallTreeNode child = shallowNode(callee_node, max_depth - 1, func_map);
                     if (CR.first) {
                         if (auto *cb = dyn_cast<llvm::CallBase>(*CR.first)) {
                             if (const DebugLoc &loc = cb->getDebugLoc()) {
                                 child.site_line = loc.getLine();
                                 child.site_col = loc.getCol();
                                 child.site_file = loc->getFilename().str();
-
-                                CallEdge edge;
-                                edge.callee = callee->getName();
-                                edge.caller = cb->getCaller()->getName();
-                                edge.is_indirect = cb->isIndirectCall();
-                                edge.site_file = loc->getFilename().str();
-                                edge.site_line = loc.getLine();
-                                edge.site_col = loc.getCol();
-                                edges.push_back(edge);
                             }
                         }
                     }
-
                     tree_node.children.push_back(child);
-                    visited.erase(callee);
                 }
+            }
+        }
+    }
+    return tree_node;
+}
+
+CallTreeNode CallGraphWalker::walkNode(
+    CallGraphNode *node, unsigned depth, SmallPtrSet<Function *, 32> &visited,
+    std::map<std::string, FunctionMeta> &func_map, std::vector<CallEdge> &edges
+)
+{
+    CallTreeNode tree_node;
+    if (Function *f = node->getFunction()) {
+        tree_node.name = f->getName().str();
+        llvm::outs() << "[walk] depth=" << depth << " " << tree_node.name << "\n";
+        FunctionInfo finfo(*f);
+        func_map[tree_node.name] = finfo.dump();
+
+        for (auto &CR : *node) {
+            CallGraphNode *callee_node = CR.second;
+            if (Function *callee = callee_node->getFunction()) {
+                CallTreeNode child;
+                bool first_visit = visited.insert(callee).second;
+
+                if (first_visit) {
+                    child = walkNode(callee_node, depth + 1, visited, func_map, edges);
+                } else {
+                    // already visited: shallow expand (3 levels, no re-visits)
+                    child = shallowNode(callee_node, 3, func_map);
+                }
+
+                if (CR.first) {
+                    if (auto *cb = dyn_cast<llvm::CallBase>(*CR.first)) {
+                        if (const DebugLoc &loc = cb->getDebugLoc()) {
+                            child.site_line = loc.getLine();
+                            child.site_col = loc.getCol();
+                            child.site_file = loc->getFilename().str();
+
+                            CallEdge edge;
+                            edge.callee = callee->getName();
+                            edge.caller = cb->getCaller()->getName();
+                            edge.is_indirect = cb->isIndirectCall();
+                            edge.site_file = loc->getFilename().str();
+                            edge.site_line = loc.getLine();
+                            edge.site_col = loc.getCol();
+                            edges.push_back(edge);
+                        }
+                    }
+                }
+
+                tree_node.children.push_back(child);
             }
         }
     }
