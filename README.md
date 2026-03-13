@@ -5,27 +5,73 @@
 <h1 align="center">apatchy</h1>
 
 <p align="center">
-  <strong>An in-process fuzzing framework for Apache HTTPD</strong>
+  <i>An in-process fuzzing framework for Apache HTTPD</i>
+  <br />
+  <a href='https://pwner.gg/apatchy/'>
+  <img src='https://img.shields.io/badge/docs-8A2BE2' />
+  </a>
 </p>
 
 ---
 
 apatchy lets you fuzz Apache's full HTTP request processing pipeline - parsing, hooks, filters, handlers - without any network I/O. It replaces Apache's socket layer with custom I/O filters, feeding raw bytes directly into the same code paths that handle real HTTP traffic.
 
+## Features
+
+* Manage different build-trees & configurations 
+* Coverage reports generation
+* Custom Introspection: LLVM Call-tree Analysis
+* Manager for: Harness, AFL++ Mutator
+* Triage bugs / re-play payloads
+* Profiling (kcachegrind/qcachegrind) to analyze bottlenecks in your harness logic to get better perf.
+* Custom toolchain to verify depndencies 
+* Compatability with older Apache versions
+* 1day re-production system
+* and more :D 
+
+![main-view](docs/_static/images/introspector-mainview.png)
+
 ## Quick Start
 
+Recommended to run this on WSL2 and/or docker container
+
 ```bash
-cd framework
+docker build --build-arg UID=$(id -u) -t apatchy-dev .
+docker run -it --rm -p 9000:9000 -v $(pwd):/repo apatchy-dev
+```
 
-apatchy setup check              # verify dependencies
-apatchy setup afl                # install AFL++ locally
+then run this by the order:
+```bash
+# activate environment
+cd framework/
+uv venv .venv
+uv pip install --python .venv -e ".[dev,test,docs]"
+source .venv/bin/activate
 
-apatchy download --version 2.4.62
-apatchy configure
-apatchy make
+# init setup (one-time)
+apatchy setup check                            # verify dependencies
+apatchy setup --force llvm --llvm-version 18   # install LLVM tools locally
+apatchy setup --force afl                      # install AFL++ locally
 
-apatchy link afl                # link the harness
-apatchy fuzz --config rewrite.conf
+# build
+apatchy download          # download apache
+apatchy configure         # ./configure
+apatchy make --bear       # compile apache w/ compilation db
+apatchy link afl --bear   # link the harness w/ compilation db
+
+# fuzz :D 
+mkdir /tmp/htdocs               # required by some configs
+apatchy fuzz --config configs/rewrite.conf
+
+# see coverage
+apatchy coverage report --with-introspect --jobs 8 --config configs/rewrite.conf
+
+# generate call tree / GUI
+cd introspector/
+cmake -B build/
+cmake --build build/
+cd ../
+apatchy introspect --port 9000
 ```
 
 ## Documentation
@@ -34,9 +80,6 @@ apatchy fuzz --config rewrite.conf
 
 * The documentation is live at https://pwner.gg/apatchy/
 * You can generate it locally via `apatchy docs --serve`
-
-
-Full docs live in [`docs/`](docs/README.md) - architecture, Apache internals, CLI reference, and guides for targeting specific modules.
 
 ## License
 
