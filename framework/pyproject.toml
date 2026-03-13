@@ -50,7 +50,9 @@ select = [
 ]
 ignore = [
     "D100",  # missing docstring in public module
+    "D103",  # missing docstring in public function
     "D104",  # missing docstring in public package
+    "D107",  # missing docstring in __init__
     "D203",  # one-blank-line-before-class (conflicts with D211)
     "D213",  # multi-line-summary-second-line (conflicts with D212)
     "N801",  # class name convention

@@ -321,10 +321,10 @@ class MethodDispatcher:
 
         action = getattr(args, "action", None)
         if not action:
-            logger.error("No setup sub-command specified. Use: check, afl, llvm")
+            logger.error("No setup sub-command specified. Use: check, afl, llvm, libtool")
             return
 
-        standalone = getattr(args, "standalone", False)
+        force = getattr(args, "force", False)
 
         if action == "check":
             deps = tm.check()
@@ -348,12 +348,17 @@ class MethodDispatcher:
             console.print(f"\n[{color}]{found}/{total} dependencies satisfied.[/{color}]")
             console.print(f"[dim]Toolchain config: {Config.TOOLCHAIN_CONFIG}[/dim]")
 
+        elif action == "libtool":
+            tm.setup("libtool", force=force)
+            console.print(f"[dim]Toolchain config: {Config.TOOLCHAIN_CONFIG}[/dim]")
+
         elif action == "afl":
-            tm.setup_afl()
+            tm.setup("afl", force=force)
             console.print(f"[dim]Toolchain config: {Config.TOOLCHAIN_CONFIG}[/dim]")
 
         elif action == "llvm":
-            tm.setup_llvm(standalone=standalone)
+            llvm_version = getattr(args, "llvm_version", None)
+            tm.setup("llvm", force=force, llvm_version=llvm_version)
             console.print(f"[dim]Toolchain config: {Config.TOOLCHAIN_CONFIG}[/dim]")
 
     def _handle_grammar(self, args: argparse.Namespace) -> None:

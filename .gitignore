@@ -21,7 +21,7 @@ venv/
 .venv/
 
 # Toolchain (built locally via `apatchy setup`)
-toolchain/
+framework/toolchain/
 grammar_mutator/
 
 # Downloaded Apache source inside project dir

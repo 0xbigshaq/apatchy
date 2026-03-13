@@ -280,14 +280,20 @@ def main():
     # Setup / toolchain
     setup_parser = _sub(subparsers, "setup", help="Manage toolchain and dependencies")
     setup_parser.add_argument(
-        "--standalone",
+        "--force",
         action="store_true",
         help="Download tools into toolchain/ even if system copies exist",
     )
     setup_sub = setup_parser.add_subparsers(dest="action", help="Setup sub-commands")
     _sub(setup_sub, "check", help="Check all dependency status")
+    _sub(setup_sub, "libtool", help="Download libtool into toolchain/")
     _sub(setup_sub, "afl", help="Clone and build AFL++ into toolchain/")
-    _sub(setup_sub, "llvm", help="Detect and suggest LLVM tool installation")
+    llvm_sub = _sub(setup_sub, "llvm", help="Detect and suggest LLVM tool installation")
+    llvm_sub.add_argument(
+        "--llvm-version",
+        metavar="VER",
+        help="LLVM major version to use (e.g. 18). Skips clang detection.",
+    )
 
     # Harness
     harness_parser = _sub(subparsers, "harness", help="Manage fuzzing harnesses")

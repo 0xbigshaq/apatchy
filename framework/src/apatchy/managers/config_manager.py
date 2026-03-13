@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from apatchy.compat import get_compat_flags
+from apatchy.core import toolchain_config
 from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -64,7 +65,7 @@ class ConfigManager:
 
         if self.build_mode == "fuzz":
             self.logger.info("Using afl-clang-fast for AFL instrumentation")
-            cc = "afl-clang-fast"
+            cc = toolchain_config.resolve_tool("afl-clang-fast") or "afl-clang-fast"
             # Clang is stricter than gcc; suppress format warnings that
             # Apache's upstream code triggers under -Werror (maintainer-mode).
             cflags.append("-Wno-error=format")
