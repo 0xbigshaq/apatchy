@@ -99,6 +99,9 @@ For a full, annotated module template with configuration directives, handlers, f
 ## Common Patterns
 
 ````{dropdown} Getting module config
+
+`ap_get_module_config` takes different config slots depending on the scope you need - per-directory, per-server, per-connection, or per-request.
+
 ```c
 static int my_handler(request_rec *r)
 {
@@ -122,6 +125,9 @@ static int my_handler(request_rec *r)
 ````
 
 ````{dropdown} Setting per-request data
+
+A common pattern is to store data early in the request lifecycle (e.g. in a post-read hook) and retrieve it later in the handler, using `r->request_config` as the carrier.
+
 ```c
 static int my_post_read(request_rec *r)
 {

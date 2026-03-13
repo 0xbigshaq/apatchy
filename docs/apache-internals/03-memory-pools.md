@@ -140,6 +140,8 @@ sequenceDiagram
 
 ````{dropdown} Creating and Destroying Pools
 
+Pools are always created with a parent - when the parent is destroyed, all children are destroyed too. You can also clear a pool to free its allocations while keeping the pool itself alive for reuse.
+
 ```c
 #include "apr_pools.h"
 
@@ -167,6 +169,8 @@ apr_pool_clear(pool);
 
 ````{dropdown} Allocating Memory
 
+`apr_palloc` is the basic allocator - memory is never freed individually, only when the pool is destroyed. Use `apr_pcalloc` when you need the memory zeroed.
+
 ```c
 // Basic allocation (like malloc, no initialization)
 void *ptr = apr_palloc(pool, size);
@@ -182,6 +186,7 @@ The absence of `apr_pfree()` is intentional. Individual frees would defeat the p
 
 ````{dropdown} String Functions
 
+APR provides string manipulation functions that allocate into a pool, so the results live as long as the pool does:
 ```c
 // Duplicate a string
 char *copy = apr_pstrdup(pool, "original");
@@ -245,9 +250,11 @@ apr_pool_cleanup_register(pool, f, file_cleanup, apr_pool_cleanup_null);
 ```
 ````
 
-## Real-World Examples from Apache
+## Real-World Code Patterns
 
 ````{dropdown} Example 1: Request Handler
+
+All per-request allocations go into `r->pool`, so there is nothing to free manually - the pool is destroyed when the response is sent.
 
 ```c
 static int my_handler(request_rec *r)
@@ -274,6 +281,8 @@ static int my_handler(request_rec *r)
 
 ````{dropdown} Example 2: Connection Initialization
 
+Per-connection state is allocated from `c->pool` and attached to the connection config, so it stays alive for the full lifetime of the connection and is cleaned up automatically when it closes.
+
 ```c
 static int my_pre_connection(conn_rec *c, void *csd)
 {
@@ -292,6 +301,8 @@ static int my_pre_connection(conn_rec *c, void *csd)
 ````
 
 ````{dropdown} Example 3: Configuration Directive
+
+Configuration directives use `cmd->pool`, which is tied to the server lifetime - the string is duplicated into that pool so it persists after the directive handler returns.
 
 ```c
 static const char *set_my_option(cmd_parms *cmd, void *cfg, const char *arg)
@@ -401,6 +412,8 @@ Each allocation just increments a pointer within the current block - O(1) and ex
 
 ````{dropdown} 1. Choose the Right Pool
 
+Always allocate into the pool whose lifetime matches the data - request, connection, or server config. For scratch work that should not outlive a single operation, create a subpool.
+
 ```c
 // Per-request data: use r->pool
 char *temp = apr_palloc(r->pool, size);
@@ -431,6 +444,8 @@ char *small = apr_palloc(r->pool, strlen(source) + 1);
 
 ````{dropdown} 3. Use Subpools for Loops
 
+Allocating into the request pool inside a loop means that memory accumulates until the request finishes. A subpool that gets cleared each iteration keeps memory flat.
+
 ```c
 // BAD: Memory grows with each iteration
 for (int i = 0; i < 10000; i++) {
@@ -450,6 +465,8 @@ apr_pool_destroy(iter_pool);
 ````
 
 ````{dropdown} 4. Register Cleanups for Non-Pool Resources
+
+File descriptors, sockets, and other OS resources are not freed by pool destruction. Register a cleanup callback so they are closed automatically when the pool goes away.
 
 ```c
 // Opening a native file descriptor
