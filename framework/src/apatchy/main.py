@@ -341,6 +341,7 @@ def main():
         help="Apache version(s) for integration tests (comma-separated, e.g. '2.4.62')",
     )
     test_parser.add_argument("--cov", action="store_true", help="Enable coverage reporting")
+    test_parser.add_argument("-x", "--failfast", action="store_true", help="Stop on first failure")
 
     # Docs
     docs_parser = _sub(subparsers, "docs", help="Build and view Sphinx API documentation")

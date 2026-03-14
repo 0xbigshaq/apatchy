@@ -610,6 +610,9 @@ class MethodDispatcher:
         if filter_expr:
             cmd.extend(["-k", filter_expr])
 
+        if getattr(args, "failfast", False):
+            cmd.append("-x")
+
         if getattr(args, "cov", False):
             cmd.extend(["--cov=apatchy", "--cov-report=term-missing"])
 
