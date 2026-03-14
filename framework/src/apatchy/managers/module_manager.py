@@ -1,4 +1,3 @@
-import shutil
 import subprocess
 from pathlib import Path
 from typing import List, Optional
@@ -137,10 +136,10 @@ class ModuleManager:
             cc = (
                 toolchain_config.resolve_tool("afl-clang-fast")
                 or toolchain_config.resolve_tool("clang")
-                or shutil.which("gcc")
+                or toolchain_config.resolve_tool("gcc")
             )
         else:
-            cc = toolchain_config.resolve_tool(cc) or shutil.which(cc) or cc
+            cc = toolchain_config.resolve_tool(cc) or cc
 
         if not cc:
             logger.error("No C compiler found (afl-clang-fast, clang, or gcc)")

@@ -1,11 +1,11 @@
 import contextlib
 import os
-import shutil
 import subprocess
 from pathlib import Path
 from typing import Optional
 
 from apatchy.compat import extract_version_from_path, get_compat_flags
+from apatchy.core import toolchain_config
 from apatchy.core.harness import HarnessBuilder
 from apatchy.core.process_runner import ProcessRunner
 from apatchy.managers.config_manager import ConfigManager
@@ -16,7 +16,7 @@ logger = get_logger(__name__)
 
 def _bear_available() -> bool:
     """Check if the ``bear`` CLI tool is installed."""
-    return shutil.which("bear") is not None
+    return toolchain_config.resolve_tool("bear") is not None
 
 
 class BuildManager:
@@ -134,7 +134,7 @@ class BuildManager:
 
         # Detect PCRE
         pcre_prefix = None
-        pcre_config = shutil.which("pcre-config") or shutil.which("pcre2-config")
+        pcre_config = toolchain_config.resolve_tool("pcre-config") or toolchain_config.resolve_tool("pcre2-config")
 
         if pcre_config:
             with contextlib.suppress(subprocess.CalledProcessError):
@@ -177,7 +177,7 @@ class BuildManager:
             self.logger.info(f"Using bundled Expat in {bundled_expat}")
             # apr-util automatically uses bundled expat if present in xml/expat
         else:
-            if shutil.which("pkg-config"):
+            if toolchain_config.resolve_tool("pkg-config"):
                 with contextlib.suppress(subprocess.CalledProcessError):
                     # We use subprocess directly here to avoid logging noise
                     expat_prefix = subprocess.check_output(

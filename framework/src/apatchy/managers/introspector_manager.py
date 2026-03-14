@@ -1,7 +1,6 @@
 import json
 import os
 import re
-import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -288,8 +287,8 @@ class IntrospectorManager:
         major = clang_major_version(cc)
         llvm_link = (
             toolchain_config.resolve_tool(f"llvm-link-{major}")
-            or shutil.which(f"llvm-link-{major}")
-            or shutil.which("llvm-link")
+            or toolchain_config.resolve_tool(f"llvm-link-{major}")
+            or toolchain_config.resolve_tool("llvm-link")
         )
         if not llvm_link:
             self.logger.error("llvm-link not found")
@@ -298,8 +297,8 @@ class IntrospectorManager:
         combined = bc_path / "combined.bc"
         llvm_nm = (
             toolchain_config.resolve_tool(f"llvm-nm-{major}")
-            or shutil.which(f"llvm-nm-{major}")
-            or shutil.which("llvm-nm")
+            or toolchain_config.resolve_tool(f"llvm-nm-{major}")
+            or toolchain_config.resolve_tool("llvm-nm")
         )
         candidates = [p for p in built if p.name not in exclude_files]
 

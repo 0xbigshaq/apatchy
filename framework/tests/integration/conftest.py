@@ -42,13 +42,10 @@ def _get_versions() -> list[str]:
 APACHE_VERSIONS = _get_versions()
 
 
-
 def _require_tool(name: str) -> None:
     """Skip the entire test session if a tool is missing."""
     if not shutil.which(name):
         pytest.skip(f"{name} not found on PATH", allow_module_level=True)
-
-
 
 
 @pytest.fixture(scope="session")
@@ -64,8 +61,6 @@ def work_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
         return cache
     except OSError:
         return tmp_path_factory.mktemp("integration")
-
-
 
 
 @pytest.fixture(scope="session", params=APACHE_VERSIONS)
@@ -84,8 +79,6 @@ def httpd_src(request: pytest.FixtureRequest, work_dir: Path) -> Path:
     httpd_root = dl.download_apache(version=version)
     assert httpd_root.exists(), f"Download failed: {httpd_root} does not exist"
     return httpd_root
-
-
 
 
 @pytest.fixture(scope="session")
@@ -112,8 +105,6 @@ def httpd_configured(httpd_src: Path) -> Path:
     return httpd_src
 
 
-
-
 @pytest.fixture(scope="session")
 def httpd(httpd_configured: Path) -> Path:
     """Compile Apache (make). Skips if already compiled.
@@ -133,8 +124,6 @@ def httpd(httpd_configured: Path) -> Path:
 
     assert httpd_binary.exists(), "Compilation failed: httpd binary not produced"
     return httpd_configured
-
-
 
 
 @pytest.fixture

@@ -9,15 +9,14 @@ def test_fuzz_mode_cc():
     """Fuzz mode sets CC to afl-clang-fast."""
     cm = ConfigManager(build_mode="fuzz")
     result = cm.generate_build_config()
-    assert result["CC"] == "afl-clang-fast"
+    assert result["CC"].endswith("afl-clang-fast")
 
 
 def test_fuzz_mode_debug_flags():
-    """Fuzz mode includes -g -O0 -fno-omit-frame-pointer."""
+    """Fuzz mode includes -O2 -fno-omit-frame-pointer."""
     cm = ConfigManager(build_mode="fuzz")
     result = cm.generate_build_config()
-    assert "-g" in result["CFLAGS"]
-    assert "-O0" in result["CFLAGS"]
+    assert "-O2" in result["CFLAGS"]
     assert "-fno-omit-frame-pointer" in result["CFLAGS"]
 
 

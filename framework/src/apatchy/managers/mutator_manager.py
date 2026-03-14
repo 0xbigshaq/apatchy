@@ -1,9 +1,9 @@
-import shutil
 import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from apatchy.config import Config
+from apatchy.core import toolchain_config
 from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -194,7 +194,7 @@ class MutatorManager:
             logger.error("No custom mutator .c sources found.")
             return
 
-        cc = shutil.which("clang") or shutil.which("gcc")
+        cc = toolchain_config.resolve_tool("clang") or toolchain_config.resolve_tool("gcc")
         if not cc:
             logger.error("No C compiler (clang/gcc) found in PATH.")
             return
@@ -241,7 +241,7 @@ class MutatorManager:
 
     @staticmethod
     def _check_deps(programs: List[str]) -> None:
-        missing = [p for p in programs if not shutil.which(p)]
+        missing = [p for p in programs if not toolchain_config.resolve_tool(p)]
         if missing:
             logger.warning(f"Missing dependencies: {', '.join(missing)}")
             logger.warning("Grammar mutator build may fail without these.")

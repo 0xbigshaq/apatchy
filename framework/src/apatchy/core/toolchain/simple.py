@@ -1,5 +1,4 @@
 import re
-import shutil
 import subprocess
 from pathlib import Path
 from typing import List, Optional
@@ -102,11 +101,11 @@ class PkgOrConfigTool(ToolchainTool):  # noqa: D101
 
     def check(self) -> List[DepStatus]:  # noqa: D102
         if self._config_binary:
-            path = shutil.which(self._config_binary)
+            path = toolchain_config.resolve_tool(self._config_binary)
             if path:
                 version = get_binary_version(path, flag="--version") or ""
                 return [DepStatus(self.name, self.category, True, version, path)]
-        if shutil.which("pkg-config"):
+        if toolchain_config.resolve_tool("pkg-config"):
             result = subprocess.run(
                 ["pkg-config", "--modversion", self._pkg_name],
                 capture_output=True,
@@ -137,7 +136,7 @@ class HeaderOrPkgTool(ToolchainTool):  # noqa: D101
         self._pkg_name = pkg_name
 
     def check(self) -> List[DepStatus]:  # noqa: D102
-        if shutil.which("pkg-config"):
+        if toolchain_config.resolve_tool("pkg-config"):
             result = subprocess.run(
                 ["pkg-config", "--modversion", self._pkg_name],
                 capture_output=True,

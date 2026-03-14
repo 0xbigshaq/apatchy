@@ -6,7 +6,6 @@ from pathlib import Path
 from apatchy.core.harness import HarnessBuilder
 
 
-
 def test_config_vars_generated(httpd_configured: Path) -> None:
     """Configure produces build/config_vars.mk."""
     config_vars = httpd_configured / "build" / "config_vars.mk"
@@ -40,8 +39,6 @@ def test_session_modules_enabled(httpd_configured: Path) -> None:
     assert "session" in config_status.lower()
 
 
-
-
 def test_httpd_binary_exists(httpd: Path) -> None:
     """Make produces the httpd binary."""
     assert (httpd / "httpd").exists()
@@ -66,8 +63,6 @@ def test_apr_util_built(httpd: Path) -> None:
     """APR-Util library is built."""
     aprutil_lib = httpd / "srclib" / "apr-util" / "libaprutil-1.la"
     assert aprutil_lib.exists()
-
-
 
 
 def test_parse_config_vars_real(httpd: Path) -> None:

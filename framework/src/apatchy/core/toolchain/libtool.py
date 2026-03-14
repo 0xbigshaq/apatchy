@@ -1,4 +1,3 @@
-import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -38,7 +37,7 @@ class LibtoolTool(ToolchainTool):  # noqa: D101
             return
 
         if not force:
-            system = shutil.which("libtool")
+            system = toolchain_config.resolve_tool("libtool")
             if system:
                 logger.info(f"libtool found at {system}, skipping download")
                 toolchain_config.force_update_section("build", {"libtool": system})

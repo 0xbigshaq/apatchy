@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 from apatchy.config import Config
+from apatchy.core import toolchain_config
 from apatchy.core.downloader import Downloader
 from apatchy.managers.build_manager import BuildManager
 from apatchy.managers.config_manager import ConfigManager
@@ -632,7 +633,7 @@ class MethodDispatcher:
             logger.error(f"Sphinx source directory not found at {source_dir}")
             return
 
-        sphinx = shutil.which("sphinx-build")
+        sphinx = toolchain_config.resolve_tool("sphinx-build")
         if sphinx is None:
             logger.error("sphinx-build not found. Install with: pip install './framework[docs]'")
             return
@@ -695,7 +696,7 @@ class MethodDispatcher:
         elif tag_file.exists() and html_dir.exists():
             return
 
-        doxygen = shutil.which("doxygen")
+        doxygen = toolchain_config.resolve_tool("doxygen")
         if doxygen is None:
             logger.warning("doxygen not found; Apache API cross-references will be unavailable")
             return

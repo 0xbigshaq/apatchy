@@ -6,7 +6,6 @@ self-contained binary for AFL++, LibFuzzer, or standalone execution.
 """
 
 import re
-import shutil
 from pathlib import Path
 
 from apatchy.config import Config
@@ -105,7 +104,7 @@ class HarnessBuilder:
         resolved_cc = toolchain_config.resolve_tool(cc)
         if resolved_cc:
             cc = resolved_cc
-        elif not shutil.which(cc):
+        else:
             self.logger.error(f"Compiler '{cc}' not found. Is AFL++ installed?")
             raise FileNotFoundError(f"{cc} not found in PATH")
 
@@ -207,7 +206,7 @@ class HarnessBuilder:
         if system.exists():
             return str(system)
         # Try afl-clang-fast --print-runtime-dir (AFL++ >= 4.x)
-        afl_cc = shutil.which("afl-clang-fast")
+        afl_cc = toolchain_config.resolve_tool("afl-clang-fast")
         if afl_cc:
             import subprocess
 

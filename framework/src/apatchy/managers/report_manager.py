@@ -185,8 +185,8 @@ class ReportManager:
                 return str(profdata_colocated), str(cov_colocated), cc_path
 
             # Fall back to PATH
-            profdata_path = shutil.which(profdata_name)
-            cov_path = shutil.which(cov_name)
+            profdata_path = toolchain_config.resolve_tool(profdata_name)
+            cov_path = toolchain_config.resolve_tool(cov_name)
             if profdata_path and cov_path:
                 self.logger.info(f"using LLVM-{major} from PATH")
                 return profdata_path, cov_path, cc_path
@@ -272,7 +272,7 @@ class ReportManager:
                 return path
 
         # Unversioned in PATH
-        plain = shutil.which("llvm-symbolizer")
+        plain = toolchain_config.resolve_tool("llvm-symbolizer")
         if plain:
             return plain
 
@@ -704,7 +704,7 @@ class ReportManager:
         # auto-detect entry point
         if not entry:
             major = clang_major_version(cc)
-            llvm_nm = shutil.which(f"llvm-nm-{major}") or shutil.which("llvm-nm")
+            llvm_nm = toolchain_config.resolve_tool(f"llvm-nm-{major}") or toolchain_config.resolve_tool("llvm-nm")
             if llvm_nm:
                 try:
                     result = subprocess.run(
@@ -1106,7 +1106,7 @@ class ReportManager:
         callgrind output is clean and all function names are visible.
         """
         # Check valgrind is available
-        if not shutil.which("valgrind"):
+        if not toolchain_config.resolve_tool("valgrind"):
             self.logger.error("valgrind not found. Install with: apt install valgrind")
             return
 
