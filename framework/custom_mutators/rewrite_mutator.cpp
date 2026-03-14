@@ -152,43 +152,6 @@ typedef struct afl_state {
 } afl_state_t;
 }
 
-static size_t replace_uri(
-    const uint8_t *in, size_t in_len, const AK::RequestLine &rl, const char *uri, size_t uri_len,
-    std::vector<uint8_t> &out, size_t max
-)
-{
-    size_t total = rl.uri_start + uri_len + (in_len - rl.uri_end);
-    if (total > max)
-        return 0;
-
-    out.resize(total);
-    memcpy(out.data(), in, rl.uri_start);
-    memcpy(out.data() + rl.uri_start, uri, uri_len);
-    memcpy(out.data() + rl.uri_start + uri_len, in + rl.uri_end, in_len - rl.uri_end);
-    return total;
-}
-
-static size_t inject_header(
-    const uint8_t *in, size_t in_len, const char *hdr, size_t hdr_len, std::vector<uint8_t> &out,
-    size_t max
-)
-{
-    size_t hend = AK::find_header_end(in, in_len);
-    if (hend == 0)
-        return 0;
-
-    size_t split = hend + 2;
-    size_t total = split + hdr_len + (in_len - split);
-    if (total > max)
-        return 0;
-
-    out.resize(total);
-    memcpy(out.data(), in, split);
-    memcpy(out.data() + split, hdr, hdr_len);
-    memcpy(out.data() + split + hdr_len, in + split, in_len - split);
-    return total;
-}
-
 static const char *pick_header()
 {
     int which = rand() % 4;
@@ -216,7 +179,7 @@ static size_t do_swap_uri(
             uri_len = n;
         }
     }
-    return replace_uri(buf, len, rl, uri, uri_len, out, max);
+    return AK::replace_uri(buf, len, rl, uri, uri_len, out, max);
 }
 
 static size_t do_mutate_query(
@@ -227,14 +190,14 @@ static size_t do_mutate_query(
     size_t qpos = uri.find('?');
     std::string path = (qpos != std::string::npos) ? uri.substr(0, qpos) : uri;
     std::string new_uri = path + "?" + qs_payloads[rand() % num_qs];
-    return replace_uri(buf, len, rl, new_uri.c_str(), new_uri.size(), out, max);
+    return AK::replace_uri(buf, len, rl, new_uri.c_str(), new_uri.size(), out, max);
 }
 
 static size_t
 do_inject_header(const uint8_t *buf, size_t len, std::vector<uint8_t> &out, size_t max)
 {
     const char *hdr = pick_header();
-    return inject_header(buf, len, hdr, strlen(hdr), out, max);
+    return AK::inject_header(buf, len, hdr, strlen(hdr), out, max);
 }
 
 static size_t do_mutate_path(
@@ -252,7 +215,7 @@ static size_t do_mutate_path(
         next = uri.size();
 
     uri.replace(slash + 1, next - slash - 1, seg_mutations[rand() % num_seg_mutations]);
-    return replace_uri(buf, len, rl, uri.c_str(), uri.size(), out, max);
+    return AK::replace_uri(buf, len, rl, uri.c_str(), uri.size(), out, max);
 }
 
 static size_t do_long_path(
@@ -280,7 +243,7 @@ static size_t do_long_path(
         for (int i = 0; i < count; i++)
             path += "/..";
     }
-    return replace_uri(buf, len, rl, path.c_str(), path.size(), out, max);
+    return AK::replace_uri(buf, len, rl, path.c_str(), path.size(), out, max);
 }
 
 static size_t
@@ -297,7 +260,7 @@ do_multi_headers(const uint8_t *buf, size_t len, std::vector<uint8_t> &out, size
             block += pick_header();
         }
     }
-    return inject_header(buf, len, block.c_str(), block.size(), out, max);
+    return AK::inject_header(buf, len, block.c_str(), block.size(), out, max);
 }
 
 static size_t do_swap_method(
@@ -327,7 +290,7 @@ static size_t do_combined(
         return 0;
 
     const char *hdr = pick_header();
-    return inject_header(tmp.data(), n, hdr, strlen(hdr), out, max);
+    return AK::inject_header(tmp.data(), n, hdr, strlen(hdr), out, max);
 }
 
 extern "C" {

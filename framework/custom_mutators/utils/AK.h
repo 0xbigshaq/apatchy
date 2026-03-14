@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
+#include <vector>
 
 #include <openssl/evp.h>
 #include <openssl/params.h>
@@ -57,6 +58,36 @@ inline bool parse_request_line(const uint8_t *buf, size_t len, RequestLine &rl)
         return false;
     rl.uri_end = (const uint8_t *)p - buf;
     return true;
+}
+
+inline size_t replace_uri(const uint8_t *in, size_t in_len,
+                           const RequestLine &rl,
+                           const char *uri, size_t uri_len,
+                           std::vector<uint8_t> &out, size_t max)
+{
+    size_t total = rl.uri_start + uri_len + (in_len - rl.uri_end);
+    if (total > max) return 0;
+    out.resize(total);
+    memcpy(out.data(), in, rl.uri_start);
+    memcpy(out.data() + rl.uri_start, uri, uri_len);
+    memcpy(out.data() + rl.uri_start + uri_len, in + rl.uri_end, in_len - rl.uri_end);
+    return total;
+}
+
+inline size_t inject_header(const uint8_t *in, size_t in_len,
+                              const char *hdr, size_t hdr_len,
+                              std::vector<uint8_t> &out, size_t max)
+{
+    size_t hend = find_header_end(in, in_len);
+    if (hend == 0) return 0;
+    size_t split = hend + 2;
+    size_t total = split + hdr_len + (in_len - split);
+    if (total > max) return 0;
+    out.resize(total);
+    memcpy(out.data(), in, split);
+    memcpy(out.data() + split, hdr, hdr_len);
+    memcpy(out.data() + split + hdr_len, in + split, in_len - split);
+    return total;
 }
 
 inline bool siphash24(uint8_t out[8], const uint8_t *data, size_t data_len, const uint8_t key[16])
