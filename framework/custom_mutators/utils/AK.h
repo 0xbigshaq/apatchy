@@ -36,6 +36,29 @@ inline size_t find_space(const uint8_t *buf, size_t len)
     return p ? (size_t)((const uint8_t *)p - buf) : 0;
 }
 
+struct RequestLine {
+    size_t uri_start;
+    size_t uri_end;
+};
+
+inline bool parse_request_line(const uint8_t *buf, size_t len, RequestLine &rl)
+{
+    size_t line_end = find_request_line_end(buf, len);
+    if (line_end == 0)
+        return false;
+
+    size_t sp = find_space(buf, line_end);
+    if (sp == 0)
+        return false;
+    rl.uri_start = sp + 1;
+
+    const void *p = memchr(buf + rl.uri_start, ' ', line_end - rl.uri_start);
+    if (!p)
+        return false;
+    rl.uri_end = (const uint8_t *)p - buf;
+    return true;
+}
+
 inline bool siphash24(uint8_t out[8], const uint8_t *data, size_t data_len, const uint8_t key[16])
 {
     EVP_MAC *mac = EVP_MAC_fetch(NULL, "SIPHASH", NULL);
