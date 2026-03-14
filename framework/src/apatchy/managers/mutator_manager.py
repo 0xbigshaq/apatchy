@@ -177,34 +177,43 @@ class MutatorManager:
         return sorted(found.keys())
 
     def build_custom_mutator(self, name: Optional[str] = None) -> None:
-        """Compile .c sources from bundled custom_mutators/ into .so files."""
+        """Compile .c/.cpp sources from bundled custom_mutators/ into .so files."""
         self.custom_mutators_out.mkdir(exist_ok=True)
 
         sources: List[Path] = []
         if name:
-            src = Config.CUSTOM_MUTATORS_DIR / f"{name}.c"
-            if not src.exists():
-                logger.error(f"Custom mutator source not found: {src}")
+            for ext in (".c", ".cpp"):
+                src = Config.CUSTOM_MUTATORS_DIR / f"{name}{ext}"
+                if src.exists():
+                    sources.append(src)
+                    break
+            if not sources:
+                logger.error(f"Custom mutator source not found: {name}")
                 return
-            sources.append(src)
         else:
-            sources = list(Config.CUSTOM_MUTATORS_DIR.glob("*.c"))
+            sources = sorted(
+                list(Config.CUSTOM_MUTATORS_DIR.glob("*.c")) + list(Config.CUSTOM_MUTATORS_DIR.glob("*.cpp"))
+            )
 
         if not sources:
-            logger.error("No custom mutator .c sources found.")
-            return
-
-        cc = toolchain_config.resolve_tool("clang") or toolchain_config.resolve_tool("gcc")
-        if not cc:
-            logger.error("No C compiler (clang/gcc) found in PATH.")
+            logger.error("No custom mutator sources found.")
             return
 
         for src in sources:
             out = self.custom_mutators_out / f"{src.stem}.so"
+            extra_flags, lang = self._parse_source_directives(src)
+            is_cpp = lang == "c++" or src.suffix == ".cpp"
+            if is_cpp:
+                cc = toolchain_config.resolve_tool("clang++") or toolchain_config.resolve_tool("g++")
+            else:
+                cc = toolchain_config.resolve_tool("clang") or toolchain_config.resolve_tool("gcc")
+            if not cc:
+                logger.error(f"No {'C++' if is_cpp else 'C'} compiler found in PATH.")
+                return
             logger.info(f"Compiling {src.name} -> {out.name}")
             try:
                 subprocess.run(
-                    [cc, "-shared", "-fPIC", "-O3", "-o", str(out), str(src)],
+                    [cc, "-shared", "-fPIC", "-O3", "-o", str(out), str(src)] + extra_flags,
                     check=True,
                 )
                 logger.info(f"Built: {out}")
@@ -212,9 +221,10 @@ class MutatorManager:
                 logger.error(f"Failed to compile {src.name}")
 
     def list_custom_mutators(self) -> List[Dict[str, str]]:
-        """List available .c sources and whether a .so has been built."""
+        """List available .c/.cpp sources and whether a .so has been built."""
         results: List[Dict[str, str]] = []
-        for src in sorted(Config.CUSTOM_MUTATORS_DIR.glob("*.c")):
+        all_src = sorted(list(Config.CUSTOM_MUTATORS_DIR.glob("*.c")) + list(Config.CUSTOM_MUTATORS_DIR.glob("*.cpp")))
+        for src in all_src:
             built_path = self.custom_mutators_out / f"{src.stem}.so"
             results.append(
                 {
@@ -238,6 +248,24 @@ class MutatorManager:
             return path.resolve()
 
         return None
+
+    @staticmethod
+    def _parse_source_directives(src: Path) -> tuple:
+        """Read the first 30 lines for // LDFLAGS: and // LANG: directives."""
+        flags: List[str] = []
+        lang = "c"
+        try:
+            with open(src) as f:
+                for i, line in enumerate(f):
+                    if i >= 30:
+                        break
+                    if line.startswith("// LDFLAGS:"):
+                        flags.extend(line[len("// LDFLAGS:") :].split())
+                    elif line.startswith("// LANG:"):
+                        lang = line[len("// LANG:") :].strip()
+        except Exception:
+            pass
+        return flags, lang
 
     @staticmethod
     def _check_deps(programs: List[str]) -> None:

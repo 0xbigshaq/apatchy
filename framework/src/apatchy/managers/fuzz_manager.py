@@ -449,6 +449,7 @@ class FuzzManager:
         elif role == "secondary":
             cmd += ["-S", name]
 
+        # cmd += ["-x"]
         # cmd += ['-D'] # fuzzing strategy yields
         cmd += [
             "-i",
