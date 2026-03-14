@@ -20,8 +20,8 @@
 
 #include <openssl/evp.h>
 #include <openssl/rand.h>
-#include <openssl/params.h>
-#include <openssl/core_names.h>
+
+#include "utils/AK.h"
 
 #define DEFAULT_PASSPHRASE "fuzzing_test_key_1234567890abcdef"
 #define DEFAULT_COOKIE_NAMES "session_crypto"
@@ -38,41 +38,6 @@ extern "C" {
 typedef struct afl_state {
     void *afl;
 } afl_state_t;
-}
-
-static bool
-siphash24_mac(uint8_t out[8], const uint8_t *data, size_t data_len, const uint8_t key[16])
-{
-    EVP_MAC *mac = EVP_MAC_fetch(NULL, "SIPHASH", NULL);
-    if (!mac)
-        return false;
-
-    EVP_MAC_CTX *ctx = EVP_MAC_CTX_new(mac);
-    EVP_MAC_free(mac);
-    if (!ctx)
-        return false;
-
-    size_t out_size = 8;
-    OSSL_PARAM params[] = {
-        OSSL_PARAM_construct_size_t(OSSL_MAC_PARAM_SIZE, &out_size),
-        OSSL_PARAM_END,
-    };
-
-    size_t final_len = 0;
-    bool ok = EVP_MAC_init(ctx, key, 16, params) == 1 && EVP_MAC_update(ctx, data, data_len) == 1 &&
-              EVP_MAC_final(ctx, out, &final_len, 8) == 1;
-
-    EVP_MAC_CTX_free(ctx);
-    return ok && final_len == 8;
-}
-
-static std::string base64_encode(const uint8_t *data, size_t len)
-{
-    size_t out_len = 4 * ((len + 2) / 3) + 1;
-    std::string result(out_len, '\0');
-    int written = EVP_EncodeBlock(reinterpret_cast<unsigned char *>(&result[0]), data, (int)len);
-    result.resize(written);
-    return result;
 }
 
 static std::string encrypt_data(
@@ -107,19 +72,10 @@ static std::string encrypt_data(
     memcpy(assembled.data() + 24, iv, 16);
     memcpy(assembled.data() + 40, ct.data(), ct_len);
 
-    if (!siphash24_mac(assembled.data(), assembled.data() + 8, combined - 8, siphash_key))
+    if (!AK::siphash24(assembled.data(), assembled.data() + 8, combined - 8, siphash_key))
         return "";
 
-    return base64_encode(assembled.data(), combined);
-}
-
-static size_t find_header_end(const uint8_t *buf, size_t len)
-{
-    for (size_t i = 0; i + 3 < len; i++) {
-        if (buf[i] == '\r' && buf[i + 1] == '\n' && buf[i + 2] == '\r' && buf[i + 3] == '\n')
-            return i;
-    }
-    return 0;
+    return AK::base64_encode(assembled.data(), combined);
 }
 
 extern "C" {
@@ -197,7 +153,7 @@ size_t afl_custom_post_process(void *data, uint8_t *buf, size_t buf_size, uint8_
 {
     MutatorContext *ctx = static_cast<MutatorContext *>(data);
 
-    size_t hdr_end = find_header_end(buf, buf_size);
+    size_t hdr_end = AK::find_header_end(buf, buf_size);
     if (hdr_end == 0) {
         *out_buf = buf;
         return buf_size;
