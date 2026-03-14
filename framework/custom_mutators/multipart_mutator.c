@@ -16,10 +16,10 @@
  *   clang -shared -fPIC -O3 -o multipart_mutator.so multipart_mutator.c
  */
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 
 typedef struct afl_state {
     void *afl;

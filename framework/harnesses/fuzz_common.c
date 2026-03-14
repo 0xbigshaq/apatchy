@@ -14,11 +14,11 @@
 #include "fuzz_common.h"
 
 #include "apr.h"
-#include "apr_strings.h"
-#include "apr_getopt.h"
-#include "apr_general.h"
-#include "apr_lib.h"
 #include "apr_buckets.h"
+#include "apr_general.h"
+#include "apr_getopt.h"
+#include "apr_lib.h"
+#include "apr_strings.h"
 #include "apr_thread_proc.h"
 
 #define APR_WANT_STDIO
@@ -26,26 +26,26 @@
 #include "apr_want.h"
 
 #include "ap_config.h"
-#include "httpd.h"
-#include "http_main.h"
-#include "http_log.h"
-#include "http_config.h"
-#include "http_core.h"
-#include "mod_core.h"
-#include "http_request.h"
-#include "http_connection.h"
-#include "http_protocol.h"
-#include "http_vhost.h"
 #include "ap_mpm.h"
-#include "util_filter.h"
-#include "scoreboard.h"
+#include "http_config.h"
+#include "http_connection.h"
+#include "http_core.h"
+#include "http_log.h"
+#include "http_main.h"
+#include "http_protocol.h"
+#include "http_request.h"
+#include "http_vhost.h"
+#include "httpd.h"
+#include "mod_core.h"
 #include "mpm_common.h"
+#include "scoreboard.h"
+#include "util_filter.h"
 
-#include <unistd.h>
-#include <fcntl.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <string.h>
+#include <unistd.h>
 
 /* ----------------------------------------------------------------
  * ASan signal handler restoration

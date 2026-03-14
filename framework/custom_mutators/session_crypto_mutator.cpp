@@ -12,9 +12,9 @@
 // LDFLAGS: -lcrypto
 // LANG: c++
 
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <cstdint>
 #include <string>
 #include <vector>
 

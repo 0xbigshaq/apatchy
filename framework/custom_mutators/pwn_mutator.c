@@ -12,10 +12,10 @@
  *   clang -shared -fPIC -O3 -o pwn_mutator.so pwn_mutator.c
  */
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 #include <time.h>
 
 typedef struct afl_state {

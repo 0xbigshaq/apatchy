@@ -18,5 +18,5 @@ AlignAfterOpenBracket: BlockIndent
 AllowShortFunctionsOnASingleLine: None
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
-SortIncludes: false
+SortIncludes: true
 SpacesBeforeTrailingComments: 1

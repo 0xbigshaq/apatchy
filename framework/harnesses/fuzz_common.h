@@ -9,8 +9,8 @@
 #ifndef FUZZ_COMMON_H
 #define FUZZ_COMMON_H
 
-#include <stddef.h>
 #include "apr_pools.h"
+#include <stddef.h>
 
 /* Forward declaration - full definition in httpd.h */
 typedef struct server_rec server_rec;

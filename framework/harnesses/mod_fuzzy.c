@@ -7,11 +7,11 @@
 
 #include "fuzz_common.h"
 
-#include "httpd.h"
 #include "apr.h"
 #include "apr_general.h"
 #include "apr_getopt.h"
 #include "apr_pools.h"
+#include "httpd.h"
 
 #include <stdio.h>
 #include <stdlib.h>

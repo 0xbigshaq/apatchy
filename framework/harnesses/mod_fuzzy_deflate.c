@@ -16,13 +16,13 @@
 
 #include "fuzz_common.h"
 
-#include "httpd.h"
-#include "http_config.h"
-#include "http_core.h"
 #include "apr.h"
 #include "apr_general.h"
-#include "apr_pools.h"
 #include "apr_getopt.h"
+#include "apr_pools.h"
+#include "http_config.h"
+#include "http_core.h"
+#include "httpd.h"
 
 #include <stdio.h>
 #include <stdlib.h>
