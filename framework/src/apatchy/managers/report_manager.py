@@ -25,7 +25,7 @@ from apatchy.managers.config_manager import ConfigManager
 from apatchy.managers.introspector_manager import IntrospectorManager, clang_major_version
 from apatchy.utils.build_tree import AlternateBuildTree
 from apatchy.utils.logger import get_logger
-from apatchy.utils.ui import UI
+from apatchy.utils.ui import UI, run_stream_panel
 
 logger = get_logger(__name__)
 
@@ -725,12 +725,47 @@ class ReportManager:
                 return
             self.logger.info(f"Auto-detected entry point: {entry}")
 
-        # we need to find wuxi binary
-        # TODO: should we compile it via the CLI too?
-        wuxi = Path(__file__).resolve().parent.parent.parent.parent / "introspector" / "build" / "wuxi"
+        # locate (and auto-build) the wuxi binary and GUI frontend
+        introspector_root = Path(__file__).resolve().parent.parent.parent.parent / "introspector"
+        wuxi = introspector_root / "build" / "wuxi"
+        gui_dist = introspector_root / "gui" / "dist"
+
+        if not gui_dist.is_dir():
+            self.logger.info("GUI frontend not built, building...")
+            gui_dir = str(introspector_root / "gui")
+            rc, _ = run_stream_panel(
+                ["npm", "install"],
+                cwd=gui_dir,
+                label="Installing GUI dependencies (npm install)...",
+            )
+            if rc != 0:
+                self.logger.warning("npm install failed, introspect report will have no viewer")
+            else:
+                rc, _ = run_stream_panel(
+                    ["npm", "run", "build"],
+                    cwd=gui_dir,
+                    label="Building GUI frontend (npm run build)...",
+                )
+                if rc != 0:
+                    self.logger.warning("npm run build failed, introspect report will have no viewer")
+
         if not wuxi.is_file():
-            self.logger.error(f"wuxi not found: {wuxi} (build the introspector first)")
-            return
+            self.logger.info("wuxi tool not built, building with cmake...")
+            intr_dir = str(introspector_root)
+            rc, _ = run_stream_panel(
+                ["cmake", "-B", "build/"],
+                cwd=intr_dir,
+                label="Configuring wuxi (cmake)...",
+            )
+            if rc == 0:
+                rc, _ = run_stream_panel(
+                    ["cmake", "--build", "build/"],
+                    cwd=intr_dir,
+                    label="Building wuxi (cmake --build)...",
+                )
+            if rc != 0 or not wuxi.is_file():
+                self.logger.error(f"Failed to build wuxi at {wuxi}")
+                return
 
         self.logger.info("Exporting coverage data...")
         cov_cmd = [
@@ -771,8 +806,6 @@ class ReportManager:
                 cov_stripped[bare] = cov_entry
 
         # run our wuxi cpp tool
-        from apatchy.utils.ui import run_stream_panel
-
         wuxi_out = Path(tempfile.mktemp(suffix=".json"))
         wuxi_cmd = [str(wuxi), str(bitcode), entry, "-f", str(wuxi_out)]
         returncode, _ = run_stream_panel(
@@ -854,7 +887,6 @@ class ReportManager:
         annotate_site_counts(introspect.get("call_tree", {}))
 
         # assemble output directory with GUI, data, and coverage report
-        gui_dist = Path(__file__).resolve().parent.parent.parent.parent / "introspector" / "gui" / "dist"
         out_dir = Path("introspect-report")
         if out_dir.exists():
             shutil.rmtree(out_dir)

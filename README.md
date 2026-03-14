@@ -66,13 +66,7 @@ apatchy fuzz --config configs/rewrite.conf
 # 5. see coverage
 apatchy coverage report --with-introspect --jobs 8 --config configs/rewrite.conf
 
-# 6. build/generate the call-tree(one-time setup) 
-cd introspector/
-cmake -B build/
-cmake --build build/
-cd ../
-
-# 7. Activate the interactive GUI
+# 6. Build/generate the call-tree & start the GUI
 apatchy introspect --entry ap_process_request
 ```
 
