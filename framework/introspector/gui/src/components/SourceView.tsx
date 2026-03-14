@@ -11,9 +11,10 @@ interface Props {
   callSiteLabel: string | null;
   reportBaseUrl: string;
   overrideUrl?: string | null;
+  onNavigate?: (url: string) => void;
 }
 
-export function SourceView({ definitionUrl, callSiteUrl, functionName, callSiteLabel, reportBaseUrl, overrideUrl }: Props) {
+export function SourceView({ definitionUrl, callSiteUrl, functionName, callSiteLabel, reportBaseUrl, overrideUrl, onNavigate }: Props) {
   const [mode, setMode] = useState<ViewMode>('callsite');
   const [covLines, setCovLines] = useState<CovLine[]>([]);
   const [scrollRatio, setScrollRatio] = useState(0);
@@ -35,6 +36,11 @@ export function SourceView({ definitionUrl, callSiteUrl, functionName, callSiteL
     try {
       const doc = iframe.contentDocument;
       if (!doc) return;
+
+      const iframeUrl = iframe.contentWindow?.location.href;
+      if (iframeUrl && onNavigate) {
+        onNavigate(iframeUrl);
+      }
 
       // scroll to hash
       const hash = new URL(iframe.src, location.href).hash;
@@ -65,16 +71,38 @@ export function SourceView({ definitionUrl, callSiteUrl, functionName, callSiteL
       });
       setCovLines(lines);
 
+      const allRows = Array.from(rows);
       const onScroll = () => {
         const el = doc.scrollingElement || doc.documentElement;
-        const max = el.scrollHeight - el.clientHeight;
-        setScrollRatio(max > 0 ? el.scrollTop / max : 0);
+        const viewportCenter = el.scrollTop + el.clientHeight / 2;
+        let centerIdx = 0;
+        for (let i = 0; i < allRows.length; i++) {
+          const r = allRows[i] as HTMLElement;
+          if (r.offsetTop + r.offsetHeight / 2 >= viewportCenter) {
+            centerIdx = i;
+            break;
+          }
+          centerIdx = i;
+        }
+        setScrollRatio(allRows.length > 1 ? centerIdx / (allRows.length - 1) : 0);
       };
       doc.addEventListener('scroll', onScroll);
       onScroll();
-      (iframe as any).__cleanupScroll = () => doc.removeEventListener('scroll', onScroll);
+
+      const win = iframe.contentWindow;
+      const onHashChange = () => {
+        if (win && onNavigate) {
+          onNavigate(win.location.href);
+        }
+      };
+      win?.addEventListener('hashchange', onHashChange);
+
+      (iframe as any).__cleanupScroll = () => {
+        doc.removeEventListener('scroll', onScroll);
+        win?.removeEventListener('hashchange', onHashChange);
+      };
     } catch { /* cross-origin, ignore */ }
-  }, []);
+  }, [onNavigate]);
 
   const handleBandClick = useCallback((ratio: number) => {
     try {

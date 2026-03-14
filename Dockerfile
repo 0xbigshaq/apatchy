@@ -49,6 +49,9 @@ RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | b
 
 ENV PATH="$NVM_DIR/versions/node/v22/bin:$PATH"
 
+RUN echo "PROMPT_COMMAND='PS1_CMD1=\$(git branch --show-current 2>/dev/null); [ -n \"\$PS1_CMD1\" ] && PS1_CMD1=\"[\$PS1_CMD1]\"'" >> /home/meow/.bashrc && \
+    echo "PS1='\\[\\e[38;5;228m\\]\\u\\[\\e[0m\\]@\\[\\e[38;5;207m\\]\\H:\\[\\e[0m\\]\\w \\[\\e[38;5;216;3m\\]\${PS1_CMD1}\\[\\e[0m\\] \\\$ '" >> /home/meow/.bashrc
+
 
 WORKDIR /repo
 

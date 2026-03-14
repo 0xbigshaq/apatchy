@@ -21,6 +21,15 @@ export function useTreeState(autoExpandDepth = 2) {
     });
   }, [globalOverride]);
 
+  const expandPath = useCallback((nodeKey: string) => {
+    const parts = nodeKey.split('/');
+    const keys: Record<string, boolean> = {};
+    for (let i = 1; i <= parts.length; i++) {
+      keys[parts.slice(0, i).join('/')] = true;
+    }
+    setExpanded((prev) => ({ ...prev, ...keys }));
+  }, []);
+
   const expandAll = useCallback(() => {
     setExpanded({});
     setGlobalOverride(true);
@@ -31,5 +40,5 @@ export function useTreeState(autoExpandDepth = 2) {
     setGlobalOverride(false);
   }, []);
 
-  return { isExpanded, toggle, expandAll, collapseAll };
+  return { isExpanded, toggle, expandAll, collapseAll, expandPath };
 }

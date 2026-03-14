@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { CallTree } from './components/CallTree';
 import { CoveragePanel } from './components/CoveragePanel';
@@ -13,7 +13,7 @@ const REPORT_BASE_URL = './coverage-report/html';
 
 function App() {
   const { data, error, loading } = useIntrospectData();
-  const { isExpanded, toggle, expandAll, collapseAll } = useTreeState(2);
+  const { isExpanded, toggle, expandAll, collapseAll, expandPath } = useTreeState(2);
   const [searchQuery, setSearchQuery] = useState('');
   const [selection, setSelection] = useState<{
     node: CallTreeNode;
@@ -22,6 +22,85 @@ function App() {
   } | null>(null);
   const [panelOverrideUrl, setPanelOverrideUrl] = useState<string | null>(null);
   const [hideIntrinsics, setHideIntrinsics] = useState(true);
+  const [hashRestored, setHashRestored] = useState(false);
+
+  const findNodeByKey = useCallback(
+    (root: CallTreeNode, targetKey: string): { node: CallTreeNode; callerName: string | null } | null => {
+      const walk = (
+        node: CallTreeNode,
+        key: string,
+        parent: string | null,
+      ): { node: CallTreeNode; callerName: string | null } | null => {
+        if (key === targetKey) return { node, callerName: parent };
+        for (let i = 0; i < (node.children?.length ?? 0); i++) {
+          const child = node.children[i];
+          const childKey = `${key}/${child.name}-${i}`;
+          const result = walk(child, childKey, node.name);
+          if (result) return result;
+        }
+        return null;
+      };
+      return walk(root, root.name, null);
+    },
+    [],
+  );
+
+  const updateHash = useCallback(
+    (nodeKey: string | null, viewUrl: string | null) => {
+      const parts = [nodeKey ?? '', viewUrl ?? ''];
+      const fragment = parts[1] ? parts.join('|') : parts[0];
+      if (fragment) {
+        history.replaceState(null, '', '#' + fragment);
+      } else {
+        history.replaceState(null, '', location.pathname + location.search);
+      }
+    },
+    [],
+  );
+
+  const viewUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!data || hashRestored) return;
+    setHashRestored(true);
+    const raw = location.hash.slice(1);
+    if (!raw) return;
+    const pipeIdx = raw.indexOf('|');
+    const nodeKeyPart = pipeIdx >= 0 ? decodeURIComponent(raw.slice(0, pipeIdx)) : decodeURIComponent(raw);
+    const viewPart = pipeIdx >= 0 ? raw.slice(pipeIdx + 1) : null;
+    if (nodeKeyPart) {
+      const result = findNodeByKey(data.call_tree, nodeKeyPart);
+      if (result) {
+        setSelection({ node: result.node, callerName: result.callerName, nodeKey: nodeKeyPart });
+        expandPath(nodeKeyPart);
+      }
+    }
+    if (viewPart) {
+      setPanelOverrideUrl(`${REPORT_BASE_URL}/${decodeURIComponent(viewPart)}`);
+    }
+  }, [data, hashRestored, findNodeByKey, expandPath]);
+
+  const handleSelect = useCallback(
+    (node: CallTreeNode, callerName: string | null, nodeKey: string) => {
+      setSelection({ node, callerName, nodeKey });
+      setPanelOverrideUrl(null);
+      viewUrlRef.current = null;
+      updateHash(nodeKey, null);
+    },
+    [updateHash],
+  );
+
+  const handleNavigate = useCallback(
+    (url: string) => {
+      const relative = url.replace(location.origin, '').replace(/^\//, '');
+      const basePrefix = REPORT_BASE_URL.replace(/^\.\//, '');
+      const idx = relative.indexOf(basePrefix);
+      const suffix = idx >= 0 ? relative.slice(idx + basePrefix.length).replace(/^\//, '') : null;
+      viewUrlRef.current = suffix;
+      updateHash(selection?.nodeKey ?? null, suffix);
+    },
+    [selection?.nodeKey, updateHash],
+  );
 
   const matchCount = useMemo(() => {
     if (!data || !searchQuery) return 0;
@@ -112,7 +191,7 @@ function App() {
               functions={data.functions}
               isExpanded={isExpanded}
               onToggle={toggle}
-              onSelect={(node, callerName, nodeKey) => { setSelection({ node, callerName, nodeKey }); setPanelOverrideUrl(null); }}
+              onSelect={handleSelect}
               searchQuery={searchQuery}
               selectedKey={selection?.nodeKey ?? null}
               hideIntrinsics={hideIntrinsics}
@@ -138,6 +217,7 @@ function App() {
                 }
                 reportBaseUrl={REPORT_BASE_URL}
                 overrideUrl={panelOverrideUrl}
+                onNavigate={handleNavigate}
               />
             </Panel>
 
@@ -153,7 +233,9 @@ function App() {
                   onFunctionClick={(f) => {
                     if (!f.source_dir || !f.source_file) return;
                     const dir = f.source_dir.replace(/^\//, '');
-                    setPanelOverrideUrl(`${REPORT_BASE_URL}/coverage/${dir}/${f.source_file}.html#L${f.line_start}`);
+                    const url = `${REPORT_BASE_URL}/coverage/${dir}/${f.source_file}.html#L${f.line_start}`;
+                    setPanelOverrideUrl(url);
+                    updateHash(selection?.nodeKey ?? null, `coverage/${dir}/${f.source_file}.html#L${f.line_start}`);
                   }}
                 />
               ) : (
