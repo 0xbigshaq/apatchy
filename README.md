@@ -42,36 +42,38 @@ docker run -it --rm -p 9000:9000 -v $(pwd):/repo apatchy-dev
 
 then run this by the order:
 ```bash
-# activate environment
+# 1. activate environment
 cd framework/
 uv venv .venv
 uv pip install --python .venv -e ".[dev,test,docs]"
 source .venv/bin/activate
 
-# init setup (one-time)
+# 2. init setup (one-time setup)
 apatchy setup check                            # verify dependencies
 apatchy setup --force llvm --llvm-version 18   # install LLVM tools locally
 apatchy setup --force afl                      # install AFL++ locally
 
-# build
+# 3. build
 apatchy download          # download apache
 apatchy configure         # ./configure
 apatchy make --bear       # compile apache w/ compilation db
 apatchy link afl --bear   # link the harness w/ compilation db
 
-# fuzz :D 
+# 4. fuzz :D 
 mkdir /tmp/htdocs               # required by some configs
 apatchy fuzz --config configs/rewrite.conf
 
-# see coverage
+# 5. see coverage
 apatchy coverage report --with-introspect --jobs 8 --config configs/rewrite.conf
 
-# generate call tree / GUI
+# 6. build/generate the call-tree(one-time setup) 
 cd introspector/
 cmake -B build/
 cmake --build build/
 cd ../
-apatchy introspect --port 9000
+
+# 7. Activate the interactive GUI
+apatchy introspect --entry ap_process_request
 ```
 
 ## Documentation
