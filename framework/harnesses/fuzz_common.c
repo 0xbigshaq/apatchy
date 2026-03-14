@@ -265,9 +265,11 @@ static apr_status_t fuzz_output_filter(ap_filter_t *f, apr_bucket_brigade *bb)
         }
 
         rv = apr_bucket_read(b, &data, &len, APR_BLOCK_READ);
+#if !defined(LIBFUZZER)
         if (rv == APR_SUCCESS && len > 0) {
             fwrite(data, 1, len, stdout);
         }
+#endif
     }
 
     return APR_SUCCESS;

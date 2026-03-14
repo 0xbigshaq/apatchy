@@ -148,6 +148,11 @@ class ConfigManager:
             # R_X86_64_32S relocation errors at link time.
             ldflags.append("-no-pie")
 
+        elif self.build_mode == "libfuzzer":
+            self.logger.info("Enabling LibFuzzer instrumentation")
+            both("-fsanitize=fuzzer-no-link")
+            cflags.append("-Wno-error")
+
         # ASan is orthogonal to the build mode - it can be combined with
         # any compiler (fuzz, coverage, or default).
         if self.asan:

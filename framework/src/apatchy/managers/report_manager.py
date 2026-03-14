@@ -107,7 +107,7 @@ class ReportManager:
             # Generate coverage
             cov_config = ConfigManager(build_mode="coverage")
             rm = ReportManager(Path("httpd-2.4.58"), cov_config)
-            rm.generate_coverage(afl_dir="afl-output/")
+            rm.generate_coverage(corpus_dir="afl-output/")
     """
 
     def __init__(self, httpd_root: Path, config_manager: ConfigManager) -> None:
@@ -195,44 +195,54 @@ class ReportManager:
             "No matched LLVM toolchain found. Install a complete set, e.g.: apt install clang-14 llvm-14"
         )
 
-    def _find_afl_instances(self, afl_dir: str) -> List[Path]:
-        """Find all AFL++ instance directories (supports single and parallel layouts).
+    def _collect_corpus_dirs(self, corpus_dir: str) -> List[Path]:
+        """Collect directories of test case files from a corpus path.
 
-        Returns a list of instance directories, each expected to contain
-        queue/ and optionally crashes/ subdirectories.
+        Returns a list of directories containing files to replay.
 
-        Layouts handled:
-        - Single:   <afl_dir>/default/queue   -> [<afl_dir>/default]
-        - Parallel:  <afl_dir>/main01/queue, <afl_dir>/sec01/queue, ...
-        - Flat:      <afl_dir>/queue           -> [<afl_dir>]
+        Supported layouts:
+        - AFL single:   <dir>/default/queue/   -> [default/queue, default/crashes]
+        - AFL parallel: <dir>/main01/queue/, <dir>/sec01/queue/, ...
+        - AFL flat:     <dir>/queue/           -> [queue/, crashes/]
+        - Plain:        <dir>/ (files directly) -> [dir]
         """
-        afl_path = Path(afl_dir).resolve()
-        if not afl_path.exists():
-            self.logger.error(f"AFL output directory not found: {afl_path}")
+        corpus_path = Path(corpus_dir).resolve()
+        if not corpus_path.exists():
+            self.logger.error(f"Corpus directory not found: {corpus_path}")
             return []
 
-        instances = []
+        replay_dirs = []
 
-        # Check every subdirectory for a queue/ folder (covers default/,
-        # main01/, sec01/, sec02/, etc.)
-        for child in sorted(afl_path.iterdir()):
+        # AFL layout: look for queue/ subdirectories
+        afl_instances = []
+        for child in sorted(corpus_path.iterdir()):
             if child.is_dir() and (child / "queue").is_dir():
-                instances.append(child)
+                afl_instances.append(child)
 
-        # Flat layout: queue/ directly under afl_dir
-        if not instances and (afl_path / "queue").is_dir():
-            instances.append(afl_path)
+        if not afl_instances and (corpus_path / "queue").is_dir():
+            afl_instances.append(corpus_path)
 
-        if instances:
-            names = [p.name for p in instances]
-            self.logger.info(f"Found {len(instances)} AFL instance(s): {', '.join(names)}")
-        else:
-            self.logger.error(
-                f"No queue directories found in {afl_path}. "
-                "Expected <instance>/queue subdirectories (e.g. default/queue, main01/queue)."
-            )
+        if afl_instances:
+            names = [p.name for p in afl_instances]
+            self.logger.info(f"Found {len(afl_instances)} AFL instance(s): {', '.join(names)}")
+            for inst in afl_instances:
+                replay_dirs.append(inst / "queue")
+                crashes = inst / "crashes"
+                if crashes.is_dir() and any(crashes.iterdir()):
+                    replay_dirs.append(crashes)
+            return replay_dirs
 
-        return instances
+        # Plain corpus: directory of files
+        has_files = any(f.is_file() for f in corpus_path.iterdir())
+        if has_files:
+            self.logger.info(f"Using plain corpus directory: {corpus_path}")
+            replay_dirs.append(corpus_path)
+            return replay_dirs
+
+        self.logger.error(
+            f"No test cases found in {corpus_path}. Provide an AFL output directory or a plain directory of files."
+        )
+        return []
 
     @staticmethod
     def _find_llvm_symbolizer() -> Optional[str]:
@@ -517,7 +527,7 @@ class ReportManager:
 
     def generate_coverage(
         self,
-        afl_dir: str = "afl-output",
+        corpus_dir: str = "afl-output",
         config_name: str = "fuzz.conf",
         output_dir: str = "coverage-report",
         harness_name: str = None,
@@ -533,9 +543,9 @@ class ReportManager:
             self.logger.error(str(e))
             return
 
-        # Find AFL instances
-        instances = self._find_afl_instances(afl_dir)
-        if not instances:
+        # Collect corpus directories (AFL layout or plain)
+        replay_dirs = self._collect_corpus_dirs(corpus_dir)
+        if not replay_dirs:
             return
 
         # Build coverage harness (uses separate -cov tree, AFL build untouched)
@@ -554,24 +564,16 @@ class ReportManager:
             self.logger.error(f"Config '{config_name}' not found")
             return
 
-        # Replay corpus from all instances (queue + crashes)
+        # Replay corpus
         prof_dir = Path(output_dir).resolve() / "profraw"
         prof_dir.mkdir(parents=True, exist_ok=True)
 
         count = 0
-        for instance in instances:
-            queue_dir = instance / "queue"
-            self.logger.info(f"Replaying queue from {instance.name}/ ({len(list(queue_dir.iterdir()))} entries)...")
+        for replay_dir in replay_dirs:
+            self.logger.info(f"Replaying {replay_dir.name}/ ({len(list(replay_dir.iterdir()))} entries)...")
             count += self._replay_corpus(
-                harness, queue_dir, prof_dir, config_path, httpd_root=cov_root, prof_offset=count, jobs=jobs
+                harness, replay_dir, prof_dir, config_path, httpd_root=cov_root, prof_offset=count, jobs=jobs
             )
-
-            crashes_dir = instance / "crashes"
-            if crashes_dir.is_dir() and any(crashes_dir.iterdir()):
-                self.logger.info(f"Replaying crashes from {instance.name}/...")
-                count += self._replay_corpus(
-                    harness, crashes_dir, prof_dir, config_path, httpd_root=cov_root, prof_offset=count, jobs=jobs
-                )
 
         if count == 0:
             self.logger.error("No test cases were replayed successfully")
@@ -1124,14 +1126,14 @@ class ReportManager:
 
     def generate_callgrind(
         self,
-        afl_dir: str = "afl-output",
+        corpus_dir: str = "afl-output",
         config_name: str = "fuzz.conf",
         output_dir: str = "callgrind-out",
         harness_name: str = None,
         jobs: int = 1,
         timeout: int = 120,
     ) -> None:
-        """Replay AFL corpus under callgrind and collect output for kcachegrind.
+        """Replay corpus under callgrind and collect output for kcachegrind.
 
         Automatically builds a dedicated ``-prof`` Apache tree with debug
         symbols, no sanitizers, and no coverage instrumentation so that
@@ -1142,9 +1144,9 @@ class ReportManager:
             self.logger.error("valgrind not found. Install with: apt install valgrind")
             return
 
-        # Find AFL instances
-        instances = self._find_afl_instances(afl_dir)
-        if not instances:
+        # Collect corpus directories
+        replay_dirs = self._collect_corpus_dirs(corpus_dir)
+        if not replay_dirs:
             return
 
         # Build profile harness (separate -prof tree, no sanitizers)
@@ -1166,11 +1168,10 @@ class ReportManager:
 
         count = 0
         interrupted = False
-        for instance in instances:
-            queue_dir = instance / "queue"
-            self.logger.info(f"Replaying queue from {instance.name}/ ({len(list(queue_dir.iterdir()))} entries)...")
+        for replay_dir in replay_dirs:
+            self.logger.info(f"Replaying {replay_dir.name}/ ({len(list(replay_dir.iterdir()))} entries)...")
             result = self._replay_corpus_callgrind(
-                harness_path, queue_dir, out_path, config_path, prof_offset=count, jobs=jobs, timeout=timeout
+                harness_path, replay_dir, out_path, config_path, prof_offset=count, jobs=jobs, timeout=timeout
             )
             if result < 0:
                 interrupted = True

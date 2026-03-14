@@ -125,7 +125,8 @@ class HarnessBuilder:
         if mode == "afl":
             cflags = f"-DAFL_FUZZ {cflags}"
         elif mode == "libfuzzer":
-            cflags = f"-DLIBFUZZER {cflags}"
+            cflags = f"-DLIBFUZZER -fsanitize=fuzzer {cflags}"
+            ldflags = f"-fsanitize=fuzzer {ldflags}"
 
         # Resolve harness source file
         if not harness_name:
@@ -180,7 +181,7 @@ class HarnessBuilder:
         # instrumentation, so afl-compiler-rt.o is unnecessary and harmful.
         # Standalone links against the existing (possibly AFL-instrumented)
         # tree and needs the runtime.
-        skip_afl_rt = mode in ("coverage", "profile")
+        skip_afl_rt = mode in ("coverage", "profile", "libfuzzer")
 
         # AFL-instrumented Apache objects use SanCov with non-PIC
         # R_X86_64_32S relocations. Disable PIE to avoid linker errors.

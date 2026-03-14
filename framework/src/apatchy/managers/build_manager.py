@@ -259,16 +259,37 @@ class BuildManager:
         cflags = config["CFLAGS"]
         ldflags = config["LDFLAGS"]
 
+        harness_builder = self.harness_builder
+
+        if mode == "libfuzzer":
+            # LibFuzzer can't link against AFL-instrumented Apache objects
+            # (-fsanitize-coverage=trace-pc-guard is rejected by modern
+            # libFuzzer). Build a separate tree with libfuzzer instrumentation.
+            from apatchy.utils.build_tree import AlternateBuildTree
+
+            lf_cm = ConfigManager(
+                build_mode="libfuzzer",
+                asan=self.config_manager.asan,
+                ubsan=self.config_manager.ubsan,
+                intsan=self.config_manager.intsan,
+                truncsan=self.config_manager.truncsan,
+            )
+            lf_config = lf_cm.generate_build_config(httpd_version=httpd_version)
+            cc = toolchain_config.resolve_tool("clang") or "clang"
+            tree = AlternateBuildTree(self.httpd_root, "-lf")
+            lf_root = tree.ensure_build(cc=cc, cflags=lf_config["CFLAGS"], ldflags=lf_config["LDFLAGS"])
+            harness_builder = HarnessBuilder(lf_root, verbose=self.verbose)
+
         # Standalone harness is compiled with plain clang (no AFL defines)
         # but links against the existing Apache build tree. This avoids
         # the expensive separate tree rebuild while still producing a
         # binary that reads from stdin (for crash triage).
         if mode == "standalone":
-            self.harness_builder.build(
+            harness_builder.build(
                 mode=mode, cflags=cflags, ldflags=ldflags, harness_name=harness_name, cc="clang", bear=bear
             )
         else:
-            self.harness_builder.build(mode=mode, cflags=cflags, ldflags=ldflags, harness_name=harness_name, bear=bear)
+            harness_builder.build(mode=mode, cflags=cflags, ldflags=ldflags, harness_name=harness_name, bear=bear)
 
         if bear:
             self._update_clangd()

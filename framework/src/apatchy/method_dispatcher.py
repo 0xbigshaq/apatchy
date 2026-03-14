@@ -468,7 +468,7 @@ class MethodDispatcher:
             self.config_manager = ConfigManager(build_mode="coverage", config_name=args.config)
             self.report_manager = ReportManager(httpd_root, self.config_manager)
             self.report_manager.generate_coverage(
-                afl_dir=args.afl_dir,
+                corpus_dir=args.corpus_dir,
                 config_name=args.config,
                 output_dir=args.output,
                 harness_name=getattr(args, "harness", None),
@@ -504,7 +504,7 @@ class MethodDispatcher:
             self.config_manager = ConfigManager(config_name=args.config)
             self.report_manager = ReportManager(httpd_root, self.config_manager)
             self.report_manager.generate_callgrind(
-                afl_dir=args.afl_dir,
+                corpus_dir=args.corpus_dir,
                 config_name=args.config,
                 output_dir=args.output,
                 harness_name=getattr(args, "harness", None),
@@ -736,7 +736,11 @@ class MethodDispatcher:
         target = Config.get_apache_dir(version)
         if not target.exists():
             # Try finding any httpd-*
-            dirs = [d for d in Config.WORK_DIR.glob("httpd-*") if not d.name.endswith(("-cov", "-standalone", "-prof"))]
+            dirs = [
+                d
+                for d in Config.WORK_DIR.glob("httpd-*")
+                if not d.name.endswith(("-cov", "-standalone", "-prof", "-lf"))
+            ]
             if len(dirs) == 1:
                 return dirs[0]
             elif len(dirs) > 1:
