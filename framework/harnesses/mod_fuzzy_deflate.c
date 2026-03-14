@@ -22,6 +22,7 @@
 #include "apr.h"
 #include "apr_general.h"
 #include "apr_pools.h"
+#include "apr_getopt.h"
 
 #include <stdio.h>
 #include <stdlib.h>
