@@ -40,12 +40,12 @@ docker build --build-arg UID=$(id -u) -t apatchy-dev .
 docker run -it --rm -p 9000:9000 -v $(pwd):/repo apatchy-dev
 ```
 
-then run this by the order:
+then run these commands in this order:
 ```bash
 # 1. activate environment
 cd framework/
 uv venv .venv
-uv pip install --python .venv -e ".[dev,test,docs]"
+uv pip install --python .venv -e ".[all]"
 source .venv/bin/activate
 
 # 2. init setup (one-time setup)

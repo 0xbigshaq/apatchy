@@ -3,7 +3,7 @@ name = "apatchy"
 version = "0.1.0"
 description = "A modular, Python-based fuzzing framework for Apache HTTPD"
 authors = [
-    {name = "Fuzzer Team", email = "fuzzer@example.com"},
+    {name = "faulty ptrrr", email = "git@pwner.gg"},
 ]
 dependencies = [
     "requests",
@@ -16,6 +16,7 @@ requires-python = ">=3.8"
 dev = ["ruff"]
 docs = ["sphinx", "sphinx-autodoc-typehints", "sphinx-rtd-theme", "myst-parser", "sphinxcontrib-mermaid", "sphinx-design", "sphinx-rtd-dark-mode", "sphinxcontrib-doxylink"]
 test = ["pytest", "pytest-cov"]
+all = ["apatchy[dev,test,docs]"]
 
 [project.scripts]
 apatchy = "apatchy.main:main"
