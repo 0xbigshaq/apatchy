@@ -20,6 +20,9 @@
 		["/l"],
 		["/m"],
 		["/n"],
+		["/o"],
+		["/p"],
+		["/q"],
 		["/index.html"],
 		["/", "<PATH_WORD>"],
 		["/", "<PATH_WORD>", "/", "<PATH_WORD>"]
@@ -57,7 +60,10 @@
 		["session_empty"],
 		["session2_empty"],
 		["session_pf"],
-		["session_alt"]
+		["session_alt"],
+		["session_multi"],
+		["session_shared"],
+		["session_exec"]
 	],
 
 	"<COOKIE_VALUE>": [
