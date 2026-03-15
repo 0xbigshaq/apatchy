@@ -7,6 +7,7 @@
  */
 // LANG: c++
 
+#include <cinttypes>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -273,20 +274,41 @@ size_t afl_custom_fuzz(
     int roll = rand() % 100;
     size_t n = 0;
 
-    if (roll < 15 && has_rl)
+    static const char *strategy_names[] = {
+        "swap_method", "mutate_query", "corrupt_cl",    "inject_hdr",
+        "dup_header",  "long_header",  "multi_headers",
+    };
+
+    const char *strategy = nullptr;
+    if (roll < 15 && has_rl) {
         n = do_swap_method(buf, buf_size, rl, ctx->buf, max_size);
-    else if (roll < 30 && has_rl)
+        strategy = strategy_names[0];
+    } else if (roll < 30 && has_rl) {
         n = do_mutate_query(buf, buf_size, rl, ctx->buf, max_size);
-    else if (roll < 40)
+        strategy = strategy_names[1];
+    } else if (roll < 40) {
         n = do_corrupt_cl(buf, buf_size, ctx->buf, max_size);
-    else if (roll < 60)
+        strategy = strategy_names[2];
+    } else if (roll < 60) {
         n = do_inject_hdr(buf, buf_size, ctx->buf, max_size);
-    else if (roll < 72)
+        strategy = strategy_names[3];
+    } else if (roll < 72) {
         n = do_dup_header(buf, buf_size, ctx->buf, max_size);
-    else if (roll < 85)
+        strategy = strategy_names[4];
+    } else if (roll < 85) {
         n = do_long_header(buf, buf_size, ctx->buf, max_size);
-    else
+        strategy = strategy_names[5];
+    } else {
         n = do_multi_headers(buf, buf_size, ctx->buf, max_size);
+        strategy = strategy_names[6];
+    }
+
+    static uint64_t call_count = 0;
+    if (++call_count % 5000 == 0)
+        fprintf(
+            stderr, "\n[http_mutator] #%" PRIu64 " %s\n", call_count,
+            strategy ? strategy : "passthrough"
+        );
 
     if (n == 0 || n > max_size) {
         size_t sz = buf_size < max_size ? buf_size : max_size;
@@ -304,7 +326,7 @@ size_t afl_custom_fuzz_count(void *data, const uint8_t *buf, size_t buf_size)
     (void)data;
     (void)buf;
     (void)buf_size;
-    return 8;
+    return 128;
 }
 
 } // extern "C"
