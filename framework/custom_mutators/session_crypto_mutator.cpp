@@ -1,13 +1,14 @@
 /*
  * Session Crypto Mutator for AFL++
  *
- * Path-aware mutator that injects encrypted session cookies matching
- * each route's SessionCookieName and passphrase. Blobs are precomputed
- * at init for each passphrase; the fuzz function parses the request
- * path and injects the correct cookie.
+ * Path-aware mutator that encrypts AFL's payload for crypto routes
+ * and URL-encodes it for plaintext routes. AFL controls the session
+ * content; the mutator handles the crypto/encoding wrapper.
  *
- * Can be chained with other mutators -- AFL++ calls afl_custom_fuzz
- * on each .so independently.
+ * For crypto routes, the AES key is precomputed at init with a fixed
+ * salt so per-call encryption only does AES-CBC + siphash + base64.
+ *
+ * Can be chained with other mutators via AFL_CUSTOM_MUTATOR_LIBRARY.
  */
 // LDFLAGS: -lcrypto
 // LANG: c++
@@ -20,7 +21,6 @@
 #include <vector>
 
 #include <openssl/evp.h>
-#include <openssl/rand.h>
 
 #include "utils/AK.h"
 
@@ -43,10 +43,20 @@ static const RouteInfo routes[] = {
 };
 static const int num_routes = sizeof(routes) / sizeof(routes[0]);
 
+struct CryptoCtx {
+    uint8_t siphash_key[16];
+    uint8_t aes_key[32];
+    uint8_t salt[16];
+    EVP_CIPHER_CTX *evp_ctx;
+};
+
 struct MutatorContext {
     void *afl;
-    std::vector<std::string> blobs[2]; // [0] = primary, [1] = alt
+    CryptoCtx crypto[2]; // [0] = primary, [1] = alt
     std::vector<uint8_t> fuzz_buf;
+    std::vector<uint8_t> ct_buf;
+    std::vector<uint8_t> assembled_buf;
+    std::string cookie_buf;
 };
 
 extern "C" {
@@ -55,118 +65,71 @@ typedef struct afl_state {
 } afl_state_t;
 }
 
-static std::string encrypt_data(
-    const char *passphrase, const uint8_t siphash_key[16], const uint8_t *pt, size_t pt_len
+static bool init_crypto_ctx(CryptoCtx *c, const char *passphrase)
+{
+    unsigned int md_len = 0;
+    EVP_MD_CTX *md = EVP_MD_CTX_new();
+    EVP_DigestInit_ex(md, EVP_md5(), NULL);
+    EVP_DigestUpdate(md, passphrase, strlen(passphrase));
+    EVP_DigestFinal_ex(md, c->siphash_key, &md_len);
+    EVP_MD_CTX_free(md);
+
+    memset(c->salt, 0x41, 16);
+
+    if (!PKCS5_PBKDF2_HMAC_SHA1(passphrase, strlen(passphrase), c->salt, 16, 4096, 32, c->aes_key))
+        return false;
+
+    c->evp_ctx = EVP_CIPHER_CTX_new();
+    return c->evp_ctx != nullptr;
+}
+
+// encrypt plaintext using precomputed key (fast, no PBKDF2)
+static bool encrypt_payload(
+    MutatorContext *m, const CryptoCtx *c, const uint8_t *pt, size_t pt_len
 )
 {
-    uint8_t salt[16], iv[16], key[32];
-    RAND_bytes(salt, 16);
-    RAND_bytes(iv, 16);
+    static const uint8_t iv[16] = {0};
 
-    if (!PKCS5_PBKDF2_HMAC_SHA1(passphrase, strlen(passphrase), salt, 16, 4096, 32, key))
-        return "";
-
-    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
-    if (!ctx)
-        return "";
-
-    std::vector<uint8_t> ct(pt_len + 16);
+    m->ct_buf.resize(pt_len + 16);
     int ct_len = 0, final_len = 0;
 
-    bool ok = EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv) == 1 &&
-              EVP_EncryptUpdate(ctx, ct.data(), &ct_len, pt, (int)pt_len) == 1 &&
-              EVP_EncryptFinal_ex(ctx, ct.data() + ct_len, &final_len) == 1;
-    EVP_CIPHER_CTX_free(ctx);
-    if (!ok)
-        return "";
+    EVP_EncryptInit_ex(c->evp_ctx, EVP_aes_256_cbc(), NULL, c->aes_key, iv);
+    if (EVP_EncryptUpdate(c->evp_ctx, m->ct_buf.data(), &ct_len, pt, (int)pt_len) != 1 ||
+        EVP_EncryptFinal_ex(c->evp_ctx, m->ct_buf.data() + ct_len, &final_len) != 1)
+        return false;
     ct_len += final_len;
 
     size_t combined = 8 + 16 + 16 + ct_len;
-    std::vector<uint8_t> assembled(combined);
-    memcpy(assembled.data() + 8, salt, 16);
-    memcpy(assembled.data() + 24, iv, 16);
-    memcpy(assembled.data() + 40, ct.data(), ct_len);
+    m->assembled_buf.resize(combined);
+    memcpy(m->assembled_buf.data() + 8, c->salt, 16);
+    memcpy(m->assembled_buf.data() + 24, iv, 16);
+    memcpy(m->assembled_buf.data() + 40, m->ct_buf.data(), ct_len);
 
-    if (!AK::siphash24(assembled.data(), assembled.data() + 8, combined - 8, siphash_key))
-        return "";
+    if (!AK::siphash24(
+            m->assembled_buf.data(), m->assembled_buf.data() + 8, combined - 8, c->siphash_key))
+        return false;
 
-    return AK::base64_encode(assembled.data(), combined);
+    m->cookie_buf = AK::base64_encode(m->assembled_buf.data(), combined);
+    return true;
 }
 
-static void compute_siphash_key(const char *passphrase, uint8_t out[16])
+// URL-encode AFL's payload as a plaintext session cookie value
+static void url_encode_payload(const uint8_t *buf, size_t len, std::string &out)
 {
-    unsigned int md_len = 0;
-    EVP_MD_CTX *evp_ctx = EVP_MD_CTX_new();
-    EVP_DigestInit_ex(evp_ctx, EVP_md5(), NULL);
-    EVP_DigestUpdate(evp_ctx, passphrase, strlen(passphrase));
-    EVP_DigestFinal_ex(evp_ctx, out, &md_len);
-    EVP_MD_CTX_free(evp_ctx);
-}
-
-static void precompute_blobs(const char *passphrase, std::vector<std::string> &out)
-{
-    uint8_t siphash_key[16];
-    compute_siphash_key(passphrase, siphash_key);
-
-    static const char *seeds[] = {
-        "user=admin&role=root",
-        "user=guest",
-        "a=1",
-        "user=test&role=user&active=true",
-        "session_id=AAAA&csrf=BBBB",
-        "x=",
-        "",
-        "a=1&b=2&c=3&d=4&e=5&f=6&g=7&h=8",
-        "lang=en&theme=dark&tz=UTC",
-        "token=eyJhbGciOiJIUzI1NiJ9.dGVzdA",
-        "path=/admin/../../../etc/passwd",
-        "user=%00null%00&role=<script>",
-        "encoded=%3Cscript%3Ealert(1)%3C/script%3E",
-        "empty_vals=&&&&",
-        "dup=a&dup=b&dup=c",
-        "fmt=%s%s%s%s%s%n",
-    };
-    int num_seeds = sizeof(seeds) / sizeof(seeds[0]);
-
-    for (int i = 0; i < num_seeds; i++) {
-        std::string blob =
-            encrypt_data(passphrase, siphash_key, (const uint8_t *)seeds[i], strlen(seeds[i]));
-        if (!blob.empty())
-            out.push_back(std::move(blob));
+    static const char hex[] = "0123456789ABCDEF";
+    out.clear();
+    out.reserve(len * 3);
+    for (size_t i = 0; i < len; i++) {
+        uint8_t c = buf[i];
+        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+            (c >= '0' && c <= '9') || c == '=' || c == '&') {
+            out += (char)c;
+        } else {
+            out += '%';
+            out += hex[c >> 4];
+            out += hex[c & 0xf];
+        }
     }
-}
-
-extern "C" {
-
-void *afl_custom_init(afl_state_t *afl, unsigned int seed)
-{
-    MutatorContext *ctx = new (std::nothrow) MutatorContext();
-    if (!ctx)
-        return nullptr;
-
-    ctx->afl = afl;
-    srand(seed);
-
-    precompute_blobs(PASSPHRASE_PRIMARY, ctx->blobs[0]);
-    precompute_blobs(PASSPHRASE_ALT, ctx->blobs[1]);
-
-    fprintf(
-        stderr, "[session_crypto] precomputed %zu primary + %zu alt blobs\n", ctx->blobs[0].size(),
-        ctx->blobs[1].size()
-    );
-
-    if (ctx->blobs[0].empty() && ctx->blobs[1].empty()) {
-        fprintf(stderr, "[session_crypto] no blobs precomputed, aborting\n");
-        delete ctx;
-        return nullptr;
-    }
-
-    return ctx;
-}
-
-void afl_custom_deinit(void *data)
-{
-    delete static_cast<MutatorContext *>(data);
 }
 
 static bool is_cookie_header(const uint8_t *line, size_t len)
@@ -189,7 +152,6 @@ static size_t strip_cookie_headers(const uint8_t *src, size_t src_len, uint8_t *
         size_t line_len = line_end - pos;
         const uint8_t *line = src + pos;
 
-        // skip \r\n prefix to get header name (lines start with \r\n from rest_start)
         const uint8_t *hdr = line;
         size_t hdr_len = line_len;
         if (hdr_len >= 2 && hdr[0] == '\r' && hdr[1] == '\n') {
@@ -212,6 +174,38 @@ static size_t strip_cookie_headers(const uint8_t *src, size_t src_len, uint8_t *
     return out;
 }
 
+extern "C" {
+
+void *afl_custom_init(afl_state_t *afl, unsigned int seed)
+{
+    MutatorContext *ctx = new (std::nothrow) MutatorContext();
+    if (!ctx)
+        return nullptr;
+
+    ctx->afl = afl;
+    srand(seed);
+
+    static const char *passphrases[] = {PASSPHRASE_PRIMARY, PASSPHRASE_ALT};
+    for (int i = 0; i < 2; i++) {
+        if (!init_crypto_ctx(&ctx->crypto[i], passphrases[i])) {
+            fprintf(stderr, "[session_crypto] failed to init crypto ctx %d\n", i);
+            delete ctx;
+            return nullptr;
+        }
+    }
+
+    fprintf(stderr, "[session_crypto] ready (encrypt-on-the-fly mode)\n");
+    return ctx;
+}
+
+void afl_custom_deinit(void *data)
+{
+    MutatorContext *ctx = static_cast<MutatorContext *>(data);
+    EVP_CIPHER_CTX_free(ctx->crypto[0].evp_ctx);
+    EVP_CIPHER_CTX_free(ctx->crypto[1].evp_ctx);
+    delete ctx;
+}
+
 size_t afl_custom_fuzz(
     void *data, uint8_t *buf, size_t buf_size, uint8_t **out_buf, uint8_t *add_buf,
     size_t add_buf_size, size_t max_size
@@ -228,11 +222,10 @@ size_t afl_custom_fuzz(
         return buf_size;
     }
     size_t first_line_end = eol - buf;
-    size_t rest_start = first_line_end; // keep from \r\n onward
+    size_t rest_start = first_line_end;
 
     // pick a route using entropy from the buffer
-    // crypto routes get 50% weight to increase encrypted cookie coverage
-    static const int crypto_indices[] = {0, 3, 12, 13, 14, 15, 16}; // /a /d /m /n /o /p /q
+    static const int crypto_indices[] = {0, 3, 12, 13, 14, 15, 16};
     static const int num_crypto = sizeof(crypto_indices) / sizeof(crypto_indices[0]);
     uint32_t idx = 0;
     for (size_t i = 0; i < buf_size && i < 16; i++)
@@ -247,24 +240,32 @@ size_t afl_custom_fuzz(
             route.cookie_name, route.blob_set >= 0 ? "crypto" : "plain"
         );
 
-    // build request line: "GET /x HTTP/1.1"
+    // build request line
     char req_line[20];
     int req_line_len = snprintf(req_line, sizeof(req_line), "GET %s HTTP/1.1", route.path);
 
-    // pick blob for cookie injection (only for crypto routes)
-    const std::string *blob = nullptr;
-    if (route.blob_set >= 0 && !ctx->blobs[route.blob_set].empty()) {
-        uint32_t bidx = buf[0]; // FIXME: this is ugly hack, we need to let AFL decide the payload
-                                // and not index into it
-        const std::vector<std::string> &bset = ctx->blobs[route.blob_set];
-        blob = &bset[bidx % bset.size()];
+    // build cookie value based on route type
+    const char *cookie_val = nullptr;
+    size_t cookie_val_len = 0;
+
+    if (route.blob_set >= 0) {
+        // crypto route: encrypt AFL's payload on the fly
+        if (encrypt_payload(ctx, &ctx->crypto[route.blob_set], buf, buf_size)) {
+            cookie_val = ctx->cookie_buf.data();
+            cookie_val_len = ctx->cookie_buf.size();
+        }
+    } else {
+        // plain route: URL-encode AFL's payload
+        url_encode_payload(buf, buf_size, ctx->cookie_buf);
+        cookie_val = ctx->cookie_buf.data();
+        cookie_val_len = ctx->cookie_buf.size();
     }
 
     const char *cookie_name = route.cookie_name;
     size_t name_len = strlen(cookie_name);
     size_t cookie_len = 0;
-    if (blob)
-        cookie_len = 10 + name_len + 1 + blob->size();
+    if (cookie_val)
+        cookie_len = 10 + name_len + 1 + cookie_val_len;
 
     // strip cookie headers from the remaining input
     size_t rest_len = buf_size - rest_start;
@@ -284,14 +285,14 @@ size_t afl_custom_fuzz(
     memcpy(ctx->fuzz_buf.data(), req_line, req_line_len);
     cur = req_line_len;
 
-    if (blob) {
+    if (cookie_val) {
         memcpy(ctx->fuzz_buf.data() + cur, "\r\nCookie: ", 10);
         cur += 10;
         memcpy(ctx->fuzz_buf.data() + cur, cookie_name, name_len);
         cur += name_len;
         ctx->fuzz_buf[cur++] = '=';
-        memcpy(ctx->fuzz_buf.data() + cur, blob->data(), blob->size());
-        cur += blob->size();
+        memcpy(ctx->fuzz_buf.data() + cur, cookie_val, cookie_val_len);
+        cur += cookie_val_len;
     }
 
     memcpy(ctx->fuzz_buf.data() + cur, stripped.data(), stripped_len);
