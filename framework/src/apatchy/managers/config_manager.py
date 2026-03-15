@@ -91,6 +91,7 @@ class ConfigManager:
         config_name: str = "fuzz.conf",
         asan: bool = False,
         ubsan: bool = False,
+        ubsan_ignorelist: str = None,
         intsan: bool = False,
         truncsan: bool = False,
     ) -> None:
@@ -99,6 +100,7 @@ class ConfigManager:
         self.config_name = config_name
         self.asan = asan
         self.ubsan = ubsan
+        self.ubsan_ignorelist = ubsan_ignorelist
         self.intsan = intsan
         self.truncsan = truncsan
         self.logger = logger
@@ -163,8 +165,15 @@ class ConfigManager:
             self.logger.info("Enabling UndefinedBehaviorSanitizer")
             both("-fsanitize=undefined")
             # fix SIGILL issue
-            both("-fsanitize-recover=all")  # continue execution after reporting (don't abort)
+            both("-fsanitize-recover=all")  # continue after UBSan reports (ASAN still aborts)
             both("-fno-sanitize-trap")  # emit runtime report instead of ud1/ud2 trap
+            if self.ubsan_ignorelist:
+                ignorelist = Path(self.ubsan_ignorelist).resolve()
+                if ignorelist.exists():
+                    self.logger.info(f"Applying ubsan ignorelist: {ignorelist}")
+                    cflags.append(f"-fsanitize-ignorelist={ignorelist}")
+                else:
+                    self.logger.warning(f"UBSan ignorelist not found: {ignorelist}")
 
         if self.intsan:
             self.logger.info("Enabling unsigned-integer-overflow sanitizer")

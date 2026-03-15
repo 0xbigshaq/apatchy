@@ -1,0 +1,8 @@
+# UBSan compile-time 'ignorelist' for apatchy builds
+# suppresses `ud2` traps in files where runtime suppression doesn't work.
+# more info @ https://clang.llvm.org/docs/SanitizerSpecialCaseList.html
+
+# apr_brigade_split_line triggers UBSan traps that can't be
+# suppressed at runtime (ud2 is baked into the binary).
+src:*/apr_brigade.c
+src:*/apr_tables.c

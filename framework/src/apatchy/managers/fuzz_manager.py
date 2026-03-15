@@ -376,6 +376,18 @@ class FuzzManager:
             name = "main01" if role == "main" else "sec01"
 
         mode_label = f" ({role}: {name})" if role else ""
+
+        try:
+            core_pattern = Path("/proc/sys/kernel/core_pattern").read_text().strip()
+            if core_pattern != "core":
+                self.logger.error(
+                    f"core_pattern is '{core_pattern}', expected 'core'. "
+                    "Run: echo core | sudo tee /proc/sys/kernel/core_pattern"
+                )
+                return
+        except OSError:
+            pass
+
         self.logger.info(f"Starting AFL++{mode_label}...")
 
         config_path = self.config_manager.get_httpd_config()
@@ -387,16 +399,19 @@ class FuzzManager:
         else:
             self.logger.info("No httpd config found - harness will run without Apache pipeline")
         env["AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES"] = "1"
+        env["ASAN_OPTIONS"] = "abort_on_error=1:symbolize=0"
+        env["AFL_CRASH_EXITCODE"] = "66"
         env["AFL_SKIP_CPUFREQ"] = "1"
         if debug:
             env["AFL_DEBUG_CHILD"] = "1"
         if resume:
             env["AFL_AUTORESUME"] = "1"
 
-        # Make UBSan abort on errors so AFL registers them as crashes.
-        ubsan_opts = ["halt_on_error=1"]
-
-        # Apply UBSan suppression file if provided.
+        # UBSan: recover from all findings during fuzzing so they don't
+        # interfere with crash detection. Real UBSan bugs are found via
+        # triage on the corpus after fuzzing. ASAN crashes (exitcode=66)
+        # are still caught.
+        ubsan_opts = ["symbolize=0", "halt_on_error=0"]
         if suppress:
             supp_path = Path(suppress).resolve()
             if not supp_path.exists():
@@ -422,8 +437,8 @@ class FuzzManager:
                     self.logger.error(f"Mutator library not found: {p}")
                     return
                 resolved.append(str(p))
-            env["AFL_CUSTOM_MUTATOR_LIBRARY"] = ":".join(resolved)
-            # env["AFL_CUSTOM_MUTATOR_ONLY"] = "1"  # FIXME: i need to re-think about this hack
+            env["AFL_CUSTOM_MUTATOR_LIBRARY"] = ";".join(resolved)
+            env["AFL_CUSTOM_MUTATOR_ONLY"] = "1"  # FIXME: i need to re-think about this hack
             self.logger.info(f"Using custom mutator(s): {', '.join(resolved)}")
 
         # Preload only dynamically loaded modules referenced by the config

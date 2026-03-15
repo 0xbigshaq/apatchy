@@ -88,17 +88,13 @@ static void asan_save_stderr_and_signals(void)
 #define write_err(msg) write(STDERR_FILENO, msg, sizeof(msg) - 1);
 static void ubsan_signal_handler(int sig)
 {
-    // write a message to stderr
+    (void)sig;
     write_err("[*] ubsan_signal_handler :: custom handler triggered!\n");
     write_err("SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior\n");
-
-    // print a stack trace
+#ifndef AFL_FUZZ
     __sanitizer_print_stack_trace();
-
-    // forward signal number
-    // we could just hard-code SIGILL but we will
-    // pass the original for our python triage cmd
-    _exit(128 + sig);
+#endif
+    _exit(66); // must match AFL_CRASH_EXITCODE
 }
 
 static void register_ubsan_signal_handler()
@@ -185,8 +181,7 @@ static const apr_bucket_type_t fuzz_bucket_type = {
     fuzz_bucket_read,
     apr_bucket_setaside_noop,
     apr_bucket_shared_split,
-    apr_bucket_shared_copy
-};
+    apr_bucket_shared_copy};
 
 static apr_bucket *fuzz_bucket_create(const char *data, apr_size_t length, apr_bucket_alloc_t *list)
 {
@@ -453,8 +448,7 @@ module AP_MODULE_DECLARE_DATA fuzz_module = {STANDARD20_MODULE_STUFF, NULL, NULL
 
 /* Dummy mpm_event_module to satisfy the linker (referenced in modules.c) */
 module AP_MODULE_DECLARE_DATA mpm_event_module = {
-    STANDARD20_MODULE_STUFF, NULL, NULL, NULL, NULL, NULL, NULL
-};
+    STANDARD20_MODULE_STUFF, NULL, NULL, NULL, NULL, NULL, NULL};
 
 /* ----------------------------------------------------------------
  * Fake MPM - processes one connection and exits

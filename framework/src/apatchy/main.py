@@ -127,6 +127,11 @@ def main():
         "--ubsan", action="store_true", help="Enable UndefinedBehaviorSanitizer (can combine with any mode)"
     )
     configure_parser.add_argument(
+        "--ubsan-ignorelist",
+        default=None,
+        help="Compile-time ignorelist file for UBSan (e.g. configs/ubsan.ignorelist)",
+    )
+    configure_parser.add_argument(
         "--intsan", action="store_true", help="Enable unsigned-integer-overflow sanitizer (can combine with any mode)"
     )
     configure_parser.add_argument(
@@ -233,7 +238,7 @@ def main():
     # Introspect
     introspect_parser = _sub(subparsers, "introspect", help="Merge call tree analysis with coverage data")
     introspect_parser.add_argument(
-        "--entry", default=None, help="Entry function name (auto-detected: main or LLVMFuzzerTestOneInput)"
+        "--entry", default=None, help="Comma-separated entry function names (e.g. main,ap_read_request)"
     )
     introspect_parser.add_argument(
         "--profdata", default=None, help="Path to merged.profdata (auto-detected from coverage-report/)"

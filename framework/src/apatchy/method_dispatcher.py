@@ -185,6 +185,7 @@ class MethodDispatcher:
             build_mode=args.mode,
             asan=getattr(args, "asan", False),
             ubsan=getattr(args, "ubsan", False),
+            ubsan_ignorelist=getattr(args, "ubsan_ignorelist", None),
             intsan=getattr(args, "intsan", False),
             truncsan=getattr(args, "truncsan", False),
         )
