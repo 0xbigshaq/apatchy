@@ -430,8 +430,11 @@ class MethodDispatcher:
             table.add_column("Name", style="cyan")
             table.add_column("Source", style="dim")
             table.add_column("Built", style="green")
+            fw = str(Config.FRAMEWORK_DIR)
             for m in mutators:
-                table.add_row(m["name"], m["source"], m["built"] or "(not built)")
+                src = m["source"].replace(fw + "/", "")
+                built = m["built"].replace(fw + "/", "") if m["built"] else "(not built)"
+                table.add_row(m["name"], src, built)
             console.print(table)
 
     def _handle_harness(self, args: argparse.Namespace) -> None:

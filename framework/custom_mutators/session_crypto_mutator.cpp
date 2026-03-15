@@ -1,13 +1,12 @@
 /*
- * Session Crypto Post-Processing Mutator for AFL++
+ * Session Crypto Mutator for AFL++
  *
- * Encrypts session cookie values so they pass `mod_session_crypto`'s
- * decryption logic. All crypto happens at init via precomputed buffers;
- * the post-processor only does memcpy.
+ * Injects encrypted session cookies into HTTP requests so they pass
+ * mod_session_crypto's decryption gate. Blobs are precomputed at init;
+ * the fuzz function just finds \r\n\r\n and injects the cookie header.
  *
- * It's better to chain this after other mutators, meaning:
- *   AFL_CUSTOM_MUTATOR_LIBRARY=http_mutator.so:session_crypto_mutator.so
- *
+ * Can be chained with other mutators -- AFL++ calls afl_custom_fuzz
+ * on each .so independently.
  */
 // LDFLAGS: -lcrypto
 // LANG: c++
@@ -25,13 +24,12 @@
 
 #define DEFAULT_PASSPHRASE "fuzzing_test_key_1234567890abcdef"
 #define DEFAULT_COOKIE_NAMES "session_crypto"
-#define MAX_BUF (1024 * 1024)
 
 struct MutatorContext {
     void *afl;
     std::string cookie_name;
     std::vector<std::string> blobs;
-    std::vector<uint8_t> post_buf;
+    std::vector<uint8_t> fuzz_buf;
 };
 
 extern "C" {
@@ -149,8 +147,13 @@ void afl_custom_deinit(void *data)
     delete static_cast<MutatorContext *>(data);
 }
 
-size_t afl_custom_post_process(void *data, uint8_t *buf, size_t buf_size, uint8_t **out_buf)
+size_t afl_custom_fuzz(
+    void *data, uint8_t *buf, size_t buf_size, uint8_t **out_buf, uint8_t *add_buf,
+    size_t add_buf_size, size_t max_size
+)
 {
+    (void)add_buf;
+    (void)add_buf_size;
     MutatorContext *ctx = static_cast<MutatorContext *>(data);
 
     size_t hdr_end = AK::find_header_end(buf, buf_size);
@@ -159,31 +162,31 @@ size_t afl_custom_post_process(void *data, uint8_t *buf, size_t buf_size, uint8_
         return buf_size;
     }
 
-    uint32_t idx = buf[0]; // FIXME: we will need to come up with something smarter than that
+    uint32_t idx = buf[0];
     const std::string &blob = ctx->blobs[idx % ctx->blobs.size()];
-
     const std::string &name = ctx->cookie_name;
     size_t inject_len = 10 + name.size() + 1 + blob.size();
     size_t new_size = hdr_end + inject_len + (buf_size - hdr_end);
-    if (new_size > MAX_BUF) {
+
+    if (new_size > max_size) {
         *out_buf = buf;
         return buf_size;
     }
 
-    ctx->post_buf.resize(new_size);
+    ctx->fuzz_buf.resize(new_size);
     size_t cur = 0;
-    memcpy(ctx->post_buf.data(), buf, hdr_end);
+    memcpy(ctx->fuzz_buf.data(), buf, hdr_end);
     cur = hdr_end;
-    memcpy(ctx->post_buf.data() + cur, "\r\nCookie: ", 10);
+    memcpy(ctx->fuzz_buf.data() + cur, "\r\nCookie: ", 10);
     cur += 10;
-    memcpy(ctx->post_buf.data() + cur, name.c_str(), name.size());
+    memcpy(ctx->fuzz_buf.data() + cur, name.c_str(), name.size());
     cur += name.size();
-    ctx->post_buf[cur++] = '=';
-    memcpy(ctx->post_buf.data() + cur, blob.data(), blob.size());
+    ctx->fuzz_buf[cur++] = '=';
+    memcpy(ctx->fuzz_buf.data() + cur, blob.data(), blob.size());
     cur += blob.size();
-    memcpy(ctx->post_buf.data() + cur, buf + hdr_end, buf_size - hdr_end);
+    memcpy(ctx->fuzz_buf.data() + cur, buf + hdr_end, buf_size - hdr_end);
 
-    *out_buf = ctx->post_buf.data();
+    *out_buf = ctx->fuzz_buf.data();
     return new_size;
 }
 

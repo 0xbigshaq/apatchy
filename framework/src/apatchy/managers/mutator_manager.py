@@ -261,6 +261,8 @@ class MutatorManager:
                         break
                     if line.startswith("// LDFLAGS:"):
                         flags.extend(line[len("// LDFLAGS:") :].split())
+                    elif line.startswith("// CFLAGS:"):
+                        flags.extend(line[len("// CFLAGS:") :].split())
                     elif line.startswith("// LANG:"):
                         lang = line[len("// LANG:") :].strip()
         except Exception:
