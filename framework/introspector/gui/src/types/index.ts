@@ -33,12 +33,12 @@ export interface CallEdge {
 }
 
 export interface IntrospectMetadata {
-  entry_point: string;
+  entry_points: string[];
 }
 
 export interface IntrospectData {
   metadata: IntrospectMetadata;
   functions: Record<string, FunctionMeta>;
-  call_tree: CallTreeNode;
+  call_tree: CallTreeNode[];
   call_edges: CallEdge[];
 }

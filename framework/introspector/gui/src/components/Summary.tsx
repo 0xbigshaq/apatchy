@@ -26,14 +26,15 @@ export function Summary({ data }: Props) {
   const total = funcs.length;
   const covered = funcs.filter((f) => f.coverage?.hit).length;
   const pct = total > 0 ? ((covered / total) * 100).toFixed(1) : '0';
-  const treeNodes = countNodes(data.call_tree);
-  const depth = maxDepth(data.call_tree);
+  const treeNodes = data.call_tree.reduce((sum, root) => sum + countNodes(root), 0);
+  const depth = Math.max(...data.call_tree.map((root) => maxDepth(root)), 0);
 
   return (
     <div className="flex flex-wrap items-center gap-4 px-4 py-3 bg-zinc-900 border-b border-zinc-800 text-sm text-zinc-300">
       <img src="./logo-text.png" alt="Apatchy" className="h-8" />
       <span>
-        Entry: <span className="text-white font-mono">{data.metadata.entry_point}</span>
+        {data.metadata.entry_points.length === 1 ? 'Entry' : 'Entries'}:{' '}
+        <span className="text-white font-mono">{data.metadata.entry_points.join(', ')}</span>
       </span>
       <span className="text-zinc-600">|</span>
       <span>

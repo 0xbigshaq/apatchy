@@ -41,7 +41,7 @@ export function TreeNode({
     searchQuery && !matchesSearch && !hasMatchingDescendant(node, searchQuery);
 
   if (isHidden) return null;
-  if (hideIntrinsics && node.name.startsWith('llvm.lifetime.')) return null;
+  if (hideIntrinsics && (node.name.startsWith('llvm.lifetime.') || node.name.startsWith('llvm.umax.') || node.name.startsWith('llvm.smax.'))) return null;
 
   const hasSiteCount = node.site_count !== undefined && node.site_count !== -1;
   const siteHit = node.site_count > 0;

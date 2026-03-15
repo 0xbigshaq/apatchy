@@ -2,7 +2,7 @@ import type { CallTreeNode as CallTreeNodeType, FunctionMeta } from '../types';
 import { TreeNode } from './TreeNode';
 
 interface Props {
-  root: CallTreeNodeType;
+  roots: CallTreeNodeType[];
   functions: Record<string, FunctionMeta>;
   isExpanded: (key: string, depth: number) => boolean;
   onToggle: (key: string) => void;
@@ -13,7 +13,7 @@ interface Props {
 }
 
 export function CallTree({
-  root,
+  roots,
   functions,
   isExpanded,
   onToggle,
@@ -24,19 +24,22 @@ export function CallTree({
 }: Props) {
   return (
     <div className="flex-1 overflow-auto py-1">
-      <TreeNode
-        node={root}
-        depth={0}
-        nodeKey={root.name}
-        callerName={null}
-        functions={functions}
-        isExpanded={isExpanded}
-        onToggle={onToggle}
-        onSelect={onSelect}
-        searchQuery={searchQuery}
-        selectedKey={selectedKey}
-        hideIntrinsics={hideIntrinsics}
-      />
+      {roots.map((root) => (
+        <TreeNode
+          key={root.name}
+          node={root}
+          depth={0}
+          nodeKey={root.name}
+          callerName={null}
+          functions={functions}
+          isExpanded={isExpanded}
+          onToggle={onToggle}
+          onSelect={onSelect}
+          searchQuery={searchQuery}
+          selectedKey={selectedKey}
+          hideIntrinsics={hideIntrinsics}
+        />
+      ))}
     </div>
   );
 }

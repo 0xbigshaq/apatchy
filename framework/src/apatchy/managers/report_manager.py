@@ -703,8 +703,11 @@ class ReportManager:
             self.logger.error(f"bitcode not found: {bitcode}")
             return
 
-        # auto-detect entry point
-        if not entry:
+        # parse entry points (comma-separated) or auto-detect
+        if entry:
+            entries = [e.strip() for e in entry.split(",") if e.strip()]
+        else:
+            entries = []
             major = clang_major_version(cc)
             llvm_nm = toolchain_config.resolve_tool(f"llvm-nm-{major}") or toolchain_config.resolve_tool("llvm-nm")
             if llvm_nm:
@@ -717,15 +720,15 @@ class ReportManager:
                     )
                     symbols = {line.split()[-1] for line in result.stdout.splitlines() if len(line.split()) >= 3}
                     if "LLVMFuzzerTestOneInput" in symbols:
-                        entry = "LLVMFuzzerTestOneInput"
+                        entries.append("LLVMFuzzerTestOneInput")
                     elif "main" in symbols:
-                        entry = "main"
+                        entries.append("main")
                 except Exception:
                     pass
-            if not entry:
+            if not entries:
                 self.logger.error("could not detect entry point, use --entry")
                 return
-            self.logger.info(f"Auto-detected entry point: {entry}")
+            self.logger.info(f"Auto-detected entry point: {entries[0]}")
 
         # locate (and auto-build) the wuxi binary and GUI frontend
         introspector_root = Path(__file__).resolve().parent.parent.parent.parent / "introspector"
@@ -807,31 +810,57 @@ class ReportManager:
                 bare = name.split(":", 1)[1]
                 cov_stripped[bare] = cov_entry
 
-        # run our wuxi cpp tool
-        wuxi_out = Path(tempfile.mktemp(suffix=".json"))
-        wuxi_cmd = [str(wuxi), str(bitcode), entry, "-f", str(wuxi_out)]
-        returncode, _ = run_stream_panel(
-            wuxi_cmd,
-            label=f"Running call tree analysis for '{entry}'...",
-        )
-        if returncode != 0:
-            self.logger.error("wuxi failed")
-            return
-        introspect = json.loads(wuxi_out.read_text())
-        wuxi_out.unlink(missing_ok=True)
-
-        # rewrite source_dir from the original tree to the -cov tree so
-        # coverage HTML links resolve correctly
+        # run wuxi for each entry point and merge results
+        merged_functions = {}
+        merged_edges = []
+        merged_trees = []
+        seen_edges = set()
         orig_prefix = str(self.httpd_root.resolve())
         cov_prefix = str(cov_root.resolve())
-        for func_meta in introspect.get("functions", {}).values():
-            sd = func_meta.get("source_dir", "")
-            if sd.startswith(orig_prefix + "/") or sd == orig_prefix:
-                func_meta["source_dir"] = cov_prefix + sd[len(orig_prefix) :]
+
+        for entry_name in entries:
+            wuxi_out = Path(tempfile.mktemp(suffix=".json"))
+            wuxi_cmd = [str(wuxi), str(bitcode), entry_name, "-f", str(wuxi_out)]
+            returncode, _ = run_stream_panel(
+                wuxi_cmd,
+                label=f"Running call tree analysis for '{entry_name}'...",
+            )
+            if returncode != 0:
+                self.logger.error(f"wuxi failed for entry '{entry_name}'")
+                return
+            result = json.loads(wuxi_out.read_text())
+            wuxi_out.unlink(missing_ok=True)
+
+            # rewrite source_dir from the original tree to the -cov tree
+            for func_meta in result.get("functions", {}).values():
+                sd = func_meta.get("source_dir", "")
+                if sd.startswith(orig_prefix + "/") or sd == orig_prefix:
+                    func_meta["source_dir"] = cov_prefix + sd[len(orig_prefix) :]
+
+            # merge functions (first occurrence wins)
+            for fname, fmeta in result.get("functions", {}).items():
+                if fname not in merged_functions:
+                    merged_functions[fname] = fmeta
+
+            # merge edges (deduplicate by caller+callee+site)
+            for edge in result.get("call_edges", []):
+                key = (edge["caller"], edge["callee"], edge.get("site_file", ""), edge.get("site_line", 0))
+                if key not in seen_edges:
+                    seen_edges.add(key)
+                    merged_edges.append(edge)
+
+            merged_trees.append(result.get("call_tree", {}))
+
+        introspect = {
+            "metadata": {"entry_points": entries},
+            "functions": merged_functions,
+            "call_tree": merged_trees,
+            "call_edges": merged_edges,
+        }
 
         # merge coverage into functions (try direct match, then stripped-prefix fallback)
         merged_count = 0
-        for func_name, func_meta in introspect.get("functions", {}).items():
+        for func_name, func_meta in introspect["functions"].items():
             cov = cov_lookup.get(func_name) or cov_stripped.get(func_name)
             if cov:
                 func_meta["coverage"] = cov
@@ -844,7 +873,7 @@ class ReportManager:
                     "regions_covered": 0,
                 }
 
-        total = len(introspect.get("functions", {}))
+        total = len(introspect["functions"])
         self.logger.info(f"Coverage merged for {merged_count}/{total} functions")
 
         # build per-file line coverage lookup from segments
@@ -886,7 +915,8 @@ class ReportManager:
             for child in node.get("children", []):
                 annotate_site_counts(child, node["name"])
 
-        annotate_site_counts(introspect.get("call_tree", {}))
+        for tree in introspect.get("call_tree", []):
+            annotate_site_counts(tree)
 
         # assemble output directory with GUI, data, and coverage report
         out_dir = Path("introspect-report")

@@ -25,7 +25,7 @@ function App() {
   const [hashRestored, setHashRestored] = useState(false);
 
   const findNodeByKey = useCallback(
-    (root: CallTreeNode, targetKey: string): { node: CallTreeNode; callerName: string | null } | null => {
+    (roots: CallTreeNode[], targetKey: string): { node: CallTreeNode; callerName: string | null } | null => {
       const walk = (
         node: CallTreeNode,
         key: string,
@@ -40,7 +40,11 @@ function App() {
         }
         return null;
       };
-      return walk(root, root.name, null);
+      for (const root of roots) {
+        const result = walk(root, root.name, null);
+        if (result) return result;
+      }
+      return null;
     },
     [],
   );
@@ -187,7 +191,7 @@ function App() {
               </label>
             </div>
             <CallTree
-              root={data.call_tree}
+              roots={data.call_tree}
               functions={data.functions}
               isExpanded={isExpanded}
               onToggle={toggle}
