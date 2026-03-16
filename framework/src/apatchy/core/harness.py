@@ -240,6 +240,13 @@ class HarnessBuilder:
                     includes.append(f"-I{p}")
         return includes
 
+    def check_compiles(self, harness_src, cflags, cc="clang"):
+        """Quick syntax-only probe. Returns (ok, stderr) tuple."""
+        includes = self.get_include_paths()
+        cmd = [cc, "-fsyntax-only", *cflags.split(), *includes, str(harness_src)]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        return result.returncode == 0, result.stderr
+
     def _compile_object(self, src, dest, cflags, cc="clang", bear_output=None):
         includes = self.get_include_paths()
 

@@ -54,7 +54,7 @@ def _parse(args):
         fuzz.add_argument("--mutator", "-m")
         fuzz.add_argument("--grammar", "-g")
         fuzz.add_argument("--resume", action="store_true")
-        fuzz.add_argument("--output-dir", default="afl-output")
+        fuzz.add_argument("--output-dir", default="fuzz-output")
         fuzz.add_argument("--role", choices=["main", "secondary"], default=None)
         fuzz.add_argument("--name", default=None)
         fuzz.add_argument("--suppress", default=None)
@@ -70,7 +70,7 @@ def _parse(args):
         cov = _sub(subparsers, "coverage")
         cov_sub = cov.add_subparsers(dest="action")
         cov_report = _sub(cov_sub, "report")
-        cov_report.add_argument("--afl-dir", default="afl-output")
+        cov_report.add_argument("--afl-dir", default="fuzz-output")
         cov_report.add_argument("--output", default="coverage-report")
         cov_report.add_argument("--harness", default=None)
 
@@ -213,7 +213,7 @@ def test_fuzz_defaults():
     assert args.engine == "afl"
     assert args.config == "fuzz.conf"
     assert args.resume is False
-    assert args.output_dir == "afl-output"
+    assert args.output_dir == "fuzz-output"
 
 
 def test_fuzz_libfuzzer():
@@ -277,7 +277,7 @@ def test_coverage_report():
     args = _parse(["coverage", "report"])
     assert args.command == "coverage"
     assert args.action == "report"
-    assert args.afl_dir == "afl-output"
+    assert args.afl_dir == "fuzz-output"
 
 
 def test_coverage_report_custom_output():

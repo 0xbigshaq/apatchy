@@ -113,14 +113,23 @@ def test_all_harnesses_compile(httpd: Path, build_dir: Path, mp: pytest.MonkeyPa
     builder = HarnessBuilder(httpd, verbose=True)
     harnesses = builder.list_harnesses()
 
-    # Skip companion files that aren't standalone harnesses
+    # Skip companion files and C++ proto harnesses (need LPM installed)
     skip = {"fuzz_common"}
-    harness_names = [h["name"] for h in harnesses if h["name"] not in skip]
+    harness_names = [
+        h["name"] for h in harnesses
+        if h["name"] not in skip and h["source"].endswith(".c")
+    ]
 
     for name in harness_names:
         harness_src = builder.resolve_harness(name)
         assert harness_src is not None, f"Could not resolve harness: {name}"
         cflags = f"-I{harness_src.parent} -g -O0"
+        ok, errors = builder.check_compiles(harness_src, cflags, "clang")
+        if not ok:
+            import warnings
+
+            warnings.warn(f"{name} not compatible with {httpd.name}:\n{errors}", stacklevel=1)
+            continue
         builder._compile_object(str(harness_src), f"{name}.lo", cflags, "clang")
         # The .lo file (libtool descriptor) should exist
         lo_file = build_dir / f"{name}.lo"

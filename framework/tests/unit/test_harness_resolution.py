@@ -48,18 +48,18 @@ def test_list_harnesses_has_name_and_source():
 
 
 def test_list_harnesses_contains_known():
-    """list_harnesses() includes mod_fuzzy and mod_fuzzy_deflate."""
+    """list_harnesses() includes mod_fuzzy and mod_fuzzy_multi."""
     harnesses = HarnessBuilder.list_harnesses()
     names = [h["name"] for h in harnesses]
     assert "mod_fuzzy" in names
-    assert "mod_fuzzy_deflate" in names
+    assert "mod_fuzzy_multi" in names
 
 
-def test_list_harnesses_sources_are_c_files():
-    """All harness source paths end in .c."""
+def test_list_harnesses_sources_are_c_or_cc_files():
+    """All harness source paths end in .c or .cc."""
     harnesses = HarnessBuilder.list_harnesses()
     for h in harnesses:
-        assert h["source"].endswith(".c")
+        assert h["source"].endswith(".c") or h["source"].endswith(".cc")
 
 
 # --- resolve_harness ---

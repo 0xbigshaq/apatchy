@@ -1,6 +1,6 @@
 """Tests for apatchy.managers.fuzz_manager.GrammarSeedGenerator."""
 
-from apatchy.managers.fuzz_manager import GrammarSeedGenerator
+from apatchy.fuzzers.grammar import GrammarSeedGenerator
 
 
 def test_simple_terminal(sample_grammar):
