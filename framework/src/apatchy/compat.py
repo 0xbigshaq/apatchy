@@ -127,6 +127,20 @@ COMPAT_REGISTRY: List[CompatEntry] = [
             f"-include {OPENSSL3_COMPAT_H}",
         ],
     ),
+    CompatEntry(
+        id="decl-wo-prototype",
+        description=(
+            "in httpd <= 2.4.32m a function declaration without a "
+            "prototype is deprecated in all versions of C."
+            "newer clang treats as errors."
+        ),
+        max_version="2.4.32",
+        cflags=[
+            "-Wno-strict-prototypes",
+            "-Wno-unused-but-set-variable",
+            "-Wno-single-bit-bitfield-constant-conversion",
+        ],
+    ),
 ]
 
 
