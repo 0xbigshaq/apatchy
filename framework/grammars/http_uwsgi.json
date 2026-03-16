@@ -1,0 +1,92 @@
+{
+	"<A>": [["<START_LINE>", "\r\n", "<HEADERS>", "<BODY>"]],
+
+	"<START_LINE>": [["<METHOD>", " ", "<URI>", " ", "<VERSION>"]],
+
+	"<METHOD>": [["GET"], ["HEAD"], ["POST"], ["PUT"], ["DELETE"], ["OPTIONS"]],
+
+	"<URI>": [["/"], ["<PATH>"], ["<PATH>", "<QUERY>"]],
+
+	"<PATH>": [["/"], ["/", "<PATH_SEG>"], ["/", "<PATH_SEG>", "/", "<PATH_SEG>"], ["/", "<PATH_SEG>", "/", "<PATH_SEG>", "/", "<PATH_SEG>"]],
+
+	"<PATH_SEG>": [["index.html"], ["app"], ["api"], ["status"], ["static"], [".."], ["."], ["%2e%2e"], ["%00"], ["<WORD>"]],
+
+	"<QUERY>": [["?", "<WORD>", "=", "<WORD>"], ["?", "<WORD>", "=", "<WORD>", "&", "<WORD>", "=", "<WORD>"]],
+
+	"<VERSION>": [["HTTP/1.0"], ["HTTP/1.1"]],
+
+	"<HEADERS>": [
+		["\r\n"],
+		["<HEADER>", "\r\n\r\n"],
+		["<HEADER>", "\r\n", "<HEADER>", "\r\n\r\n"],
+		["<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n\r\n"],
+		["<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n\r\n"],
+		["<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n\r\n"],
+		["<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n\r\n"]
+	],
+
+	"<HEADER>": [["<COMMON_HEADER>"], ["<UWSGI_HEADER>"]],
+
+	"<COMMON_HEADER>": [
+		["Host: ", "<HOST_VAL>"],
+		["Accept: ", "<ACCEPT_VAL>"],
+		["Accept-Encoding: ", "<ENCODING_VAL>"],
+		["Content-Type: ", "<CTYPE_VAL>"],
+		["Content-Length: ", "<LENGTH_VAL>"],
+		["Connection: ", "<CONN_VAL>"],
+		["User-Agent: ", "<UA_VAL>"],
+		["Cookie: ", "<COOKIE_VAL>"],
+		["Authorization: ", "<AUTH_VAL>"],
+		["Transfer-Encoding: ", "<TE_VAL>"]
+	],
+
+	"<UWSGI_HEADER>": [
+		["X-Forwarded-For: ", "<IP_VAL>"],
+		["X-Forwarded-Host: ", "<HOST_VAL>"],
+		["X-Forwarded-Proto: ", "<PROTO_VAL>"],
+		["X-Real-IP: ", "<IP_VAL>"],
+		["X-Uwsgi-Scheme: ", "<PROTO_VAL>"],
+		["Expect: ", "100-continue"],
+		["If-Modified-Since: ", "<DATE>"],
+		["If-None-Match: ", "<ETAG_VAL>"],
+		["Range: ", "bytes=", "<DIGIT>", "-", "<DIGIT>"]
+	],
+
+	"<ACCEPT_VAL>": [["*/*"], ["text/html"], ["application/json"], ["text/html, application/xhtml+xml, */*;q=0.8"]],
+
+	"<ENCODING_VAL>": [["gzip"], ["deflate"], ["identity"], ["gzip, deflate"]],
+
+	"<CTYPE_VAL>": [["text/plain"], ["application/x-www-form-urlencoded"], ["application/json"], ["multipart/form-data; boundary=----fuzzboundary"]],
+
+	"<LENGTH_VAL>": [["0"], ["1"], ["10"], ["100"], ["4096"], ["65535"], ["-1"], ["999999999"]],
+
+	"<CONN_VAL>": [["keep-alive"], ["close"]],
+
+	"<UA_VAL>": [["Mozilla/5.0"], ["curl/7.68.0"], ["<WORD>"]],
+
+	"<AUTH_VAL>": [["Basic dGVzdDp0ZXN0"], ["Basic "], ["Basic AAAA"], ["Bearer token123"]],
+
+	"<TE_VAL>": [["chunked"], ["identity"]],
+
+	"<COOKIE_VAL>": [["session=", "<WORD>"], ["a=b; c=d"]],
+
+	"<HOST_VAL>": [["localhost"], ["localhost:80"], ["127.0.0.1"], ["[::1]"]],
+
+	"<IP_VAL>": [["127.0.0.1"], ["192.168.1.1"], ["::1"], ["<WORD>"]],
+
+	"<PROTO_VAL>": [["http"], ["https"]],
+
+	"<ETAG_VAL>": [["\"", "<WORD>", "\""], ["W/\"", "<WORD>", "\""], ["*"]],
+
+	"<DATE>": [["Sat, 29 Oct 1994 19:43:31 GMT"], ["Thu, 01 Jan 1970 00:00:00 GMT"]],
+
+	"<BODY>": [[], ["<WORD>", "=", "<WORD>"], ["<WORD>", "=", "<WORD>", "&", "<WORD>", "=", "<WORD>"], ["{\"", "<WORD>", "\":\"", "<WORD>", "\"}"], ["<CHUNK_BODY>"]],
+
+	"<CHUNK_BODY>": [["4\r\ntest\r\n0\r\n\r\n"], ["a\r\n0123456789\r\n0\r\n\r\n"]],
+
+	"<WORD>": [["test"], ["admin"], ["fuzz"], ["null"], ["undefined"], ["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"], ["foo"], ["bar"], ["%00"], ["%0d%0a"], ["../.."], ["<CHAR>"]],
+
+	"<DIGIT>": [["0"], ["1"], ["10"], ["100"], ["1024"], ["8192"], ["65535"]],
+
+	"<CHAR>": [["0"], ["1"], ["2"], ["3"], ["4"], ["5"], ["6"], ["7"], ["8"], ["9"], ["a"], ["b"], ["c"], ["d"], ["e"], ["f"], ["g"], ["h"], ["i"], ["j"], ["k"], ["l"], ["m"], ["n"], ["o"], ["p"], ["q"], ["r"], ["s"], ["t"], ["u"], ["v"], ["w"], ["x"], ["y"], ["z"], ["A"], ["B"], ["C"], ["D"], ["E"], ["F"], ["G"], ["H"], ["I"], ["J"], ["K"], ["L"], ["M"], ["N"], ["O"], ["P"], ["Q"], ["R"], ["S"], ["T"], ["U"], ["V"], ["W"], ["X"], ["Y"], ["Z"]]
+}
