@@ -2,11 +2,11 @@ name: Docs
 
 on:
   push:
-    branches: [main]
-    paths:
-      - "docs/**"
-      - "framework/src/**"
-      - ".github/workflows/docs.yml"
+    branches: [docs]
+    # paths:
+    #   - "docs/**"
+    #   - "framework/src/**"
+    #   - ".github/workflows/docs.yml"
 
 permissions:
   contents: read
