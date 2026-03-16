@@ -153,9 +153,7 @@ class HarnessBuilder:
         self._compile_object(str(harness_src), "fuzz_harness.lo", cflags, cc, bear_output=bear_output)
 
         # Compile fuzz_common if needed
-        self._compile_object(
-            str(harness_dir / "fuzz_common.c"), "fuzz_common.lo", cflags, cc, bear_output=bear_output, env=env
-        )
+        self._compile_object(str(harness_dir / "fuzz_common.c"), "fuzz_common.lo", cflags, cc, bear_output=bear_output)
 
         # Compile buildmark.c (provides ap_get_server_built)
         self._compile_object(str(self.httpd_root / "server" / "buildmark.c"), "buildmark.lo", cflags, cc)
@@ -271,9 +269,7 @@ class HarnessBuilder:
                 libs.append(flag)
         return libs
 
-    def _link_harness(
-        self, output, objects, cflags, ldflags, cc="clang", allow_muldefs=False, skip_afl_rt=False
-    ):
+    def _link_harness(self, output, objects, cflags, ldflags, cc="clang", allow_muldefs=False, skip_afl_rt=False):
         modules_dir = self.httpd_root / "modules"
 
         libmain = f"{self.httpd_root}/server/libmain.la"
