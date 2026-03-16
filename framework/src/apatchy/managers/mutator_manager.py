@@ -177,12 +177,12 @@ class MutatorManager:
         return sorted(found.keys())
 
     def build_custom_mutator(self, name: Optional[str] = None) -> None:
-        """Compile .c/.cpp sources from bundled custom_mutators/ into .so files."""
+        """Compile .c/.cc sources from bundled custom_mutators/ into .so files."""
         self.custom_mutators_out.mkdir(exist_ok=True)
 
         sources: List[Path] = []
         if name:
-            for ext in (".c", ".cpp"):
+            for ext in (".c", ".cc"):
                 src = Config.CUSTOM_MUTATORS_DIR / f"{name}{ext}"
                 if src.exists():
                     sources.append(src)
@@ -192,7 +192,7 @@ class MutatorManager:
                 return
         else:
             sources = sorted(
-                list(Config.CUSTOM_MUTATORS_DIR.glob("*.c")) + list(Config.CUSTOM_MUTATORS_DIR.glob("*.cpp"))
+                list(Config.CUSTOM_MUTATORS_DIR.glob("*.c")) + list(Config.CUSTOM_MUTATORS_DIR.glob("*.cc"))
             )
 
         if not sources:
@@ -202,7 +202,7 @@ class MutatorManager:
         for src in sources:
             out = self.custom_mutators_out / f"{src.stem}.so"
             extra_flags, lang = self._parse_source_directives(src)
-            is_cpp = lang == "c++" or src.suffix == ".cpp"
+            is_cpp = lang == "c++" or src.suffix == ".cc"
             if is_cpp:
                 cc = toolchain_config.resolve_tool("clang++") or toolchain_config.resolve_tool("g++")
             else:
@@ -221,9 +221,9 @@ class MutatorManager:
                 logger.error(f"Failed to compile {src.name}")
 
     def list_custom_mutators(self) -> List[Dict[str, str]]:
-        """List available .c/.cpp sources and whether a .so has been built."""
+        """List available .c/.cc sources and whether a .so has been built."""
         results: List[Dict[str, str]] = []
-        all_src = sorted(list(Config.CUSTOM_MUTATORS_DIR.glob("*.c")) + list(Config.CUSTOM_MUTATORS_DIR.glob("*.cpp")))
+        all_src = sorted(list(Config.CUSTOM_MUTATORS_DIR.glob("*.c")) + list(Config.CUSTOM_MUTATORS_DIR.glob("*.cc")))
         for src in all_src:
             built_path = self.custom_mutators_out / f"{src.stem}.so"
             results.append(
