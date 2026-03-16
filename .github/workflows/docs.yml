@@ -1,5 +1,4 @@
 name: Docs
-# trigger ci
 
 on:
   push:
