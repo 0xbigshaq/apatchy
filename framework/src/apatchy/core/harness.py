@@ -138,9 +138,6 @@ class HarnessBuilder:
         harness_src = harness_src.resolve()
         self.logger.info(f"Using harness: {harness_src}")
 
-        # Check if the harness uses fuzz_common.h
-        has_fuzz_common = '"fuzz_common.h"' in harness_src.read_text()
-
         # Add harness directory to include path so #include "fuzz_common.h" works
         harness_dir = harness_src.parent
         cflags = f"-I{harness_dir} {cflags}"
@@ -156,21 +153,15 @@ class HarnessBuilder:
         self._compile_object(str(harness_src), "fuzz_harness.lo", cflags, cc, bear_output=bear_output)
 
         # Compile fuzz_common if needed
-        if has_fuzz_common:
-            fuzz_common_src = harness_dir / "fuzz_common.c"
-            if not fuzz_common_src.exists():
-                self.logger.error(f"fuzz_common.c not found in {harness_dir}")
-                raise FileNotFoundError(f"fuzz_common.c not found in {harness_dir}")
-            self._compile_object(str(fuzz_common_src), "fuzz_common.lo", cflags, cc, bear_output=bear_output)
+        self._compile_object(
+            str(harness_dir / "fuzz_common.c"), "fuzz_common.lo", cflags, cc, bear_output=bear_output, env=env
+        )
 
         # Compile buildmark.c (provides ap_get_server_built)
-        buildmark_src = self.httpd_root / "server" / "buildmark.c"
-        self._compile_object(str(buildmark_src), "buildmark.lo", cflags, cc)
+        self._compile_object(str(self.httpd_root / "server" / "buildmark.c"), "buildmark.lo", cflags, cc)
 
         # Compile modules.c (provides ap_prelinked_modules, ap_prelinked_module_symbols)
-        modules_src = self.httpd_root / "modules.c"
-        if modules_src.exists():
-            self._compile_object(str(modules_src), "modules.lo", cflags, cc)
+        self._compile_object(str(self.httpd_root / "modules.c"), "modules.lo", cflags, cc)
 
         # All harness modes provide their own main() which conflicts with
         # Apache's main() in libmain.a. Use -z muldefs to allow both;
@@ -190,8 +181,7 @@ class HarnessBuilder:
 
         # Link everything
         objects = ["fuzz_harness.lo"]
-        if has_fuzz_common:
-            objects.append("fuzz_common.lo")
+        objects.append("fuzz_common.lo")
         objects.extend(["buildmark.lo", "modules.lo"])
         self._link_harness(output_name, objects, cflags, ldflags, cc, allow_muldefs, skip_afl_rt)
 
@@ -281,7 +271,9 @@ class HarnessBuilder:
                 libs.append(flag)
         return libs
 
-    def _link_harness(self, output, objects, cflags, ldflags, cc="clang", allow_muldefs=False, skip_afl_rt=False):
+    def _link_harness(
+        self, output, objects, cflags, ldflags, cc="clang", allow_muldefs=False, skip_afl_rt=False
+    ):
         modules_dir = self.httpd_root / "modules"
 
         libmain = f"{self.httpd_root}/server/libmain.la"
