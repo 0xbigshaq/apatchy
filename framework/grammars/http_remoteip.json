@@ -1,0 +1,124 @@
+{
+	"<A>": [["<PROXY_HEADER>", "<HTTP_REQUEST>"]],
+
+	"<PROXY_HEADER>": [["<PROXY_V1>"], ["<PROXY_V2>"]],
+
+	"<PROXY_V1>": [["PROXY ", "<V1_FAMILY>", " ", "<V1_SRC_ADDR>", " ", "<V1_DST_ADDR>", " ", "<PORT>", " ", "<PORT>", "\r\n"]],
+
+	"<V1_FAMILY>": [["TCP4"], ["TCP6"], ["UNKNOWN"], ["<WORD>"]],
+
+	"<V1_SRC_ADDR>": [["<IPV4>"], ["<IPV6>"], ["<LONG_ADDR>"], ["<WORD>"]],
+	"<V1_DST_ADDR>": [["<IPV4>"], ["<IPV6>"], ["<LONG_ADDR>"], ["<WORD>"]],
+
+	"<IPV4>": [
+		["127.0.0.1"], ["192.168.1.1"], ["10.0.0.1"], ["255.255.255.255"],
+		["0.0.0.0"], ["1.2.3.4"],
+		["<OCTET>", ".", "<OCTET>", ".", "<OCTET>", ".", "<OCTET>"]
+	],
+
+	"<IPV6>": [
+		["::1"], ["::ffff:127.0.0.1"], ["fe80::1"], ["2001:db8::1"],
+		["0000:0000:0000:0000:0000:0000:0000:0001"]
+	],
+
+	"<LONG_ADDR>": [
+		["<PADDING>"],
+		["<PADDING>", "<PADDING>"],
+		["<PADDING>", "<PADDING>", "<PADDING>"],
+		["<PADDING>", "<PADDING>", "<PADDING>", "<PADDING>"]
+	],
+
+	"<PADDING>": [["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"]],
+
+	"<PORT>": [
+		["0"], ["1"], ["80"], ["443"], ["8080"], ["12345"],
+		["65535"], ["65536"], ["99999"],
+		["<DIGIT>", "<DIGIT>", "<DIGIT>", "<DIGIT>", "<DIGIT>"]
+	],
+
+	"<PROXY_V2>": [["<V2_SIG>", "<V2_VER_CMD>", "<V2_FAM>", "<V2_LEN>", "<V2_ADDR>"]],
+
+	"<V2_SIG>": [["\r\n\r\n\u0000\r\nQUIT\n"]],
+
+	"<V2_VER_CMD>": [
+		["\u0020"],
+		["\u0021"],
+		["\u0022"],
+		["\u0010"],
+		["\u0000"],
+		["\u002f"]
+	],
+
+	"<V2_FAM>": [
+		["\u0000"],
+		["\u0011"],
+		["\u0012"],
+		["\u0021"],
+		["\u0022"],
+		["\u0031"],
+		["\u0032"],
+		["\u00ff"]
+	],
+
+	"<V2_LEN>": [
+		["\u0000\u0000"],
+		["\u0000\u000c"],
+		["\u0000\u0024"],
+		["\u0000\u00d8"],
+		["\u0000\u0001"],
+		["\u0001\u0000"],
+		["\u00ff\u00ff"]
+	],
+
+	"<V2_ADDR>": [
+		[],
+		["<V2_IPV4_ADDR>"],
+		["<V2_FUZZ_ADDR>"]
+	],
+
+	"<V2_IPV4_ADDR>": [["\u007f\u0000\u0000\u0001\u00c0\u00a8\u0001\u0001\u0000\u0050\u001f\u0090"]],
+
+	"<V2_FUZZ_ADDR>": [
+		["<PADDING>"],
+		["<PADDING>", "<PADDING>"],
+		["<PADDING>", "<PADDING>", "<PADDING>", "<PADDING>", "<PADDING>", "<PADDING>"]
+	],
+
+	"<HTTP_REQUEST>": [["<REQUEST_LINE>", "\r\n", "<HEADERS>", "\r\n"]],
+
+	"<REQUEST_LINE>": [["<METHOD>", " ", "<PATH>", " ", "HTTP/1.1"]],
+	"<METHOD>": [["GET"], ["POST"], ["HEAD"], ["PUT"], ["OPTIONS"]],
+
+	"<PATH>": [["/"], ["/index.html"], ["/test"], ["/", "<WORD>"]],
+
+	"<HEADERS>": [
+		["Host: localhost\r\n"],
+		["Host: localhost\r\n", "<HEADER>", "\r\n"],
+		["Host: localhost\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n"],
+		["Host: localhost\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n", "<HEADER>", "\r\n"]
+	],
+
+	"<HEADER>": [
+		["X-Forwarded-For: ", "<IPV4>"],
+		["X-Forwarded-For: ", "<IPV4>", ", ", "<IPV4>"],
+		["X-Forwarded-For: ", "<IPV4>", ", ", "<IPV4>", ", ", "<IPV4>"],
+		["X-Forwarded-For: ", "<LONG_ADDR>"],
+		["X-Real-IP: ", "<IPV4>"],
+		["Connection: close"],
+		["Content-Length: 0"],
+		["Accept: */*"]
+	],
+
+	"<OCTET>": [["0"], ["1"], ["127"], ["192"], ["255"], ["<DIGIT>", "<DIGIT>"]],
+
+	"<WORD>": [["test"], ["fuzz"], ["null"], ["<CHAR>", "<CHAR>", "<CHAR>", "<CHAR>"]],
+
+	"<DIGIT>": [["0"], ["1"], ["2"], ["3"], ["4"], ["5"], ["6"], ["7"], ["8"], ["9"]],
+
+	"<CHAR>": [
+		["0"], ["1"], ["2"], ["3"], ["4"], ["5"], ["6"], ["7"], ["8"], ["9"],
+		["a"], ["b"], ["c"], ["d"], ["e"], ["f"],
+		["A"], ["B"], ["C"], ["D"], ["E"], ["F"],
+		["."], [":"], ["-"], ["_"]
+	]
+}
