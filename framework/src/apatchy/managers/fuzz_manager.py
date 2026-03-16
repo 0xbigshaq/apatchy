@@ -307,7 +307,7 @@ class FuzzManager:
                 debug=debug,
             )
         elif engine == "libfuzzer":
-            self._start_libfuzzer(harness_path, input_dir)
+            self._start_libfuzzer(harness_path, input_dir, out_dir, resume=resume)
         else:
             self.logger.error(f"Unknown fuzzing engine: {engine}")
 
@@ -481,7 +481,50 @@ class FuzzManager:
         except Exception:
             self.logger.error("Failed to start AFL++. Is it installed?")
 
-    def _start_libfuzzer(self, harness: Path, corpus_dir: Path) -> None:
+    def _start_libfuzzer(
+        self,
+        harness: Path,
+        seed_dir: Path,
+        output_dir: Path,
+        resume: bool = False,
+    ) -> None:
+        """Launch libFuzzer with an AFL-compatible output directory layout.
+
+        Creates ``<output_dir>/default/queue/`` for the live corpus and
+        ``<output_dir>/default/crashes/`` for crash artifacts, so that
+        triage and coverage tools work identically for both engines.
+        """
+        instance_dir = output_dir / "default"
+        queue_dir = instance_dir / "queue"
+        crashes_dir = instance_dir / "crashes"
+        queue_dir.mkdir(parents=True, exist_ok=True)
+        crashes_dir.mkdir(parents=True, exist_ok=True)
+
+        # Seed the corpus from the input directory on first run
+        if not resume and seed_dir.exists():
+            existing = set(f.name for f in queue_dir.iterdir() if f.is_file())
+            for seed in seed_dir.iterdir():
+                if seed.is_file() and seed.name not in existing:
+                    dest = queue_dir / seed.name
+                    dest.write_bytes(seed.read_bytes())
+
         self.logger.info("Starting LibFuzzer...")
-        cmd = [str(harness), str(corpus_dir)]
-        self.runner.run_command(cmd)
+        self.logger.info(f"Corpus:  {queue_dir}")
+        self.logger.info(f"Crashes: {crashes_dir}")
+
+        config_path = self.config_manager.get_httpd_config()
+        env = os.environ.copy()
+        if config_path:
+            env["FUZZ_CONF"] = str(config_path)
+            env["FUZZ_ROOT"] = str(self.work_dir)
+
+        cmd = [
+            str(harness),
+            str(queue_dir),
+            f"-artifact_prefix={crashes_dir}/",
+        ]
+
+        from apatchy.utils.libfuzzer_ui import LibFuzzerUI
+
+        ui = LibFuzzerUI()
+        ui.run(cmd, env=env)
