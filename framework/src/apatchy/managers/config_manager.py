@@ -132,8 +132,23 @@ class ConfigManager:
             (cflags.append(flag), ldflags.append(flag))
 
         if self.build_mode == "fuzz":
-            self.logger.info("Using afl-clang-fast for AFL instrumentation")
-            cc = toolchain_config.resolve_tool("afl-clang-fast") or "afl-clang-fast"
+            # afl-clang-fast injects -fsanitize-trap=undefined after user CFLAGS,
+            # overriding -fno-sanitize-trap and breaking -fsanitize-ignorelist.
+            # Use afl-clang-fast-ubsan-compat which calls clang directly with
+            # AFL's SanCov pass plugin, bypassing the forced trap injection.
+            if self.ubsan and self.ubsan_ignorelist:
+                from apatchy.config import Config
+
+                compat = Config.TOOLCHAIN_DIR / "aflplusplus" / "afl-clang-fast-ubsan-compat"
+                if compat.exists():
+                    self.logger.info("Using afl-clang-fast-ubsan-compat for AFL + UBSan ignorelist")
+                    cc = str(compat)
+                else:
+                    self.logger.warning("afl-clang-fast-ubsan-compat not found, UBSan ignorelist may not work")
+                    cc = toolchain_config.resolve_tool("afl-clang-fast") or "afl-clang-fast"
+            else:
+                self.logger.info("Using afl-clang-fast for AFL instrumentation")
+                cc = toolchain_config.resolve_tool("afl-clang-fast") or "afl-clang-fast"
             # Clang is stricter than gcc; suppress format warnings that
             # Apache's upstream code triggers under -Werror (maintainer-mode).
             cflags.append("-Wno-error=format")

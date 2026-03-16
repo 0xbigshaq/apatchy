@@ -1,0 +1,27 @@
+#!/bin/bash
+# Wrapper that provides AFL coverage instrumentation via clang's pass plugin
+# without afl-clang-fast's forced -fsanitize-trap=undefined injection.
+#
+# afl-clang-fast internally injects -fsanitize-trap=undefined when it detects
+# UBSan is in use.  This overrides -fno-sanitize-trap and breaks
+# -fsanitize-ignorelist (the ignorelist only suppresses checks in the runtime
+# path, not trap instructions).
+#
+# This wrapper uses clang directly with AFL's SanitizerCoveragePCGUARD pass
+# plugin, giving full AFL edge coverage without the trap flag override.
+# The AFL compiler runtime is linked automatically for configure tests.
+
+DIR="$(cd "$(dirname "$0")" && pwd)"
+CLANG="${AFL_REAL_CC:-clang-18}"
+RT="$DIR/afl-compiler-rt.o"
+
+LINKING=1
+for arg in "$@"; do
+    [[ "$arg" == "-c" || "$arg" == "-E" || "$arg" == "-S" ]] && LINKING=0
+done
+
+if [[ $LINKING -eq 1 && -f "$RT" ]]; then
+    exec "$CLANG" -fpass-plugin="$DIR/SanitizerCoveragePCGUARD.so" "$@" -Wl,"$RT"
+else
+    exec "$CLANG" -fpass-plugin="$DIR/SanitizerCoveragePCGUARD.so" "$@"
+fi

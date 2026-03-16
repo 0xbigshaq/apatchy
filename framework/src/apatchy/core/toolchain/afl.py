@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 from pathlib import Path
 from typing import List, Optional
@@ -94,6 +95,17 @@ class AflTool(ToolchainTool):  # noqa: D101
             p = self._aflpp_dir / binary
             if p.exists():
                 entries[binary] = str(p)
+
+        # Copy the UBSan-compat wrapper into the AFL++ directory so it
+        # can find SanitizerCoveragePCGUARD.so and afl-compiler-rt.o
+        # relative to itself.
+        compat_src = Config.HARNESSES_DIR / "afl-clang-fast-ubsan-compat"
+        if compat_src.exists():
+            compat_dst = self._aflpp_dir / "afl-clang-fast-ubsan-compat"
+            shutil.copy2(compat_src, compat_dst)
+            compat_dst.chmod(0o755)
+            logger.info(f"Installed {compat_dst.name}")
+
         if entries:
             toolchain_config.force_update_section("fuzzing", entries)
             logger.info(f"AFL++ paths saved to {Config.TOOLCHAIN_CONFIG}")
