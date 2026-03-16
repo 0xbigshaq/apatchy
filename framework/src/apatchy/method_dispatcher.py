@@ -843,6 +843,7 @@ class MethodDispatcher:
         # Build artifacts (always cleaned)
         build_patterns = [
             "fuzz_harness_*",  # compiled harness binaries
+            "fuzz_common.o",
             "fuzz_common.lo",
             "fuzz_harness.o",
             "fuzz_harness.lo",
