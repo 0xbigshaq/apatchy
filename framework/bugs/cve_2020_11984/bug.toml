@@ -1,0 +1,19 @@
+[bug]
+id = "CVE-2020-11984"
+description = "Integer truncation in mod_proxy_uwsgi packet size (uwsgi_send_headers)"
+modules = ["mod_proxy_uwsgi", "mod_proxy"]
+version = "2.4.32"
+type = "integer-truncation"
+references = [
+    "https://httpd.apache.org/security/vulnerabilities_24.html",
+    "https://www.rapid7.com/db/vulnerabilities/apache-httpd-cve-2020-11984/",
+]
+
+[build]
+sanitizers = ["asan", "ubsan", "truncsan"]
+configure_flags = []
+
+[reproduce]
+timeout = 10
+suppress = "ubsan.supp"
+harness = "mod_fuzzy"
