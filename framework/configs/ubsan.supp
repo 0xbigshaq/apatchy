@@ -9,6 +9,13 @@
 # This is a nonnull-attribute violation but harmless (memcpy with n=0 is a no-op).
 nonnull-attribute:apr_brigade.c
 
+# Null pointer dereferences in APR/Apache internals triggered by the
+# fuzz harness (no real socket, missing per-request config, etc.).
+null:mod_logio.c
+null:apr_brigade.c
+null:apr_date.c
+null:sockopt.c
+
 # Intentional unsigned wrapping in hash functions and string helpers.
 unsigned-integer-overflow:proxy_util.c
 unsigned-integer-overflow:shm.c

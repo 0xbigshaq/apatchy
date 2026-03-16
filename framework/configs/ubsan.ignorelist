@@ -6,3 +6,6 @@
 # suppressed at runtime (ud2 is baked into the binary).
 src:*/apr_brigade.c
 src:*/apr_tables.c
+src:*/apr_date.c
+src:*/sockopt.c
+src:*/mod_logio.c
