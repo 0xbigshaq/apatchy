@@ -1,0 +1,45 @@
+from pathlib import Path
+
+from apatchy.fuzzers.base import BaseFuzzer
+
+
+class LibFuzzer(BaseFuzzer):
+    """LibFuzzer engine with AFL-compatible output directory layout."""
+
+    def start(  # noqa: D102
+        self,
+        harness: Path,
+        seed_dir: Path,
+        output_dir: Path,
+        resume: bool = False,
+        **kwargs,
+    ) -> None:
+        instance_dir = output_dir / "default"
+        queue_dir = instance_dir / "queue"
+        crashes_dir = instance_dir / "crashes"
+        queue_dir.mkdir(parents=True, exist_ok=True)
+        crashes_dir.mkdir(parents=True, exist_ok=True)
+
+        if not resume and seed_dir.exists():
+            existing = set(f.name for f in queue_dir.iterdir() if f.is_file())
+            for seed in seed_dir.iterdir():
+                if seed.is_file() and seed.name not in existing:
+                    dest = queue_dir / seed.name
+                    dest.write_bytes(seed.read_bytes())
+
+        self.logger.info("Starting LibFuzzer...")
+        self.logger.info(f"Corpus:  {queue_dir}")
+        self.logger.info(f"Crashes: {crashes_dir}")
+
+        env = self._build_env()
+
+        cmd = [
+            str(harness),
+            str(queue_dir),
+            f"-artifact_prefix={crashes_dir}/",
+        ]
+
+        from apatchy.utils.libfuzzer_ui import LibFuzzerUI
+
+        ui = LibFuzzerUI()
+        ui.run(cmd, env=env)
