@@ -369,10 +369,16 @@ static apr_status_t fuzz_input_filter(
  * pre_connection hook - set up socketless operation
  * ---------------------------------------------------------------- */
 
+static apr_socket_t *g_dummy_socket = NULL;
+
+/* Modules whose pre_connection hooks allocate per-connection configs.
+ * We init these manually since returning DONE blocks the hook chain. */
+extern module AP_MODULE_DECLARE_DATA logio_module;
+
 static int fuzz_pre_connection(conn_rec *c, void *csd)
 {
     fuzz_net_rec *net;
-    apr_socket_t *dummy_socket = NULL;
+    void *logio_cf;
 
     /* Only intercept connections we created (tagged in fuzz_one_input).
      * Let proxy backend connections use normal socket I/O. */
@@ -385,21 +391,20 @@ static int fuzz_pre_connection(conn_rec *c, void *csd)
     net->eos_sent = 0;
     net->bb = apr_brigade_create(c->pool, c->bucket_alloc);
 
-    /* Create a dummy socket so code expecting one doesn't crash */
-    if (apr_socket_create(&dummy_socket, APR_INET, SOCK_STREAM, APR_PROTO_TCP, c->pool) ==
-        APR_SUCCESS) {
-        ap_set_core_module_config(c->conn_config, dummy_socket);
-    } else {
-        ap_set_core_module_config(c->conn_config, NULL);
-    }
+    ap_set_core_module_config(c->conn_config, g_dummy_socket);
+
+    /* Init logio per-connection config (normally done by logio_pre_conn).
+     * The struct is just counters, apr_pcalloc zeros them. */
+    logio_cf = apr_pcalloc(c->pool, 32);
+    ap_set_module_config(c->conn_config, &logio_module, logio_cf);
 
     ap_add_input_filter_handle(fuzz_input_filter_handle, net, NULL, c);
     ap_add_output_filter_handle(fuzz_output_filter_handle, NULL, NULL, c);
 
-    /* Make core_pre_connection skip its work */
-    c->master = c;
-
-    return OK;
+    /* Return DONE to prevent core_pre_connection from adding core I/O
+     * filters that would interfere with fuzz I/O (read/write to the
+     * dummy socket instead of the in-memory fuzz buffer). */
+    return DONE;
 }
 
 /* ----------------------------------------------------------------
@@ -434,7 +439,7 @@ static void fuzz_register_hooks(apr_pool_t *p)
     fuzz_output_filter_handle =
         ap_register_output_filter("FUZZ_OUTPUT", fuzz_output_filter, NULL, AP_FTYPE_NETWORK - 1);
 
-    ap_hook_pre_connection(fuzz_pre_connection, NULL, NULL, APR_HOOK_LAST);
+    ap_hook_pre_connection(fuzz_pre_connection, NULL, NULL, APR_HOOK_REALLY_FIRST);
 
     ap_hook_insert_network_bucket(fuzz_insert_network_bucket, NULL, NULL, APR_HOOK_FIRST);
 }
@@ -661,6 +666,13 @@ int fuzz_init(const char *confname, const char *server_root)
 
     ap_run_optional_fn_retrieve();
 
+    /* Create a dummy socket for fuzz_pre_connection and ap_process_connection.
+     * core_pre_connection calls apr_socket_opt_set(csd, ...) which would
+     * crash on NULL. Other modules (logio, ssl) also hook pre_connection
+     * and need the hook chain to complete, so we pass the dummy socket as
+     * csd and return OK to let all hooks run. */
+    apr_socket_create(&g_dummy_socket, APR_INET, SOCK_STREAM, APR_PROTO_TCP, g_pool);
+
 #ifdef ASAN_ENABLED
     asan_restore_stderr_and_signals();
     register_ubsan_signal_handler();
@@ -714,7 +726,7 @@ int fuzz_one_input(const char *data, size_t size)
      * only intercepts it, not proxy backend connections. */
     apr_table_setn(c->notes, "fuzz_client", "1");
 
-    ap_process_connection(c, NULL);
+    ap_process_connection(c, g_dummy_socket);
 
     apr_pool_destroy(ptrans);
 
