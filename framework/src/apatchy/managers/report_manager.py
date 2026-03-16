@@ -72,25 +72,25 @@ class ReportManager:
     .. code-block:: bash
 
         # Triage a single crash file
-        apatchy triage afl-output/default/crashes/id:000000
+        apatchy triage fuzz-output/default/crashes/id:000000
 
         # Triage all crashes in a directory
-        apatchy triage --bulk afl-output/default/crashes/
+        apatchy triage --bulk fuzz-output/default/crashes/
 
         # Replay numbered crash files as sequential requests
-        apatchy triage --pipeline afl-output/
+        apatchy triage --pipeline fuzz-output/
 
         # Generate a coverage report from AFL++ output
-        apatchy coverage report --afl-dir afl-output/
+        apatchy coverage report --afl-dir fuzz-output/
 
         # Coverage with introspection chained in
-        apatchy coverage report --afl-dir afl-output/ --with-introspect
+        apatchy coverage report --afl-dir fuzz-output/ --with-introspect
 
         # Generate introspection data with interactive viewer
         apatchy introspect --entry ap_process_request
 
         # Generate callgrind profiles
-        apatchy profile callgrind --afl-dir afl-output/
+        apatchy profile callgrind --afl-dir fuzz-output/
 
     Example:
         .. code-block:: python
@@ -102,12 +102,12 @@ class ReportManager:
             # Triage a crash
             config = ConfigManager(config_name="fuzz.conf")
             rm = ReportManager(Path("httpd-2.4.58"), config)
-            rm.triage_crash("afl-output/default/crashes/id:000000", Path("fuzz_harness_standalone"))
+            rm.triage_crash("fuzz-output/default/crashes/id:000000", Path("fuzz_harness_standalone"))
 
             # Generate coverage
             cov_config = ConfigManager(build_mode="coverage")
             rm = ReportManager(Path("httpd-2.4.58"), cov_config)
-            rm.generate_coverage(corpus_dir="afl-output/")
+            rm.generate_coverage(corpus_dir="fuzz-output/")
     """
 
     def __init__(self, httpd_root: Path, config_manager: ConfigManager) -> None:
@@ -527,7 +527,7 @@ class ReportManager:
 
     def generate_coverage(
         self,
-        corpus_dir: str = "afl-output",
+        corpus_dir: str = "fuzz-output",
         config_name: str = "fuzz.conf",
         output_dir: str = "coverage-report",
         harness_name: str = None,
@@ -1156,7 +1156,7 @@ class ReportManager:
 
     def generate_callgrind(
         self,
-        corpus_dir: str = "afl-output",
+        corpus_dir: str = "fuzz-output",
         config_name: str = "fuzz.conf",
         output_dir: str = "callgrind-out",
         harness_name: str = None,

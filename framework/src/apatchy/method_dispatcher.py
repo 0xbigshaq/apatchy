@@ -240,7 +240,7 @@ class MethodDispatcher:
             mutator=getattr(args, "mutator", None) and args.mutator.split(","),
             grammar=getattr(args, "grammar", None),
             resume=getattr(args, "resume", False),
-            output_dir=getattr(args, "output_dir", "afl-output"),
+            output_dir=getattr(args, "output_dir", "fuzz-output"),
             role=role,
             name=name,
             suppress=getattr(args, "suppress", None),
@@ -856,7 +856,7 @@ class MethodDispatcher:
             "introspect.json",
         ]
         build_dirs = [
-            "afl-output",
+            "fuzz-output",
             "modules",
             ".libs",
             ".proto_gen",
@@ -865,7 +865,7 @@ class MethodDispatcher:
             "introspect-report",
         ]
         build_globs = [
-            "afl-input/grammar_*.txt",  # generated grammar seeds
+            "fuzz-seeds/grammar_*.txt",  # generated grammar seeds
             "coverage-report*",
             "conf/*",  # generated configs (mime.types is excluded below)
         ]

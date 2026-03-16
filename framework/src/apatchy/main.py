@@ -166,7 +166,9 @@ def main():
     )
     fuzz_parser.add_argument("--grammar", "-g", help="Path to grammar file (sets GRAMMAR_FILE env var)")
     fuzz_parser.add_argument("--resume", action="store_true", help="Resume from existing AFL output directory")
-    fuzz_parser.add_argument("--output-dir", default="afl-output", help="AFL output directory (default: afl-output)")
+    fuzz_parser.add_argument(
+        "--output-dir", default="fuzz-output", help="Fuzzer output directory (default: fuzz-output)"
+    )
     fuzz_parser.add_argument(
         "--role",
         choices=["main", "secondary"],
@@ -216,7 +218,7 @@ def main():
     coverage_report.add_argument(
         "--corpus-dir",
         "--afl-dir",
-        default="afl-output",
+        default="fuzz-output",
         dest="corpus_dir",
         help="Corpus directory (AFL output or plain directory of files)",
     )
@@ -264,7 +266,7 @@ def main():
     profile_callgrind.add_argument(
         "--corpus-dir",
         "--afl-dir",
-        default="afl-output",
+        default="fuzz-output",
         dest="corpus_dir",
         help="Corpus directory (AFL output or plain directory of files)",
     )

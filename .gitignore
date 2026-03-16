@@ -43,8 +43,10 @@ buildmark.o
 modules.lo
 modules.o
 
-# AFL++ runtime directories
+# Fuzzer runtime directories
+fuzz-output/
 afl-output/
+libfuzzer-output/
 afl-pwn-*/
 afl-cov-report-*/
 
@@ -52,7 +54,8 @@ afl-cov-report-*/
 framework/bugs/*/seeds/
 
 # Generated grammar seeds (created by `apatchy fuzz --grammar`)
-framework/afl-input/grammar_*.txt
+framework/fuzz-seeds/grammar_*.txt
+framework/afl-input/
 
 # Built external modules (created by `apatchy module build`)
 framework/modules/
@@ -115,5 +118,4 @@ framework/introspect.json
 framework/introspect-report/
 framework/corpus/
 
-libfuzzer-output
 .proto_gen

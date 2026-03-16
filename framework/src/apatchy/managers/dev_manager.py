@@ -30,7 +30,7 @@ class DevManager:
         dev/
           my_harness/
             harness.c               # your fuzzing harness source
-            afl-input/              # seed corpus
+            fuzz-seeds/              # seed corpus
               sample.txt
             compile_commands.json   # auto-generated for clangd
             fuzz_harness_afl        # built binary (after build)
@@ -105,7 +105,7 @@ class DevManager:
         logger.info(f"Created {harness_dest}")
 
         # Create seed input directory
-        input_dir = project_dir / "afl-input"
+        input_dir = project_dir / "fuzz-seeds"
         input_dir.mkdir()
         (input_dir / "sample.txt").write_text("GET / HTTP/1.1\r\n\r\n")
         logger.info(f"Created {input_dir}")

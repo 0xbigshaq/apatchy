@@ -47,7 +47,7 @@ def _fmt_num(n: str) -> str:
         return n
 
 
-class LibFuzzerUI:
+class LibFuzzerUI:  # noqa: D101
     MAX_WIDTH = 90
 
     def __init__(self, log_height: int = 8, max_width: int = MAX_WIDTH):
@@ -73,7 +73,7 @@ class LibFuzzerUI:
             "crashes": "0",
         }
 
-    def run(self, command: Union[str, List[str]], env: Optional[Dict[str, str]] = None) -> int:
+    def run(self, command: Union[str, List[str]], env: Optional[Dict[str, str]] = None) -> int:  # noqa: D102
         self.start_time = time.monotonic()
 
         with Live(self._render(), refresh_per_second=8, console=self.console) as live, subprocess.Popen(
