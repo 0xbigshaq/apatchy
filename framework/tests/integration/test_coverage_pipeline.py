@@ -31,7 +31,7 @@ def test_detect_llvm_toolchain(httpd: Path) -> None:
     assert "clang" in cc
 
 
-def test_find_afl_instances_single(httpd: Path, build_dir: Path) -> None:
+def test_collect_corpus_dirs_single(httpd: Path, build_dir: Path) -> None:
     """Detect single-instance AFL output layout."""
     cm = ConfigManager()
     rm = ReportManager(httpd, cm)
@@ -40,12 +40,12 @@ def test_find_afl_instances_single(httpd: Path, build_dir: Path) -> None:
     (build_dir / "default" / "queue").mkdir(parents=True)
     (build_dir / "default" / "queue" / "id:000000").touch()
 
-    instances = rm._find_afl_instances(str(build_dir))
-    assert len(instances) == 1
-    assert instances[0].name == "default"
+    dirs = rm._collect_corpus_dirs(str(build_dir))
+    assert len(dirs) >= 1
+    assert any("default" in str(d) for d in dirs)
 
 
-def test_find_afl_instances_parallel(httpd: Path, build_dir: Path) -> None:
+def test_collect_corpus_dirs_parallel(httpd: Path, build_dir: Path) -> None:
     """Detect parallel AFL output layout."""
     cm = ConfigManager()
     rm = ReportManager(httpd, cm)
@@ -55,19 +55,21 @@ def test_find_afl_instances_parallel(httpd: Path, build_dir: Path) -> None:
         (build_dir / name / "queue").mkdir(parents=True)
         (build_dir / name / "queue" / "id:000000").touch()
 
-    instances = rm._find_afl_instances(str(build_dir))
-    assert len(instances) == 3
-    names = {i.name for i in instances}
-    assert names == {"main01", "sec01", "sec02"}
+    dirs = rm._collect_corpus_dirs(str(build_dir))
+    assert len(dirs) >= 3
+    dir_strs = [str(d) for d in dirs]
+    assert any("main01" in s for s in dir_strs)
+    assert any("sec01" in s for s in dir_strs)
+    assert any("sec02" in s for s in dir_strs)
 
 
-def test_find_afl_instances_empty(httpd: Path, tmp_path: Path) -> None:
-    """No instances found in empty directory."""
+def test_collect_corpus_dirs_empty(httpd: Path, tmp_path: Path) -> None:
+    """No corpus dirs found in empty directory."""
     cm = ConfigManager()
     rm = ReportManager(httpd, cm)
 
-    instances = rm._find_afl_instances(str(tmp_path))
-    assert len(instances) == 0
+    dirs = rm._collect_corpus_dirs(str(tmp_path))
+    assert len(dirs) == 0
 
 
 def test_alternate_build_tree_creation(httpd: Path, work_dir: Path) -> None:

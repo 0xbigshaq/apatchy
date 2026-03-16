@@ -34,7 +34,7 @@ def test_build_standalone_harness(httpd: Path, build_dir: Path, mp: pytest.Monke
     mp.chdir(build_dir)
 
     builder = HarnessBuilder(httpd, verbose=True)
-    builder.build(mode="standalone", harness_name="uri_parse")
+    builder.build(mode="standalone", harness_name="mod_fuzzy")
 
     binary = build_dir / "fuzz_harness_standalone"
     if not binary.exists():
@@ -74,7 +74,7 @@ def test_build_afl_harness(httpd: Path, build_dir: Path, mp: pytest.MonkeyPatch)
     mp.chdir(build_dir)
 
     builder = HarnessBuilder(httpd, verbose=True)
-    builder.build(mode="afl", harness_name="uri_parse")
+    builder.build(mode="afl", harness_name="mod_fuzzy")
 
     binary = build_dir / "fuzz_harness_afl"
     if not binary.exists():
@@ -90,7 +90,7 @@ def test_linked_libraries_resolve(httpd: Path, build_dir: Path, mp: pytest.Monke
     mp.chdir(build_dir)
 
     builder = HarnessBuilder(httpd, verbose=True)
-    builder.build(mode="standalone", harness_name="uri_parse")
+    builder.build(mode="standalone", harness_name="mod_fuzzy")
 
     binary = build_dir / "fuzz_harness_standalone"
     if not binary.exists():

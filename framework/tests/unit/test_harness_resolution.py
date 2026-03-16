@@ -48,11 +48,11 @@ def test_list_harnesses_has_name_and_source():
 
 
 def test_list_harnesses_contains_known():
-    """list_harnesses() includes uri_parse and mod_fuzzy."""
+    """list_harnesses() includes mod_fuzzy and mod_fuzzy_deflate."""
     harnesses = HarnessBuilder.list_harnesses()
     names = [h["name"] for h in harnesses]
-    assert "uri_parse" in names
     assert "mod_fuzzy" in names
+    assert "mod_fuzzy_deflate" in names
 
 
 def test_list_harnesses_sources_are_c_files():
@@ -66,10 +66,10 @@ def test_list_harnesses_sources_are_c_files():
 
 
 def test_resolve_harness_by_name():
-    """resolve_harness('uri_parse') finds uri_parse.c."""
-    result = HarnessBuilder.resolve_harness("uri_parse")
+    """resolve_harness('mod_fuzzy') finds mod_fuzzy.c."""
+    result = HarnessBuilder.resolve_harness("mod_fuzzy")
     assert result is not None
-    assert result.name == "uri_parse.c"
+    assert result.name == "mod_fuzzy.c"
     assert result.exists()
 
 
@@ -88,13 +88,13 @@ def test_resolve_harness_nonexistent():
 
 def test_resolve_harness_returns_path():
     """resolve_harness() returns a Path instance."""
-    result = HarnessBuilder.resolve_harness("uri_parse")
+    result = HarnessBuilder.resolve_harness("mod_fuzzy")
     assert isinstance(result, Path)
 
 
 def test_resolve_harness_literal_path():
     """resolve_harness() accepts a literal file path."""
-    known = Config.HARNESSES_DIR / "uri_parse.c"
+    known = Config.HARNESSES_DIR / "mod_fuzzy.c"
     result = HarnessBuilder.resolve_harness(str(known))
     assert result is not None
     assert result.exists()
