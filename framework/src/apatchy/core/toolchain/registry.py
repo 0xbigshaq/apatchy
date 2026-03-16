@@ -5,6 +5,7 @@ from apatchy.core.toolchain.afl import AflTool
 from apatchy.core.toolchain.base import ToolchainTool
 from apatchy.core.toolchain.libtool import LibtoolTool
 from apatchy.core.toolchain.llvm import LlvmTool
+from apatchy.core.toolchain.lpm import LpmTool
 from apatchy.core.toolchain.simple import BinaryTool, HeaderOrPkgTool, PkgOrConfigTool
 
 
@@ -23,7 +24,9 @@ def build_registry(toolchain_dir: Path, verbose: bool = False) -> List[Toolchain
         BinaryTool("doxygen", "Docs", "apt install doxygen", toolchain_dir, verbose),
         BinaryTool("dot", "Docs", "apt install graphviz", toolchain_dir, verbose),
         # Fuzzing
+        BinaryTool("protoc", "Build", "apt install protobuf-compiler", toolchain_dir, verbose),
         AflTool(toolchain_dir, verbose),
+        LpmTool(toolchain_dir, verbose),
         # Coverage (LLVM)
         LlvmTool(toolchain_dir, verbose),
         # Profiling
@@ -61,6 +64,9 @@ def build_registry(toolchain_dir: Path, verbose: bool = False) -> List[Toolchain
         ),
         HeaderOrPkgTool("uuid-dev", "Libraries", "apt install uuid-dev", toolchain_dir, "uuid/uuid.h", "uuid", verbose),
         PkgOrConfigTool("libssl-dev", "Libraries", "apt install libssl-dev", toolchain_dir, None, "openssl", verbose),
+        PkgOrConfigTool(
+            "libprotobuf-dev", "Libraries", "apt install libprotobuf-dev", toolchain_dir, None, "protobuf", verbose
+        ),
     ]
     return tools
 

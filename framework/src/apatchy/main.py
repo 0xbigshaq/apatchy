@@ -311,6 +311,7 @@ def main():
         metavar="VER",
         help="LLVM major version to use (e.g. 18). Skips clang detection.",
     )
+    _sub(setup_sub, "lpm", help="Clone and build libprotobuf-mutator into toolchain/")
 
     # Harness
     harness_parser = _sub(subparsers, "harness", help="Manage fuzzing harnesses")

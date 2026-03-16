@@ -6,6 +6,7 @@ self-contained binary for AFL++, LibFuzzer, or standalone execution.
 """
 
 import re
+import subprocess
 from pathlib import Path
 
 from apatchy.config import Config
@@ -44,7 +45,7 @@ class HarnessBuilder:
     def list_harnesses():
         """List available harness files with their descriptions."""
         harnesses = []
-        for path in sorted(Config.HARNESSES_DIR.glob("*.c")):
+        for path in sorted(list(Config.HARNESSES_DIR.glob("*.c")) + list(Config.HARNESSES_DIR.glob("*.cc"))):
             desc = ""
             try:
                 with open(path) as f:
@@ -66,10 +67,14 @@ class HarnessBuilder:
         - Bundled: HARNESSES_DIR/<name>.c
         - Literal path: <name> as file path
         """
-        # Bundled
+        # Bundled .c
         bundled = Config.HARNESSES_DIR / f"{name}.c"
         if bundled.exists():
             return bundled
+        # Bundled .cc (proto harnesses)
+        bundled_cc = Config.HARNESSES_DIR / f"{name}.cc"
+        if bundled_cc.exists():
+            return bundled_cc
         # Literal path
         literal = Path(name)
         if literal.exists():
@@ -137,6 +142,11 @@ class HarnessBuilder:
             raise FileNotFoundError(f"Harness '{harness_name}' not found")
         harness_src = harness_src.resolve()
         self.logger.info(f"Using harness: {harness_src}")
+
+        # Proto harnesses (.cc) need a completely different build pipeline
+        if harness_src.suffix == ".cc":
+            self._build_proto_harness(output_name, harness_src, cflags, ldflags)
+            return
 
         # Add harness directory to include path so #include "fuzz_common.h" works
         harness_dir = harness_src.parent
@@ -345,3 +355,128 @@ class HarnessBuilder:
             "-lpthread",
         ]
         self.runner.run_build(cmd, label="Linking harness")
+
+    def _build_proto_harness(self, output_name, harness_src, cflags, ldflags):
+        """Build a protobuf-based harness using libprotobuf-mutator.
+
+        Pipeline:
+        1. protoc generates .pb.h/.pb.cc from the .proto schema
+        2. Compile .pb.cc with clang++ (pure C++, no libtool)
+        3. Compile harness .cc with clang++ via libtool (Apache includes)
+        4. Compile fuzz_common.c with clang via libtool
+        5. Compile buildmark.c + modules.c
+        6. Link with clang++ adding LPM + protobuf libraries
+        """
+        harness_dir = harness_src.parent
+        cxx = toolchain_config.resolve_tool("clang++") or "clang++"
+        c_cc = toolchain_config.resolve_tool("clang") or "clang"
+
+        # Resolve LPM paths
+        lpm_root, lpm_build = self._resolve_lpm_paths()
+        if not lpm_root:
+            self.logger.error("libprotobuf-mutator not found. Run 'apatchy setup lpm' first.")
+            raise FileNotFoundError("libprotobuf-mutator not found")
+
+        # Run protoc to generate .pb.h and .pb.cc
+        gen_dir = Config.WORK_DIR / ".proto_gen"
+        gen_dir.mkdir(exist_ok=True)
+        proto_file = Config.PROTOS_DIR / "http_request.proto"
+
+        protoc = toolchain_config.resolve_tool("protoc") or "protoc"
+        self.runner.run_build(
+            [protoc, f"--cpp_out={gen_dir}", f"--proto_path={Config.PROTOS_DIR}", str(proto_file)],
+            label="Generating protobuf sources",
+        )
+
+        # Get protobuf compiler flags via pkg-config
+        pb_cflags = self._pkg_config_flags("protobuf", "--cflags")
+        pb_ldflags = self._pkg_config_flags("protobuf", "--libs")
+
+        # LPM include and library paths
+        lpm_includes = f"-I{lpm_root}"
+        lpm_libs = []
+        if lpm_build:
+            lib_dir = lpm_build / "src" / "libfuzzer"
+            lib_src = lpm_build / "src"
+            lpm_libs = [f"-L{lib_dir}", f"-L{lib_src}"]
+        lpm_libs += ["-lprotobuf-mutator-libfuzzer", "-lprotobuf-mutator"]
+
+        # Compile http_request.pb.cc (pure C++, no libtool needed)
+        pb_cc = gen_dir / "http_request.pb.cc"
+        pb_obj = Config.WORK_DIR / "http_request.pb.o"
+        self.runner.run_build(
+            [cxx, "-c", "-O2", "-std=c++17", *pb_cflags.split(), f"-I{gen_dir}", str(pb_cc), "-o", str(pb_obj)],
+            label="Compiling http_request.pb.cc",
+        )
+
+        # Build cflags for the harness: Apache includes + proto gen dir + LPM includes
+        harness_cflags = f"-I{harness_dir} -I{gen_dir} {lpm_includes} {pb_cflags} -std=c++17 {cflags}"
+
+        # Compile harness .cc via libtool with clang++
+        self._compile_object(str(harness_src), "fuzz_harness.lo", harness_cflags, cxx)
+
+        # Compile fuzz_common.c with the C compiler via libtool
+        c_cflags = f"-I{harness_dir} {cflags}"
+        self._compile_object(str(harness_dir / "fuzz_common.c"), "fuzz_common.lo", c_cflags, c_cc)
+
+        # Compile buildmark.c and modules.c
+        self._compile_object(str(self.httpd_root / "server" / "buildmark.c"), "buildmark.lo", c_cflags, c_cc)
+        self._compile_object(str(self.httpd_root / "modules.c"), "modules.lo", c_cflags, c_cc)
+
+        # Link with clang++ so C++ stdlib resolves
+        extra_ldflags = " ".join(lpm_libs) + " " + pb_ldflags
+        link_ldflags = f"{ldflags} {extra_ldflags}"
+        if "-no-pie" not in link_ldflags:
+            link_ldflags = f"{link_ldflags} -no-pie"
+
+        objects = ["fuzz_harness.lo", "fuzz_common.lo", str(pb_obj), "buildmark.lo", "modules.lo"]
+        self._link_harness(
+            output_name,
+            objects,
+            cflags,
+            link_ldflags,
+            cc=cxx,
+            allow_muldefs=True,
+            skip_afl_rt=True,
+        )
+
+    @staticmethod
+    def _resolve_lpm_paths():
+        """Find LPM root and build directories.
+
+        Returns (lpm_root, lpm_build) or (None, None) if not found.
+        """
+        # Toolchain-local build
+        lpm_build_path = toolchain_config.resolve_tool("lpm-build", section="fuzzing")
+        lpm_root_path = toolchain_config.resolve_tool("lpm-root", section="fuzzing")
+        if lpm_root_path and lpm_build_path:
+            return Path(lpm_root_path), Path(lpm_build_path)
+
+        # Check toolchain dir directly
+        local_root = Config.TOOLCHAIN_DIR / "libprotobuf-mutator"
+        local_build = local_root / "build"
+        if (local_build / "src" / "libprotobuf-mutator.a").exists():
+            return local_root, local_build
+
+        # System-installed LPM
+        for inc_dir in ("/usr/include", "/usr/local/include"):
+            if Path(inc_dir, "libprotobuf-mutator").exists():
+                return Path(inc_dir).parent, None
+
+        return None, None
+
+    @staticmethod
+    def _pkg_config_flags(pkg, flag_type):
+        """Run pkg-config and return the output, or empty string on failure."""
+        try:
+            result = subprocess.run(
+                ["pkg-config", flag_type, pkg],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode == 0:
+                return result.stdout.strip()
+        except (subprocess.TimeoutExpired, OSError):
+            pass
+        return ""

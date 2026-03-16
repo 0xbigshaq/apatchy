@@ -363,6 +363,10 @@ class MethodDispatcher:
             tm.setup("llvm", force=force, llvm_version=llvm_version)
             console.print(f"[dim]Toolchain config: {Config.TOOLCHAIN_CONFIG}[/dim]")
 
+        elif action == "lpm":
+            tm.setup("lpm", force=force)
+            console.print(f"[dim]Toolchain config: {Config.TOOLCHAIN_CONFIG}[/dim]")
+
     def _handle_grammar(self, args: argparse.Namespace) -> None:
         from rich.console import Console
         from rich.table import Table
@@ -846,6 +850,7 @@ class MethodDispatcher:
             "buildmark.lo",
             "modules.o",
             "modules.lo",
+            "*.pb.o",
             "*.profraw",
             "*.profdata",
             "introspect.json",
@@ -854,6 +859,7 @@ class MethodDispatcher:
             "afl-output",
             "modules",
             ".libs",
+            ".proto_gen",
             "coverage-report",
             "callgrind-out",
             "introspect-report",

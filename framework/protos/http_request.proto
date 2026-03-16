@@ -1,0 +1,28 @@
+syntax = "proto2";
+
+enum HttpMethod {
+  GET = 0;
+  POST = 1;
+  PUT = 2;
+  DELETE = 3;
+  HEAD = 4;
+  OPTIONS = 5;
+  PATCH = 6;
+  TRACE = 7;
+  CONNECT = 8;
+  PROPFIND = 9;
+  PROXY = 10;
+}
+
+message Header {
+  required string name = 1;
+  required string value = 2;
+}
+
+message HttpRequest {
+  required HttpMethod method = 1;
+  required string uri = 2;
+  optional string http_version = 3 [default = "HTTP/1.1"];
+  repeated Header headers = 4;
+  optional bytes body = 5;
+}
