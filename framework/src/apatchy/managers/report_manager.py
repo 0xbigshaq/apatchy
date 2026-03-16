@@ -1525,6 +1525,8 @@ class ReportManager:
                     stderr_text = result.stderr.decode("utf-8", errors="replace")
                     bug_type = self._classify_bugs(stderr_text)
                     exit_str = self._format_exit(result.returncode)
+                    if result.returncode == 0 and bug_type == "unknown":
+                        bug_type = "ok"
                     results.append((crash_file.name, bug_type, exit_str))
                     for label in bug_type.split(", "):
                         bug_counts[label] += 1
@@ -1545,6 +1547,8 @@ class ReportManager:
         table.add_column("Exit", style="dim", justify="right")
 
         for name, bug, exit_code in results:
+            if bug == "ok":
+                continue
             table.add_row(name, bug, exit_code)
 
         console.print()
