@@ -81,6 +81,14 @@ class HarnessBuilder:
             return literal
         return None
 
+    @staticmethod
+    def is_proto(name):
+        """Return True if *name* resolves to a .cc (proto) harness."""
+        if not name:
+            return False
+        resolved = HarnessBuilder.resolve_harness(name)
+        return resolved is not None and resolved.suffix == ".cc"
+
     def build(self, mode="standalone", cflags="", ldflags="", harness_name=None, cc=None, bear=False):
         """Compile and link the harness for the given fuzzing engine.
 

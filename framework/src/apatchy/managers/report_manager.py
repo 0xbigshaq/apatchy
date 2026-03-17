@@ -400,10 +400,7 @@ class ReportManager:
 
     def _is_proto_harness(self, harness_name: str | None) -> bool:
         """Return True if harness_name resolves to a .cc (proto) harness."""
-        if not harness_name:
-            return False
-        resolved = HarnessBuilder.resolve_harness(harness_name)
-        return resolved is not None and resolved.suffix == ".cc"
+        return HarnessBuilder.is_proto(harness_name)
 
     def _build_coverage_harness(self, cc: str, harness_name: str = None) -> Tuple[Path, Path]:
         """Build a coverage-instrumented harness.
