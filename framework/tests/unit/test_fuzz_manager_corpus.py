@@ -1,7 +1,7 @@
 """Tests for BaseFuzzer corpus preparation."""
 
-from apatchy.fuzzers.libfuzzer import LibFuzzer
 from apatchy.fuzzers.grammar import generate_seeds
+from apatchy.fuzzers.libfuzzer import LibFuzzer
 from apatchy.managers.config_manager import ConfigManager
 
 
