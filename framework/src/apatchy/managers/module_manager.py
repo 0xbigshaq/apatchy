@@ -17,10 +17,8 @@ class ModuleManager:
     ``LoadModule`` at runtime. Module sources live in the external modules
     directory and are compiled against the Apache build tree's headers.
 
-    The compiler defaults to ``afl-clang-fast`` so that external modules
-    receive the same AFL++ instrumentation as the harness. If AFL++ is not
-    available, it falls back to ``clang`` or ``gcc``. A custom compiler can
-    be specified via the ``cc`` argument.
+    The compiler defaults to ``clang``, falling back to ``gcc`` if
+    unavailable. A custom compiler can be specified via the ``cc`` argument.
 
     Sanitizer flags (``-fsanitize=...``) are automatically extracted from
     the Apache build's ``config_vars.mk`` and propagated to the module
@@ -131,18 +129,15 @@ class ModuleManager:
         output = self.modules_out / f"{name}.so"
 
         if cc is None:
-            # Default: use afl-clang-fast for instrumented builds, fall back to clang/gcc.
-            # Prefer toolchain config paths over system PATH.
             cc = (
-                toolchain_config.resolve_tool("afl-clang-fast")
-                or toolchain_config.resolve_tool("clang")
+                toolchain_config.resolve_tool("clang")
                 or toolchain_config.resolve_tool("gcc")
             )
         else:
             cc = toolchain_config.resolve_tool(cc) or cc
 
         if not cc:
-            logger.error("No C compiler found (afl-clang-fast, clang, or gcc)")
+            logger.error("No C compiler found (clang or gcc)")
             return
 
         includes = [
