@@ -185,7 +185,8 @@ class HarnessBuilder:
         if "-no-pie" not in ldflags:
             ldflags = f"{ldflags} -no-pie"
 
-        objects = ["fuzz_harness.lo", "fuzz_common.lo", "buildmark.lo", "modules.lo"]
+        obj = str(Config.OBJ_DIR)
+        objects = [f"{obj}/fuzz_harness.lo", f"{obj}/fuzz_common.lo", f"{obj}/buildmark.lo", f"{obj}/modules.lo"]
         self._link_harness(output_name, objects, cflags, ldflags, cc, allow_muldefs)
 
     def get_include_paths(self):
@@ -213,6 +214,8 @@ class HarnessBuilder:
 
     def _compile_object(self, src, dest, cflags, cc="clang", bear_output=None):
         includes = self.get_include_paths()
+        Config.OBJ_DIR.mkdir(exist_ok=True)
+        dest = str(Config.OBJ_DIR / dest)
 
         cmd = [str(self.libtool), "--mode=compile", cc, *cflags.split(), *includes, "-c", src, "-o", dest]
         if bear_output:
@@ -362,9 +365,10 @@ class HarnessBuilder:
         lpm_libs += ["-lprotobuf-mutator-libfuzzer", "-lprotobuf-mutator"]
 
         # Compile all generated .pb.cc files
+        Config.OBJ_DIR.mkdir(exist_ok=True)
         pb_objects = []
         for pb_cc in sorted(gen_dir.glob("*.pb.cc")):
-            pb_obj = Config.WORK_DIR / f"{pb_cc.stem}.o"
+            pb_obj = Config.OBJ_DIR / f"{pb_cc.stem}.o"
             self.runner.run_build(
                 [cxx, "-c", "-O2", "-std=c++17", *pb_cflags.split(), f"-I{gen_dir}", str(pb_cc), "-o", str(pb_obj)],
                 label=f"Compiling {pb_cc.name}",
@@ -384,7 +388,7 @@ class HarnessBuilder:
             for src in sorted(converters_dir.glob("*.cc")):
                 obj_name = f"proto_{src.stem}.lo"
                 self._compile_object(str(src), obj_name, harness_cflags, cxx)
-                converter_objects.append(obj_name)
+                converter_objects.append(str(Config.OBJ_DIR / obj_name))
 
         # Compile fuzz_common.c with the C compiler via libtool
         c_cflags = f"-I{harness_dir} {cflags}"
@@ -400,8 +404,13 @@ class HarnessBuilder:
         if "-no-pie" not in link_ldflags:
             link_ldflags = f"{link_ldflags} -no-pie"
 
+        obj = str(Config.OBJ_DIR)
         objects = (
-            ["fuzz_harness.lo"] + converter_objects + ["fuzz_common.lo"] + pb_objects + ["buildmark.lo", "modules.lo"]
+            [f"{obj}/fuzz_harness.lo"]
+            + converter_objects
+            + [f"{obj}/fuzz_common.lo"]
+            + pb_objects
+            + [f"{obj}/buildmark.lo", f"{obj}/modules.lo"]
         )
         self._link_harness(
             output_name,

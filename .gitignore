@@ -33,15 +33,10 @@ framework/httpd-*/
 *.la
 *.so
 .libs/
+.objects/
 
 # Compiled harness binaries (fuzz_harness_afl, fuzz_harness_standalone, etc.)
 fuzz_harness_*
-
-# Libtool
-buildmark.lo
-buildmark.o
-modules.lo
-modules.o
 
 # Fuzzer runtime directories
 fuzz-output/

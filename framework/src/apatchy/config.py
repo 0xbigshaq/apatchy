@@ -33,6 +33,7 @@ class Config:
     # Toolchain config
     TOOLCHAIN_CONFIG = WORK_DIR / "toolchain.config"
 
+    OBJ_DIR = WORK_DIR / ".objects"
     FRAMEWORK_DIR = Path(__file__).parent.parent.parent.resolve()
     PROTOS_DIR = FRAMEWORK_DIR / "protos"
     HARNESSES_DIR = FRAMEWORK_DIR / "harnesses"

@@ -753,22 +753,12 @@ class MethodDispatcher:
         # Build artifacts (always cleaned)
         build_patterns = [
             "fuzz_harness_*",  # compiled harness binaries
-            "fuzz_common.o",
-            "fuzz_common.lo",
-            "fuzz_harness.o",
-            "fuzz_harness.lo",
-            "buildmark.o",
-            "buildmark.lo",
-            "modules.o",
-            "modules.lo",
-            "*.pb.o",
-            "proto_*.o",
-            "proto_*.lo",
             "*.profraw",
             "*.profdata",
             "introspect.json",
         ]
         build_dirs = [
+            ".objects",
             "fuzz-output",
             "modules",
             ".libs",
