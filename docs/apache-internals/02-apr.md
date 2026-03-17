@@ -85,7 +85,7 @@ srclib/
 ```
 
 ```{note}
-**Fuzzing note**: When building Apache for fuzzing, both libraries are compiled from source using `-with-included-apr`. This ensures APR is instrumented with the same compiler flags (AFL++ or ASan) as Apache itself. Using system-installed APR would mean APR code is uninstrumented, hiding bugs that occur inside APR functions.
+**Fuzzing note**: When building Apache for fuzzing, both libraries are compiled from source using `-with-included-apr`. This ensures APR is instrumented with the same compiler flags (sanitizers, coverage) as Apache itself. Using system-installed APR would mean APR code is uninstrumented, hiding bugs that occur inside APR functions.
 ```
 
 ## APR Naming Conventions

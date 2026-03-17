@@ -21,7 +21,7 @@ apatchy lets you fuzz Apache's full HTTP request processing pipeline - parsing, 
 * Manage different build-trees & configurations 
 * Coverage reports generation
 * Custom Introspection: LLVM Call-tree Analysis
-* Manager for: Harness, AFL++ Mutator
+* Manager for: Harness, Proto Mutators
 * Triage bugs / re-play payloads
 * Profiling (kcachegrind/qcachegrind) to analyze bottlenecks in your harness logic to get better perf.
 * Custom toolchain to verify depndencies 
@@ -51,13 +51,11 @@ source .venv/bin/activate
 # 2. init setup (one-time setup)
 apatchy setup check                            # verify dependencies
 apatchy setup --force llvm --llvm-version 18   # install LLVM tools locally
-apatchy setup --force afl                      # install AFL++ locally
-
 # 3. build
 apatchy download          # download apache
 apatchy configure         # ./configure
 apatchy make --bear       # compile apache w/ compilation db
-apatchy link afl --bear   # link the harness w/ compilation db
+apatchy link libfuzzer --bear   # link the harness w/ compilation db
 
 # 4. fuzz :D 
 mkdir /tmp/htdocs               # required by some configs

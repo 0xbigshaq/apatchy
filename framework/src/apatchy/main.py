@@ -297,7 +297,7 @@ def main():
     module_sub = module_parser.add_subparsers(dest="action", help="Module sub-commands")
     module_build = _sub(module_sub, "build", help="Build external module as .so DSO")
     module_build.add_argument("name", nargs="?", default=None, help="Module name (builds all if omitted)")
-    module_build.add_argument("--cc", default=None, help="C compiler to use (default: afl-clang-fast)")
+    module_build.add_argument("--cc", default=None, help="C compiler to use (default: clang)")
     _sub(module_sub, "list", help="List available external modules")
 
     # Dev (harness developer projects)

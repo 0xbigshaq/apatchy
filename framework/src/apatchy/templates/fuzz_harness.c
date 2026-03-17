@@ -8,7 +8,7 @@
 #include "apr_pools.h"
 #include "apr_uri.h"
 
-// Basic AFL/LibFuzzer entry point
+// LibFuzzer entry point
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     if (size == 0) return 0;
 
@@ -46,29 +46,17 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     return 0;
 }
 
-// main() for all build modes:
-// - AFL: reads from stdin (AFL feeds input via stdin by default)
-//   Uses __AFL_LOOP for persistent mode when available.
-// - Standalone: runs with dummy data for verification.
-// - LibFuzzer: compiled with -fsanitize=fuzzer which provides its own main().
-//
+// Standalone main: reads from stdin.
+// LibFuzzer mode: compiled with -fsanitize=fuzzer which provides its own main().
 // When linking against Apache's libmain.a, this main() coexists via -z muldefs.
-// Our main() is an object file so it wins over the archive's main.o.
 #ifndef LIBFUZZER_MODE
 #include <unistd.h>
 
-#ifndef __AFL_LOOP
-#define __AFL_LOOP(x) 1
-#endif
-
 int main(int argc, char **argv) {
-    uint8_t buf[1024 * 64]; // 64KB max input
-
-    while (__AFL_LOOP(10000)) {
-        ssize_t n = read(0, buf, sizeof(buf));
-        if (n > 0) {
-            LLVMFuzzerTestOneInput(buf, (size_t)n);
-        }
+    uint8_t buf[1024 * 64];
+    ssize_t n = read(0, buf, sizeof(buf));
+    if (n > 0) {
+        LLVMFuzzerTestOneInput(buf, (size_t)n);
     }
     return 0;
 }

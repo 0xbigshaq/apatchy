@@ -638,7 +638,7 @@ The request pipeline is Apache's orchestration of:
 
 Key insights for fuzzing:
 - **Entry point**: The harness calls {httpd}`ap_process_connection` directly, bypassing the MPM's accept loop. This enters the pipeline at phase 2 (connection setup)
-- **Input source**: The core input filter is replaced with one that reads from AFL++'s memory buffer instead of a socket
+- **Input source**: The core input filter is replaced with one that reads from the fuzzer's memory buffer instead of a socket
 - **Output sink**: The core output filter is replaced with one that discards data (or writes to `/dev/null`)
 - **All phases are hook-driven**: Every module callback registered via `ap_hook_*()` runs exactly as it would in production
 - **Pool-scoped allocations**: After each request, {httpd}`apr_pool_destroy` frees everything, which is when ASan (with `--enable-pool-debug=yes`) checks for memory errors

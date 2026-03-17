@@ -6,7 +6,7 @@
  * encrypted cookies.
  *
  * The SessionRoute enum selects a path + cookie name + crypto mode,
- * matching the AFL mutator's route table exactly.
+ * matching the proto schema's route table exactly.
  */
 
 #include "session_crypto.pb.h"
