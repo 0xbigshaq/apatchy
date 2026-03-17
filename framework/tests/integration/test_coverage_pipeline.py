@@ -32,7 +32,7 @@ def test_detect_llvm_toolchain(httpd: Path) -> None:
 
 
 def test_collect_corpus_dirs_single(httpd: Path, build_dir: Path) -> None:
-    """Detect single-instance AFL output layout."""
+    """Detect single-instance fuzzer output layout."""
     cm = ConfigManager()
     rm = ReportManager(httpd, cm)
 
@@ -46,7 +46,7 @@ def test_collect_corpus_dirs_single(httpd: Path, build_dir: Path) -> None:
 
 
 def test_collect_corpus_dirs_parallel(httpd: Path, build_dir: Path) -> None:
-    """Detect parallel AFL output layout."""
+    """Detect multi-instance fuzzer output layout."""
     cm = ConfigManager()
     rm = ReportManager(httpd, cm)
 
