@@ -1,0 +1,18 @@
+[bug]
+id = "CVE-2021-26690"
+description = "NULL pointer dereference in mod_session session_identity_decode"
+modules = ["mod_session"]
+version = "2.4.46"
+type = "null-dereference"
+references = [
+    "https://httpd.apache.org/security/vulnerabilities_24.html",
+    "https://nvd.nist.gov/vuln/detail/CVE-2021-26690",
+]
+
+[build]
+sanitizers = ["ubsan"]
+configure_flags = []
+
+[reproduce]
+timeout = 10
+harness = "mod_fuzzy_proto_session"

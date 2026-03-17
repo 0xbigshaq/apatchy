@@ -1,0 +1,9 @@
+http {
+  method: GET
+  uri: ""
+  body: "/"
+}
+cookie {
+  session_data: "="
+}
+route: ROUTE_K
