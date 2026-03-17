@@ -118,4 +118,6 @@ framework/introspect.json
 framework/introspect-report/
 framework/corpus/
 
+.proto_gentoolchain/libprotobuf-mutator
+framework/.proto_gentoolchain/libprotobuf-mutator
 .proto_gen
