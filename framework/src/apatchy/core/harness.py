@@ -146,7 +146,7 @@ class HarnessBuilder:
 
         # Proto harnesses (.cc) need a completely different build pipeline
         if harness_src.suffix == ".cc":
-            self._build_proto_harness(output_name, harness_src, cflags, ldflags)
+            self._build_proto_harness(output_name, harness_src, cflags, ldflags, mode=mode)
             return
 
         # Add harness directory to include path so #include "fuzz_common.h" works
@@ -364,7 +364,7 @@ class HarnessBuilder:
         ]
         self.runner.run_build(cmd, label="Linking harness")
 
-    def _build_proto_harness(self, output_name, harness_src, cflags, ldflags):
+    def _build_proto_harness(self, output_name, harness_src, cflags, ldflags, mode="standalone"):
         """Build a protobuf-based harness using libprotobuf-mutator.
 
         Pipeline:
@@ -458,7 +458,7 @@ class HarnessBuilder:
             link_ldflags,
             cc=cxx,
             allow_muldefs=True,
-            skip_afl_rt=True,
+            skip_afl_rt=mode in ("coverage", "profile", "libfuzzer"),
         )
 
         # Write compile_commands.json so clangd can resolve proto/LPM headers
