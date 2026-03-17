@@ -27,10 +27,9 @@ def test_prepare_corpus_creates_dirs(tmp_path):
 
 
 def test_prepare_corpus_writes_default_seed(tmp_path):
-    """prepare_corpus() writes a default HTTP seed file."""
+    """prepare_corpus() writes a default HTTP seed file when using default seed dir."""
     fuzzer = _make_fuzzer(tmp_path)
     seed_path, _ = fuzzer.prepare_corpus(
-        seed_dir="corpus-in",
         output_dir="corpus-out",
     )
     seeds = list(seed_path.iterdir())
@@ -60,8 +59,8 @@ def test_prepare_corpus_skips_seed_if_not_empty(tmp_path):
 def test_prepare_corpus_idempotent(tmp_path):
     """Calling prepare_corpus() twice is a no-op."""
     fuzzer = _make_fuzzer(tmp_path)
-    p1, _ = fuzzer.prepare_corpus(seed_dir="in", output_dir="out")
-    p2, _ = fuzzer.prepare_corpus(seed_dir="in", output_dir="out")
+    p1, _ = fuzzer.prepare_corpus(output_dir="out")
+    p2, _ = fuzzer.prepare_corpus(output_dir="out")
     assert p1 == p2
     assert len(list(p1.iterdir())) == 1
 
