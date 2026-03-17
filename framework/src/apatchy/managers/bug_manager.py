@@ -211,10 +211,14 @@ class BugManager:
             logger.info("No seeds found, generating...")
             bug.generate_seeds()
 
-        # Find harness
-        harness_path = self._find_harness()
-        if harness_path is None:
-            logger.error("No harness binary found. Run 'apatchy bug setup %s' first.", cve_id)
+        # Find harness, picking the right binary for the bug's harness type
+        from apatchy.core.harness import HarnessBuilder
+
+        is_proto = HarnessBuilder.is_proto(bug.harness)
+        harness_name = "fuzz_harness_libfuzzer" if is_proto else "fuzz_harness_standalone"
+        harness_path = Config.WORK_DIR / harness_name
+        if not harness_path.exists():
+            logger.error("No %s binary found. Run 'apatchy bug setup %s' first.", harness_name, cve_id)
             return
 
         # TODO(#27): detect harness version via `fuzz_harness --version`
@@ -254,6 +258,7 @@ class BugManager:
                 harness_path,
                 suppress=bug.suppress_file,
                 timeout=bug.triage_timeout,
+                is_libfuzzer=is_proto,
             )
 
     def _resolve_bug_dir(self, cve_id: str) -> Path:
