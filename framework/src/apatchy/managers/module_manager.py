@@ -129,10 +129,7 @@ class ModuleManager:
         output = self.modules_out / f"{name}.so"
 
         if cc is None:
-            cc = (
-                toolchain_config.resolve_tool("clang")
-                or toolchain_config.resolve_tool("gcc")
-            )
+            cc = toolchain_config.resolve_tool("clang") or toolchain_config.resolve_tool("gcc")
         else:
             cc = toolchain_config.resolve_tool(cc) or cc
 
