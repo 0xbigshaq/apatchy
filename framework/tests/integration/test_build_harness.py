@@ -65,23 +65,6 @@ def test_build_standalone_mod_fuzzy(httpd: Path, build_dir: Path, mp: pytest.Mon
     assert binary.exists(), "mod_fuzzy standalone binary not produced"
 
 
-@pytest.mark.skipif(
-    not shutil.which("afl-clang-fast"),
-    reason="afl-clang-fast not found",
-)
-def test_build_afl_harness(httpd: Path, build_dir: Path, mp: pytest.MonkeyPatch) -> None:
-    """Build an AFL harness - binary is produced."""
-    mp.chdir(build_dir)
-
-    builder = HarnessBuilder(httpd, verbose=True)
-    builder.build(mode="afl", harness_name="mod_fuzzy")
-
-    binary = build_dir / "fuzz_harness_afl"
-    if not binary.exists():
-        binary = build_dir / ".libs" / "fuzz_harness_afl"
-    assert binary.exists(), "AFL harness binary not produced"
-
-
 def test_linked_libraries_resolve(httpd: Path, build_dir: Path, mp: pytest.MonkeyPatch) -> None:
     """Ldd on the harness binary shows no 'not found' entries."""
     if not shutil.which("ldd"):

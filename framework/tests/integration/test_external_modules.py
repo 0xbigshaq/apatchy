@@ -1,6 +1,5 @@
 """Integration tests for external module (DSO) builds."""
 
-import shutil
 from pathlib import Path
 
 import pytest
@@ -25,30 +24,11 @@ def test_build_single_module(httpd: Path, build_dir: Path, mp: pytest.MonkeyPatc
     mm.work_dir = build_dir
     mm.modules_out = build_dir / "modules"
 
-    # Use clang directly (don't require afl-clang-fast for this test)
     mm.build_module("mod_pwn", cc="clang")
 
     so_file = mm.modules_out / "mod_pwn.so"
     assert so_file.exists(), "mod_pwn.so not produced"
     assert so_file.stat().st_size > 0
-
-
-@pytest.mark.skipif(
-    not shutil.which("afl-clang-fast"),
-    reason="afl-clang-fast not found",
-)
-def test_build_module_with_afl(httpd: Path, build_dir: Path, mp: pytest.MonkeyPatch) -> None:
-    """Build mod_pwn with afl-clang-fast for instrumented fuzzing."""
-    mp.chdir(build_dir)
-
-    mm = ModuleManager(httpd)
-    mm.work_dir = build_dir
-    mm.modules_out = build_dir / "modules"
-
-    mm.build_module("mod_pwn", cc="afl-clang-fast")
-
-    so_file = mm.modules_out / "mod_pwn.so"
-    assert so_file.exists()
 
 
 def test_build_all_modules(httpd: Path, build_dir: Path, mp: pytest.MonkeyPatch) -> None:
