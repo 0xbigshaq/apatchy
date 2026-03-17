@@ -8,11 +8,6 @@ from apatchy.core.harness import COMPILERS, HarnessBuilder
 # --- COMPILERS mapping ---
 
 
-def test_compilers_afl():
-    """COMPILERS maps 'afl' to afl-clang-fast."""
-    assert COMPILERS["afl"] == "afl-clang-fast"
-
-
 def test_compilers_libfuzzer():
     """COMPILERS maps 'libfuzzer' to clang."""
     assert COMPILERS["libfuzzer"] == "clang"

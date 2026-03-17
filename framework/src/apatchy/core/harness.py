@@ -2,7 +2,7 @@
 
 :class:`HarnessBuilder` compiles harness sources against the Apache
 build tree and links them with all statically-built modules, producing a
-self-contained binary for AFL++, LibFuzzer, or standalone execution.
+self-contained binary for LibFuzzer or standalone execution.
 """
 
 import json
@@ -19,7 +19,6 @@ logger = get_logger(__name__)
 
 #: Compiler selection per build mode.
 COMPILERS = {
-    "afl": "afl-clang-fast",
     "libfuzzer": "clang",
     "standalone": "clang",
     "coverage": "clang",
@@ -88,8 +87,8 @@ class HarnessBuilder:
         Parameters
         ----------
         mode : str
-            One of ``"afl"``, ``"libfuzzer"``, ``"standalone"``, or
-            ``"coverage"``.
+            One of ``"libfuzzer"``, ``"standalone"``, ``"coverage"``,
+            or ``"profile"``.
         cflags : str
             Extra compiler flags.
         ldflags : str
@@ -111,7 +110,7 @@ class HarnessBuilder:
         if resolved_cc:
             cc = resolved_cc
         else:
-            self.logger.error(f"Compiler '{cc}' not found. Is AFL++ installed?")
+            self.logger.error(f"Compiler '{cc}' not found")
             raise FileNotFoundError(f"{cc} not found in PATH")
 
         self.logger.info(f"Using compiler: {cc}")
@@ -128,9 +127,7 @@ class HarnessBuilder:
                         ldflags = f"{ldflags} {token}"
 
         # Add mode-specific defines so the harness compiles the right entry point
-        if mode == "afl":
-            cflags = f"-DAFL_FUZZ {cflags}"
-        elif mode == "libfuzzer":
+        if mode == "libfuzzer":
             cflags = f"-DLIBFUZZER -fsanitize=fuzzer {cflags}"
             ldflags = f"-fsanitize=fuzzer {ldflags}"
 
@@ -146,7 +143,7 @@ class HarnessBuilder:
 
         # Proto harnesses (.cc) need a completely different build pipeline
         if harness_src.suffix == ".cc":
-            self._build_proto_harness(output_name, harness_src, cflags, ldflags, mode=mode)
+            self._build_proto_harness(output_name, harness_src, cflags, ldflags)
             return
 
         # Add harness directory to include path so #include "fuzz_common.h" works
@@ -172,58 +169,16 @@ class HarnessBuilder:
         # Compile modules.c (provides ap_prelinked_modules, ap_prelinked_module_symbols)
         self._compile_object(str(self.httpd_root / "modules.c"), "modules.lo", cflags, cc)
 
-        # All harness modes provide their own main() which conflicts with
+        # Harness modes provide their own main() which conflicts with
         # Apache's main() in libmain.a. Use -z muldefs to allow both;
         # our object file main() wins over the archive's.
-        allow_muldefs = mode in ("afl", "libfuzzer", "standalone")
+        allow_muldefs = mode in ("libfuzzer", "standalone")
 
-        # Coverage mode uses a separate Apache tree without AFL
-        # instrumentation, so afl-compiler-rt.o is unnecessary and harmful.
-        # Standalone links against the existing (possibly AFL-instrumented)
-        # tree and needs the runtime.
-        skip_afl_rt = mode in ("coverage", "profile", "libfuzzer")
-
-        # AFL-instrumented Apache objects use SanCov with non-PIC
-        # R_X86_64_32S relocations. Disable PIE to avoid linker errors.
         if "-no-pie" not in ldflags:
             ldflags = f"{ldflags} -no-pie"
 
-        # Link everything
-        objects = ["fuzz_harness.lo"]
-        objects.append("fuzz_common.lo")
-        objects.extend(["buildmark.lo", "modules.lo"])
-        self._link_harness(output_name, objects, cflags, ldflags, cc, allow_muldefs, skip_afl_rt)
-
-    @staticmethod
-    def _find_afl_compiler_rt() -> str:
-        """Locate afl-compiler-rt.o needed to link AFL-instrumented objects."""
-        # Toolchain-local copy (from `apatchy setup afl`)
-        local = Config.TOOLCHAIN_DIR / "aflplusplus" / "afl-compiler-rt.o"
-        if local.exists():
-            return str(local)
-        # System-installed AFL++
-        system = Path("/usr/lib/afl/afl-compiler-rt.o")
-        if system.exists():
-            return str(system)
-        # Try afl-clang-fast --print-runtime-dir (AFL++ >= 4.x)
-        afl_cc = toolchain_config.resolve_tool("afl-clang-fast")
-        if afl_cc:
-            import subprocess
-
-            try:
-                result = subprocess.run(
-                    [afl_cc, "--print-runtime-dir"],
-                    capture_output=True,
-                    text=True,
-                    timeout=5,
-                )
-                rt_dir = result.stdout.strip()
-                candidate = Path(rt_dir) / "afl-compiler-rt.o"
-                if candidate.exists():
-                    return str(candidate)
-            except (subprocess.TimeoutExpired, OSError):
-                pass
-        return ""
+        objects = ["fuzz_harness.lo", "fuzz_common.lo", "buildmark.lo", "modules.lo"]
+        self._link_harness(output_name, objects, cflags, ldflags, cc, allow_muldefs)
 
     def get_include_paths(self):
         """Return all -I include flags for Apache/APR/APR-Util headers."""
@@ -287,7 +242,7 @@ class HarnessBuilder:
                 libs.append(flag)
         return libs
 
-    def _link_harness(self, output, objects, cflags, ldflags, cc="clang", allow_muldefs=False, skip_afl_rt=False):
+    def _link_harness(self, output, objects, cflags, ldflags, cc="clang", allow_muldefs=False):
         modules_dir = self.httpd_root / "modules"
 
         libmain = f"{self.httpd_root}/server/libmain.la"
@@ -332,16 +287,6 @@ class HarnessBuilder:
                 "-Wl,-u,ap_rxplus_exec",
             ]
 
-        # When linking non-AFL modes against AFL-instrumented Apache objects,
-        # we need the AFL compiler runtime to satisfy __afl_area_ptr etc.
-        # Skip for coverage mode: Apache is rebuilt without AFL, and the
-        # runtime's dlopen() hook aborts when modules load shared libs.
-        afl_rt = []
-        if not skip_afl_rt and cc != "afl-clang-fast":
-            rt = self._find_afl_compiler_rt()
-            if rt:
-                afl_rt = [rt]
-
         cmd = [
             str(self.libtool),
             "--mode=link",
@@ -356,7 +301,6 @@ class HarnessBuilder:
             *server_libs,
             f"{self.httpd_root}/srclib/apr-util/libaprutil-1.la",
             f"{self.httpd_root}/srclib/apr/libapr-1.la",
-            *afl_rt,
             *system_libs,
             "-luuid",
             "-lcrypt",
@@ -364,7 +308,7 @@ class HarnessBuilder:
         ]
         self.runner.run_build(cmd, label="Linking harness")
 
-    def _build_proto_harness(self, output_name, harness_src, cflags, ldflags, mode="standalone"):
+    def _build_proto_harness(self, output_name, harness_src, cflags, ldflags):
         """Build a protobuf-based harness using libprotobuf-mutator.
 
         Pipeline:
@@ -458,7 +402,6 @@ class HarnessBuilder:
             link_ldflags,
             cc=cxx,
             allow_muldefs=True,
-            skip_afl_rt=mode in ("coverage", "profile", "libfuzzer"),
         )
 
         # Write compile_commands.json so clangd can resolve proto/LPM headers
