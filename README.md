@@ -1,22 +1,19 @@
-
 <img align="right" src="docs/apatchy-logo-transparent.png" alt="apatchy" width="200">
 
 <div id="toc">
-  <ul style="list-style: none">
-    <summary>
-      <h1> apatchy </h1>
+  <ul align="center" style="list-style: none">
+    <summary align="center">
+    <h1> apatchy </h1>
     </summary>
-    <p align="left">
-      <i>An in-process fuzzing framework for Apache HTTPD</i>
-      <br />
-      <a href='https://pwner.gg/apatchy/'>
-      <img src='https://img.shields.io/badge/docs-8A2BE2' />   <img src='https://img.shields.io/github/v/tag/0xbigshaq/apatchy?include_prereleases&logo=apache&logoColor=orange' /> 
-      </a>
-    </p>
+    <i>An in-process fuzzing framework for Apache HTTPD</i>
+  </ul>
+  <ul align="center">
+    <a href='https://pwner.gg/apatchy/'>
+    <img src='https://img.shields.io/badge/docs-8A2BE2' />
+    <img src='https://img.shields.io/github/v/tag/0xbigshaq/apatchy?include_prereleases&logo=apache&logoColor=orange' /> 
+    </a>
   </ul>
 </div>
-
----
 
 apatchy lets you fuzz Apache's full HTTP request processing pipeline - parsing, hooks, filters, handlers - without any network I/O. It replaces Apache's socket layer with custom I/O filters, feeding raw bytes directly into the same code paths that handle real HTTP traffic.
 
