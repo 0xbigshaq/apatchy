@@ -241,12 +241,14 @@ class MethodDispatcher:
 
         self.report_manager = ReportManager(httpd_root, self.config_manager)
 
-        # Find a harness binary for triage. Prefer standalone (reads from stdin).
+        # Find a harness binary for triage. Prefer libfuzzer (handles proto).
         harness_path = None
-        for name in ("fuzz_harness_standalone", "fuzz_harness_libfuzzer"):
+        is_libfuzzer = False
+        for name in ("fuzz_harness_libfuzzer", "fuzz_harness_standalone"):
             candidate = Config.WORK_DIR / name
             if candidate.exists():
                 harness_path = candidate
+                is_libfuzzer = name == "fuzz_harness_libfuzzer"
                 break
 
         if not harness_path:
@@ -262,6 +264,9 @@ class MethodDispatcher:
             return
 
         if args.pipeline:
+            if is_libfuzzer:
+                logger.error("Pipeline triage requires fuzz_harness_standalone (multi-request concatenation).")
+                return
             self.report_manager.triage_pipeline(
                 args.pipeline,
                 harness_path,
@@ -276,6 +281,7 @@ class MethodDispatcher:
                 no_color=args.no_color,
                 suppress=getattr(args, "suppress", None),
                 timeout=args.timeout,
+                is_libfuzzer=is_libfuzzer,
             )
         else:
             self.report_manager.triage_crash(
@@ -284,6 +290,7 @@ class MethodDispatcher:
                 no_color=args.no_color,
                 suppress=getattr(args, "suppress", None),
                 timeout=args.timeout,
+                is_libfuzzer=is_libfuzzer,
             )
 
     def _get_toolchain_manager(self, verbose: bool = False) -> ToolchainManager:

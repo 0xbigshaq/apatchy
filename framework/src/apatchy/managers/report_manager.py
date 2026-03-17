@@ -1455,6 +1455,7 @@ class ReportManager:
         no_color: bool = False,
         suppress: Optional[str] = None,
         timeout: int = 30,
+        is_libfuzzer: bool = False,
     ) -> None:
         """Replay *crash_file* through *harness_binary* and print the sanitizer output.
 
@@ -1471,27 +1472,37 @@ class ReportManager:
             self.logger.error(str(e))
             return
 
-        cmd = [
-            str(harness_binary),
-            "-f",
-            str(config_path),
-            "-d",
-            str(self.work_dir),
-        ]
-
         try:
-            crash_data = Path(crash_file).read_bytes()
-            # Run harness with crash input piped to stdin.
-            # We use subprocess directly because ProcessRunner doesn't
-            # support binary stdin.
-            result = subprocess.run(  # noqa: UP022
-                cmd,
-                env=env,
-                input=crash_data,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                timeout=timeout,
-            )
+            if is_libfuzzer:
+                cmd = [
+                    str(harness_binary),
+                    "-runs=0",
+                    str(Path(crash_file).resolve()),
+                ]
+                result = subprocess.run(  # noqa: UP022
+                    cmd,
+                    env=env,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    timeout=timeout,
+                )
+            else:
+                cmd = [
+                    str(harness_binary),
+                    "-f",
+                    str(config_path),
+                    "-d",
+                    str(self.work_dir),
+                ]
+                crash_data = Path(crash_file).read_bytes()
+                result = subprocess.run(  # noqa: UP022
+                    cmd,
+                    env=env,
+                    input=crash_data,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    timeout=timeout,
+                )
 
             self.logger.info("Crash Output (Stderr):")
             print(result.stderr.decode("utf-8", errors="replace"))
@@ -1556,6 +1567,7 @@ class ReportManager:
         no_color: bool = False,
         suppress: Optional[str] = None,
         timeout: int = 30,
+        is_libfuzzer: bool = False,
     ) -> None:
         """Triage every crash file in *crash_dir* individually and print a summary table."""
         crash_dir = Path(crash_dir)
@@ -1577,13 +1589,15 @@ class ReportManager:
             self.logger.error(str(e))
             return
 
-        cmd = [
-            str(harness_binary),
-            "-f",
-            str(config_path),
-            "-d",
-            str(self.work_dir),
-        ]
+        standalone_cmd = None
+        if not is_libfuzzer:
+            standalone_cmd = [
+                str(harness_binary),
+                "-f",
+                str(config_path),
+                "-d",
+                str(self.work_dir),
+            ]
 
         self.logger.info(f"Bulk triage: {len(files)} crash files from {crash_dir}")
 
@@ -1596,7 +1610,6 @@ class ReportManager:
 
         with Live(spinner, console=console, refresh_per_second=12):
             for i, crash_file in enumerate(files, 1):
-                # Update status line with current file and running totals.
                 counts_str = ", ".join(f"{v} {k}" for k, v in bug_counts.most_common()) if bug_counts else "-"
                 spinner.update(
                     task_id,
@@ -1607,15 +1620,29 @@ class ReportManager:
                 )
 
                 try:
-                    crash_data = crash_file.read_bytes()
-                    result = subprocess.run(  # noqa: UP022
-                        cmd,
-                        env=env,
-                        input=crash_data,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        timeout=timeout,
-                    )
+                    if is_libfuzzer:
+                        cmd = [
+                            str(harness_binary),
+                            "-runs=0",
+                            str(crash_file.resolve()),
+                        ]
+                        result = subprocess.run(  # noqa: UP022
+                            cmd,
+                            env=env,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            timeout=timeout,
+                        )
+                    else:
+                        crash_data = crash_file.read_bytes()
+                        result = subprocess.run(  # noqa: UP022
+                            standalone_cmd,
+                            env=env,
+                            input=crash_data,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            timeout=timeout,
+                        )
                     stderr_text = result.stderr.decode("utf-8", errors="replace")
                     bug_type = self._classify_bugs(stderr_text)
                     exit_str = self._format_exit(result.returncode)
