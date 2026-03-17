@@ -154,7 +154,7 @@ COMPAT_REGISTRY: List[CompatEntry] = [
     CompatEntry(
         id="wo-strict-prototype",
         description=("TODO"),
-        max_version="2.4.46",
+        max_version="2.4.51",
         cflags=[
             "-Wno-strict-prototypes",
             "-Wno-unused-but-set-variable",

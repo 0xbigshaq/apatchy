@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from apatchy.compat import get_compat_flags
+from apatchy.core import toolchain_config
 from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -188,6 +189,8 @@ class ConfigManager:
                 self.logger.info(f"Applying compat fix: {entry_id}")
             cflags.extend(compat.cflags)
             ldflags.extend(compat.ldflags)
+
+        cc = cc or toolchain_config.resolve_tool("clang")
 
         result = {
             "CFLAGS": " ".join(cflags),
