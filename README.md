@@ -1,14 +1,20 @@
 
 <img align="right" src="docs/apatchy-logo-transparent.png" alt="apatchy" width="200">
 
-<p align="left">
-<h1 style="border: none; margin-bottom:0px;" align="left">apatchy</h1>
-  <i>An in-process fuzzing framework for Apache HTTPD</i>
-  <br />
-  <a href='https://pwner.gg/apatchy/'>
-  <img src='https://img.shields.io/badge/docs-8A2BE2' />   <img src='https://img.shields.io/github/v/tag/0xbigshaq/apatchy?include_prereleases&logo=apache&logoColor=orange' /> 
-  </a>
-</p>
+<div id="toc">
+  <ul style="list-style: none">
+    <summary>
+      <h1> apatchy </h1>
+    </summary>
+    <p align="left">
+      <i>An in-process fuzzing framework for Apache HTTPD</i>
+      <br />
+      <a href='https://pwner.gg/apatchy/'>
+      <img src='https://img.shields.io/badge/docs-8A2BE2' />   <img src='https://img.shields.io/github/v/tag/0xbigshaq/apatchy?include_prereleases&logo=apache&logoColor=orange' /> 
+      </a>
+    </p>
+  </ul>
+</div>
 
 ---
 
