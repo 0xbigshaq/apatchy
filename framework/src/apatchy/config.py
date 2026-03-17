@@ -28,7 +28,7 @@ class Config:
     TOOLCHAIN_DIR = WORK_DIR / "toolchain"
 
     # Defaults
-    DEFAULT_APACHE_VERSION = "2.4.62"
+    DEFAULT_APACHE_VERSION = "2.4.46"
 
     # Toolchain config
     TOOLCHAIN_CONFIG = WORK_DIR / "toolchain.config"

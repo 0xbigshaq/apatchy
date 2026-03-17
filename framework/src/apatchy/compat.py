@@ -151,6 +151,16 @@ COMPAT_REGISTRY: List[CompatEntry] = [
             "-Wno-single-bit-bitfield-constant-conversion",
         ],
     ),
+    CompatEntry(
+        id="wo-strict-prototype",
+        description=("TODO"),
+        max_version="2.4.46",
+        cflags=[
+            "-Wno-strict-prototypes",
+            "-Wno-unused-but-set-variable",
+            "-Wno-single-bit-bitfield-constant-conversion",
+        ],
+    ),
 ]
 
 
