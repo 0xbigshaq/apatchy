@@ -13,7 +13,6 @@
 #include "rewrite_request.pb.h"
 #include "src/libfuzzer/libfuzzer_macro.h"
 
-
 DEFINE_PROTO_FUZZER(const RewriteRequest &rw)
 {
     if (!proto_harness_init())

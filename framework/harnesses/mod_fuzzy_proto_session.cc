@@ -9,9 +9,9 @@
  * Run:   apatchy fuzz --engine libfuzzer --config configs/session_crypto.conf
  */
 
-#include "session_crypto.pb.h"
 #include "proto_converters/converters.h"
 #include "proto_harness_common.h"
+#include "session_crypto.pb.h"
 #include "src/libfuzzer/libfuzzer_macro.h"
 
 DEFINE_PROTO_FUZZER(const SessionCryptoRequest &request)

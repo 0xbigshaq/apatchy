@@ -179,7 +179,8 @@ static const apr_bucket_type_t fuzz_bucket_type = {
     fuzz_bucket_read,
     apr_bucket_setaside_noop,
     apr_bucket_shared_split,
-    apr_bucket_shared_copy};
+    apr_bucket_shared_copy
+};
 
 static apr_bucket *fuzz_bucket_create(const char *data, apr_size_t length, apr_bucket_alloc_t *list)
 {
@@ -443,7 +444,8 @@ module AP_MODULE_DECLARE_DATA fuzz_module = {STANDARD20_MODULE_STUFF, NULL, NULL
 
 /* Dummy mpm_event_module to satisfy the linker (referenced in modules.c) */
 module AP_MODULE_DECLARE_DATA mpm_event_module = {
-    STANDARD20_MODULE_STUFF, NULL, NULL, NULL, NULL, NULL, NULL};
+    STANDARD20_MODULE_STUFF, NULL, NULL, NULL, NULL, NULL, NULL
+};
 
 /* ----------------------------------------------------------------
  * Fake MPM - processes one connection and exits

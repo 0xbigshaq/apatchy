@@ -9,8 +9,8 @@
  * matching the proto schema's route table exactly.
  */
 
-#include "session_crypto.pb.h"
 #include "proto_converters/converters.h"
+#include "session_crypto.pb.h"
 
 #include <cstring>
 #include <string>
@@ -30,23 +30,12 @@ struct RouteInfo {
 };
 
 static const RouteInfo ROUTES[] = {
-    {"/a", "session_crypto", 0},
-    {"/b", "session_plain", -1},
-    {"/c", "session_ovr", -1},
-    {"/d", "session_filter", 0},
-    {"/e", "session_expiry", -1},
-    {"/f", "session_auth", -1},
-    {"/g", "session_auth", -1},
-    {"/h", "session_auth", -1},
-    {"/i", "session2_rfc2965", -1},
-    {"/j", "session_dual", -1},
-    {"/k", "session_strip", -1},
-    {"/l", "session_empty", -1},
-    {"/m", "session_pf", 0},
-    {"/n", "session_alt", 1},
-    {"/o", "session_multi", 0},
-    {"/p", "session_shared", 0},
-    {"/q", "session_exec", 0},
+    {"/a", "session_crypto", 0}, {"/b", "session_plain", -1},  {"/c", "session_ovr", -1},
+    {"/d", "session_filter", 0}, {"/e", "session_expiry", -1}, {"/f", "session_auth", -1},
+    {"/g", "session_auth", -1},  {"/h", "session_auth", -1},   {"/i", "session2_rfc2965", -1},
+    {"/j", "session_dual", -1},  {"/k", "session_strip", -1},  {"/l", "session_empty", -1},
+    {"/m", "session_pf", 0},     {"/n", "session_alt", 1},     {"/o", "session_multi", 0},
+    {"/p", "session_shared", 0}, {"/q", "session_exec", 0},
 };
 
 struct CryptoKeys {
@@ -132,7 +121,9 @@ static std::string encrypt_session(const std::string &plaintext, int key_set)
     int ct_len = 0, final_len = 0;
 
     EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, k->aes_key, iv);
-    EVP_EncryptUpdate(ctx, ct.data(), &ct_len, (const uint8_t *)plaintext.data(), (int)plaintext.size());
+    EVP_EncryptUpdate(
+        ctx, ct.data(), &ct_len, (const uint8_t *)plaintext.data(), (int)plaintext.size()
+    );
     EVP_EncryptFinal_ex(ctx, ct.data() + ct_len, &final_len);
     EVP_CIPHER_CTX_free(ctx);
     ct_len += final_len;
@@ -155,8 +146,8 @@ static std::string url_encode(const std::string &input)
     std::string out;
     out.reserve(input.size() * 3);
     for (unsigned char c : input) {
-        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '=' ||
-            c == '&') {
+        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
+            c == '=' || c == '&') {
             out += (char)c;
         } else {
             out += '%';
@@ -167,9 +158,7 @@ static std::string url_encode(const std::string &input)
     return out;
 }
 
-void ApplySessionCrypto(
-    const SessionCookie &cookie, SessionRoute route, std::string &request
-)
+void ApplySessionCrypto(const SessionCookie &cookie, SessionRoute route, std::string &request)
 {
     int idx = static_cast<int>(route);
     if (idx < 0 || idx >= static_cast<int>(sizeof(ROUTES) / sizeof(ROUTES[0])))
@@ -187,7 +176,8 @@ void ApplySessionCrypto(
     std::string cookie_value;
     if (cookie.has_raw_override()) {
         cookie_value = base64_encode(
-            (const uint8_t *)cookie.raw_override().data(), cookie.raw_override().size());
+            (const uint8_t *)cookie.raw_override().data(), cookie.raw_override().size()
+        );
     } else if (r.key_set >= 0) {
         cookie_value = encrypt_session(cookie.session_data(), r.key_set);
     } else {
