@@ -3,7 +3,6 @@
 #include <cstring>
 #include <string>
 
-
 static const char *uri_payloads[] = {
     "/a/foo/bar/baz",
     "/a/../../etc/passwd",

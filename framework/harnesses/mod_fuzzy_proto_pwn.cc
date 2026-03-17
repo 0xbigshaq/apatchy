@@ -14,7 +14,6 @@
 #include "pwn_request.pb.h"
 #include "src/libfuzzer/libfuzzer_macro.h"
 
-
 DEFINE_PROTO_FUZZER(const PwnRequest &pwn)
 {
     if (!proto_harness_init())
