@@ -58,19 +58,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 
 #ifndef LIBFUZZER_MODE
 #include <unistd.h>
-
-#ifndef __AFL_LOOP
-#define __AFL_LOOP(x) 1
-#endif
-
 int main(int argc, char **argv) {
     uint8_t buf[1024 * 64];
-
-    while (__AFL_LOOP(10000)) {
-        ssize_t n = read(0, buf, sizeof(buf));
-        if (n <= 0) break;   /* EOF or error - exit cleanly */
-        LLVMFuzzerTestOneInput(buf, (size_t)n);
-    }
+    ssize_t n = read(0, buf, sizeof(buf));
+    if (n > 0) LLVMFuzzerTestOneInput(buf, (size_t)n);
     return 0;
 }
 #endif

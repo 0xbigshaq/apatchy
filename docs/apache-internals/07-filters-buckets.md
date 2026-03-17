@@ -629,7 +629,7 @@ The core input filter creates socket buckets that read from the client connectio
 
 ### Fuzzing: Replacing the Network Layer
 
-For fuzzing, we replace these core filters with our own that read from a memory buffer (the fuzzer input) and write to `/dev/null`. This is the fundamental trick that makes in-process fuzzing work - all the filters above the network layer operate identically, but instead of reading from a TCP socket, they read from AFL++'s mutated input buffer. See the Harness Design guide for details on how this replacement works.
+For fuzzing, we replace these core filters with our own that read from a memory buffer (the fuzzer input) and write to `/dev/null`. This is the fundamental trick that makes in-process fuzzing work - all the filters above the network layer operate identically, but instead of reading from a TCP socket, they read from the fuzzer's mutated input buffer. See the Harness Design guide for details on how this replacement works.
 
 ## Reading from Input Filters
 

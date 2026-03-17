@@ -25,9 +25,6 @@ Managers
 .. autoclass:: apatchy.managers.fuzz_manager.FuzzManager
    :members:
 
-.. autoclass:: apatchy.managers.mutator_manager.MutatorManager
-   :members:
-
 .. autoclass:: apatchy.managers.toolchain_manager.ToolchainManager
    :members:
 
@@ -65,9 +62,6 @@ Toolchain
    :members:
 
 .. autoclass:: apatchy.core.toolchain.simple.HeaderOrPkgTool
-   :members:
-
-.. autoclass:: apatchy.core.toolchain.afl.AflTool
    :members:
 
 .. autoclass:: apatchy.core.toolchain.llvm.LlvmTool

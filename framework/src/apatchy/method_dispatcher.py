@@ -241,10 +241,9 @@ class MethodDispatcher:
 
         self.report_manager = ReportManager(httpd_root, self.config_manager)
 
-        # Find a harness binary for triage. Prefer standalone (reads from
-        # stdin) over AFL (expects shared memory forkserver protocol).
+        # Find a harness binary for triage. Prefer standalone (reads from stdin).
         harness_path = None
-        for name in ("fuzz_harness_standalone", "fuzz_harness_afl"):
+        for name in ("fuzz_harness_standalone", "fuzz_harness_libfuzzer"):
             candidate = Config.WORK_DIR / name
             if candidate.exists():
                 harness_path = candidate

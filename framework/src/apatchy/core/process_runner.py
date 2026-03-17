@@ -85,7 +85,6 @@ class ProcessRunner:
 
         try:
             # When capture_output is False, we let stdout/stderr go to terminal
-            # This is key for AFL fuzzing UI
             if capture_output:
                 stdout_arg = subprocess.PIPE
                 stderr_arg = subprocess.PIPE
