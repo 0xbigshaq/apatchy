@@ -97,6 +97,7 @@ class FuzzManager:
         engine: str = "afl",
         mutator: Optional[list[str]] = None,
         grammar: Optional[str] = None,
+        seed_dir: Optional[str] = None,
         resume: bool = False,
         output_dir: str = BaseFuzzer.DEFAULT_OUTPUT_DIR,
         role: Optional[str] = None,
@@ -111,11 +112,11 @@ class FuzzManager:
             return
 
         fuzzer = engine_cls(self.config_manager)
-        seed_dir, out_dir = fuzzer.prepare_corpus(output_dir=output_dir, grammar=grammar)
+        seed_path, out_dir = fuzzer.prepare_corpus(seed_dir=seed_dir, output_dir=output_dir, grammar=grammar)
 
         fuzzer.start(
             harness_path,
-            seed_dir,
+            seed_path,
             out_dir,
             mutator=mutator,
             resume=resume,

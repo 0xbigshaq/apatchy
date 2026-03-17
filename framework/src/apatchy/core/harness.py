@@ -5,6 +5,7 @@ build tree and links them with all statically-built modules, producing a
 self-contained binary for AFL++, LibFuzzer, or standalone execution.
 """
 
+import json
 import re
 import subprocess
 from pathlib import Path
@@ -384,14 +385,14 @@ class HarnessBuilder:
             self.logger.error("libprotobuf-mutator not found. Run 'apatchy setup lpm' first.")
             raise FileNotFoundError("libprotobuf-mutator not found")
 
-        # Run protoc to generate .pb.h and .pb.cc
+        # Run protoc on all .proto files (protoc resolves imports automatically)
         gen_dir = Config.WORK_DIR / ".proto_gen"
         gen_dir.mkdir(exist_ok=True)
-        proto_file = Config.PROTOS_DIR / "http_request.proto"
 
+        proto_files = sorted(Config.PROTOS_DIR.glob("*.proto"))
         protoc = toolchain_config.resolve_tool("protoc") or "protoc"
         self.runner.run_build(
-            [protoc, f"--cpp_out={gen_dir}", f"--proto_path={Config.PROTOS_DIR}", str(proto_file)],
+            [protoc, f"--cpp_out={gen_dir}", f"--proto_path={Config.PROTOS_DIR}"] + [str(p) for p in proto_files],
             label="Generating protobuf sources",
         )
 
@@ -408,19 +409,30 @@ class HarnessBuilder:
             lpm_libs = [f"-L{lib_dir}", f"-L{lib_src}"]
         lpm_libs += ["-lprotobuf-mutator-libfuzzer", "-lprotobuf-mutator"]
 
-        # Compile http_request.pb.cc (pure C++, no libtool needed)
-        pb_cc = gen_dir / "http_request.pb.cc"
-        pb_obj = Config.WORK_DIR / "http_request.pb.o"
-        self.runner.run_build(
-            [cxx, "-c", "-O2", "-std=c++17", *pb_cflags.split(), f"-I{gen_dir}", str(pb_cc), "-o", str(pb_obj)],
-            label="Compiling http_request.pb.cc",
-        )
+        # Compile all generated .pb.cc files
+        pb_objects = []
+        for pb_cc in sorted(gen_dir.glob("*.pb.cc")):
+            pb_obj = Config.WORK_DIR / f"{pb_cc.stem}.o"
+            self.runner.run_build(
+                [cxx, "-c", "-O2", "-std=c++17", *pb_cflags.split(), f"-I{gen_dir}", str(pb_cc), "-o", str(pb_obj)],
+                label=f"Compiling {pb_cc.name}",
+            )
+            pb_objects.append(str(pb_obj))
 
         # Build cflags for the harness: Apache includes + proto gen dir + LPM includes
         harness_cflags = f"-I{harness_dir} -I{gen_dir} {lpm_includes} {pb_cflags} -std=c++17 {cflags}"
 
         # Compile harness .cc via libtool with clang++
         self._compile_object(str(harness_src), "fuzz_harness.lo", harness_cflags, cxx)
+
+        # Compile proto converter .cc files
+        converter_objects = []
+        converters_dir = harness_dir / "proto_converters"
+        if converters_dir.is_dir():
+            for src in sorted(converters_dir.glob("*.cc")):
+                obj_name = f"proto_{src.stem}.lo"
+                self._compile_object(str(src), obj_name, harness_cflags, cxx)
+                converter_objects.append(obj_name)
 
         # Compile fuzz_common.c with the C compiler via libtool
         c_cflags = f"-I{harness_dir} {cflags}"
@@ -431,12 +443,14 @@ class HarnessBuilder:
         self._compile_object(str(self.httpd_root / "modules.c"), "modules.lo", c_cflags, c_cc)
 
         # Link with clang++ so C++ stdlib resolves
-        extra_ldflags = " ".join(lpm_libs) + " " + pb_ldflags
+        extra_ldflags = " ".join(lpm_libs) + " " + pb_ldflags + " -lcrypto"
         link_ldflags = f"{ldflags} {extra_ldflags}"
         if "-no-pie" not in link_ldflags:
             link_ldflags = f"{link_ldflags} -no-pie"
 
-        objects = ["fuzz_harness.lo", "fuzz_common.lo", str(pb_obj), "buildmark.lo", "modules.lo"]
+        objects = (
+            ["fuzz_harness.lo"] + converter_objects + ["fuzz_common.lo"] + pb_objects + ["buildmark.lo", "modules.lo"]
+        )
         self._link_harness(
             output_name,
             objects,
@@ -445,6 +459,15 @@ class HarnessBuilder:
             cc=cxx,
             allow_muldefs=True,
             skip_afl_rt=True,
+        )
+
+        # Write compile_commands.json so clangd can resolve proto/LPM headers
+        self._write_proto_compile_commands(
+            harness_src,
+            harness_cflags,
+            c_cflags,
+            cxx,
+            c_cc,
         )
 
     @staticmethod
@@ -487,3 +510,50 @@ class HarnessBuilder:
         except (subprocess.TimeoutExpired, OSError):
             pass
         return ""
+
+    def _write_proto_compile_commands(self, harness_src, harness_cflags, c_cflags, cxx, c_cc):
+        """Write compile_commands.json for proto harness sources so clangd works."""
+        includes = self.get_include_paths()
+        harness_dir = harness_src.parent
+        directory = str(Config.WORK_DIR)
+
+        entries = [
+            {
+                "directory": directory,
+                "file": str(harness_src),
+                "arguments": [cxx, *harness_cflags.split(), *includes, "-c", str(harness_src)],
+            },
+            {
+                "directory": directory,
+                "file": str(harness_dir / "fuzz_common.c"),
+                "arguments": [c_cc, *c_cflags.split(), *includes, "-c", str(harness_dir / "fuzz_common.c")],
+            },
+        ]
+
+        # Add proto converter .cc files
+        converters_dir = harness_dir / "proto_converters"
+        if converters_dir.is_dir():
+            for src in sorted(converters_dir.glob("*.cc")):
+                entries.append(
+                    {
+                        "directory": directory,
+                        "file": str(src),
+                        "arguments": [cxx, *harness_cflags.split(), *includes, "-c", str(src)],
+                    }
+                )
+
+        cdb_path = harness_dir / "compile_commands.json"
+
+        # Merge with existing entries (from --bear builds) instead of overwriting
+        existing = []
+        if cdb_path.exists():
+            import contextlib
+
+            with contextlib.suppress(json.JSONDecodeError, OSError):
+                existing = json.loads(cdb_path.read_text())
+
+        new_files = {e["file"] for e in entries}
+        merged = [e for e in existing if e.get("file") not in new_files] + entries
+
+        cdb_path.write_text(json.dumps(merged, indent=2) + "\n")
+        self.logger.info(f"Wrote {cdb_path}")

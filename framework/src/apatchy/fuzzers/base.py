@@ -33,13 +33,14 @@ class BaseFuzzer(ABC):
 
         Returns (seed_path, output_path).
         """
+        using_custom_seed_dir = seed_dir is not None
         seed_path = self.work_dir / (seed_dir or self.DEFAULT_SEED_DIR)
         output_path = self.work_dir / (output_dir or self.DEFAULT_OUTPUT_DIR)
 
         seed_path.mkdir(exist_ok=True)
         output_path.mkdir(exist_ok=True)
 
-        if not any(seed_path.iterdir()):
+        if not using_custom_seed_dir and not any(seed_path.iterdir()):
             self.logger.info("Creating default seed...")
             (seed_path / "seed1.txt").write_bytes(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
 

@@ -165,6 +165,7 @@ def main():
         "--mutator", "-m", help="Comma-separated AFL++ custom mutator .so libraries (chained in order)"
     )
     fuzz_parser.add_argument("--grammar", "-g", help="Path to grammar file (sets GRAMMAR_FILE env var)")
+    fuzz_parser.add_argument("--seed-dir", default=None, help="Seed directory (default: fuzz-seeds)")
     fuzz_parser.add_argument("--resume", action="store_true", help="Resume from existing AFL output directory")
     fuzz_parser.add_argument(
         "--output-dir", default="fuzz-output", help="Fuzzer output directory (default: fuzz-output)"
