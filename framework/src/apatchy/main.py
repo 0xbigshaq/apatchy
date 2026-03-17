@@ -207,11 +207,10 @@ def main():
     coverage_sub = coverage_parser.add_subparsers(dest="action")
     coverage_report = _sub(coverage_sub, "report", help="Generate HTML coverage report from corpus")
     coverage_report.add_argument(
-        "--corpus-dir",
-        "--afl-dir",
+        "--fuzzer-dir",
         default="fuzz-output",
-        dest="corpus_dir",
-        help="Corpus directory (AFL output or plain directory of files)",
+        dest="fuzzer_dir",
+        help="Fuzzer output directory (default: fuzz-output)",
     )
     coverage_report.add_argument("--config", default="fuzz.conf", help="Httpd config for corpus replay")
     coverage_report.add_argument("--output", default="coverage-report", help="Output directory for HTML report")
@@ -253,13 +252,12 @@ def main():
     # Profile
     profile_parser = _sub(subparsers, "profile", help="Profile harness execution")
     profile_sub = profile_parser.add_subparsers(dest="action")
-    profile_callgrind = _sub(profile_sub, "callgrind", help="Replay AFL corpus under callgrind for kcachegrind")
+    profile_callgrind = _sub(profile_sub, "callgrind", help="Replay corpus under callgrind for kcachegrind")
     profile_callgrind.add_argument(
-        "--corpus-dir",
-        "--afl-dir",
+        "--fuzzer-dir",
         default="fuzz-output",
-        dest="corpus_dir",
-        help="Corpus directory (AFL output or plain directory of files)",
+        dest="fuzzer_dir",
+        help="Corpus directory (default: fuzz-output)",
     )
     profile_callgrind.add_argument("--config", default="fuzz.conf", help="Httpd config for corpus replay")
     profile_callgrind.add_argument("--output", default="callgrind-out", help="Output directory for callgrind files")

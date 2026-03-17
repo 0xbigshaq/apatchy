@@ -380,7 +380,7 @@ class MethodDispatcher:
             self.config_manager = ConfigManager(build_mode="coverage", config_name=args.config)
             self.report_manager = ReportManager(httpd_root, self.config_manager)
             self.report_manager.generate_coverage(
-                corpus_dir=args.corpus_dir,
+                corpus_dir=args.fuzzer_dir,
                 config_name=args.config,
                 output_dir=args.output,
                 harness_name=getattr(args, "harness", None),
@@ -416,7 +416,7 @@ class MethodDispatcher:
             self.config_manager = ConfigManager(config_name=args.config)
             self.report_manager = ReportManager(httpd_root, self.config_manager)
             self.report_manager.generate_callgrind(
-                corpus_dir=args.corpus_dir,
+                corpus_dir=args.fuzzer_dir,
                 config_name=args.config,
                 output_dir=args.output,
                 harness_name=getattr(args, "harness", None),
