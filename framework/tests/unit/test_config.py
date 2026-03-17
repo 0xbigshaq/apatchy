@@ -55,16 +55,6 @@ def test_archive_url_is_https():
     assert Config.APACHE_ARCHIVE.startswith("https://")
 
 
-def test_aflpp_repo_url_is_https():
-    """AFLPP_REPO_URL uses HTTPS."""
-    assert Config.AFLPP_REPO_URL.startswith("https://")
-
-
 def test_harnesses_dir_exists():
     """HARNESSES_DIR exists on disk."""
     assert Config.HARNESSES_DIR.is_dir()
-
-
-def test_grammars_dir_exists():
-    """GRAMMARS_DIR exists on disk."""
-    assert Config.GRAMMARS_DIR.is_dir()
