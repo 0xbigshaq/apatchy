@@ -1,4 +1,4 @@
-<img align="right" src="docs/apatchy-logo-transparent-md.png" alt="apatchy" width="200">
+<img align="right" src="docs/apatchy-logo-transparent-md.png" alt="apatchy" width="180">
 
 <div id="toc">
   <ul align="center" style="list-style: none">
