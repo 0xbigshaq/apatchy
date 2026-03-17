@@ -1,0 +1,58 @@
+syntax = "proto2";
+
+import "http_request.proto";
+
+enum PwnStrategy {
+  PWN_OVERFLOW = 0;
+  PWN_FORMAT = 1;
+  PWN_INTEGER = 2;
+  PWN_UAF = 3;
+  PWN_NULL = 4;
+  PWN_DOUBLE = 5;
+  PWN_HEAP = 6;
+}
+
+enum FormatPayload {
+  FMT_S = 0;
+  FMT_X = 1;
+  FMT_N = 2;
+  FMT_P = 3;
+  FMT_D = 4;
+  FMT_SSS = 5;
+  FMT_XXXX = 6;
+  FMT_NNN = 7;
+  FMT_1_S = 8;
+  FMT_10_X = 9;
+  FMT_100_N = 10;
+  FMT_1000S = 11;
+  FMT_10000X = 12;
+}
+
+enum IntPayload {
+  INT_ZERO = 0;
+  INT_ONE = 1;
+  INT_NEG_ONE = 2;
+  INT_127 = 3;
+  INT_128 = 4;
+  INT_255 = 5;
+  INT_256 = 6;
+  INT_32767 = 7;
+  INT_32768 = 8;
+  INT_65535 = 9;
+  INT_65536 = 10;
+  INT_MAX32 = 11;
+  INT_MAX32_PLUS1 = 12;
+  INT_MIN32 = 13;
+  INT_MIN32_MINUS1 = 14;
+  INT_MAX_U32 = 15;
+  INT_MAX_U32_PLUS1 = 16;
+}
+
+message PwnRequest {
+  required HttpRequest http = 1;
+  required PwnStrategy strategy = 2;
+  optional FormatPayload format_payload = 3;
+  optional IntPayload int_payload = 4;
+  optional uint32 overflow_size_idx = 5;
+  optional uint32 overflow_char = 6;
+}

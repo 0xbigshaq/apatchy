@@ -33,12 +33,8 @@ class Config:
     # Toolchain config
     TOOLCHAIN_CONFIG = WORK_DIR / "toolchain.config"
 
-    # AFL++ / Mutators
-    AFLPP_REPO_URL = "https://github.com/AFLplusplus/AFLplusplus"
     FRAMEWORK_DIR = Path(__file__).parent.parent.parent.resolve()
-    GRAMMARS_DIR = FRAMEWORK_DIR / "grammars"
     PROTOS_DIR = FRAMEWORK_DIR / "protos"
-    CUSTOM_MUTATORS_DIR = FRAMEWORK_DIR / "custom_mutators"
     HARNESSES_DIR = FRAMEWORK_DIR / "harnesses"
     EXTERNAL_MODULES_DIR = Path(__file__).parent / "external_modules"
     DEV_DIR = WORK_DIR / "dev"
