@@ -2,6 +2,7 @@ import re
 import subprocess
 import time
 from collections import deque
+from pathlib import Path
 from typing import Dict, List, Optional, Union
 
 from rich.console import Console, Group
@@ -50,10 +51,11 @@ def _fmt_num(n: str) -> str:
 class LibFuzzerUI:  # noqa: D101
     MAX_WIDTH = 90
 
-    def __init__(self, log_height: int = 8, max_width: int = MAX_WIDTH):
+    def __init__(self, log_height: int = 8, max_width: int = MAX_WIDTH, crashes_dir: Optional[Path] = None):
         self.console = Console()
         self.log_height = log_height
         self.max_width = max_width
+        self.crashes_dir = crashes_dir
         self.log_buffer: deque = deque(maxlen=log_height)
         self.start_time = 0.0
         self.last_new_time = 0.0
@@ -70,29 +72,40 @@ class LibFuzzerUI:  # noqa: D101
             "rss": "0Mb",
             "length": "0/0",
             "strategy": "-",
-            "crashes": "0",
         }
 
     def run(self, command: Union[str, List[str]], env: Optional[Dict[str, str]] = None) -> int:  # noqa: D102
         self.start_time = time.monotonic()
+        returncode = 0
 
-        with Live(self._render(), refresh_per_second=8, console=self.console) as live, subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            env=env,
-        ) as proc:
-            for line in proc.stdout:
-                clean = line.rstrip()
-                if not clean:
+        with Live(self._render(), refresh_per_second=8, console=self.console) as live:
+            while True:
+                with subprocess.Popen(
+                    command,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    env=env,
+                ) as proc:
+                    for line in proc.stdout:
+                        clean = line.rstrip()
+                        if not clean:
+                            continue
+                        stripped = _ANSI_RE.sub("", clean)
+                        self._parse_line(stripped)
+                        ts = time.strftime("%H:%M:%S")
+                        self.log_buffer.append(f"[dim]{ts}[/dim] {escape(stripped)}")
+                        live.update(self._render())
+                    returncode = proc.wait()
+
+                # code 1 = crash found; restart to keep fuzzing the corpus
+                if returncode == 1:
+                    ts = time.strftime("%H:%M:%S")
+                    self.log_buffer.append(f"[dim]{ts}[/dim] [yellow][~] crash saved, restarting...[/yellow]")
+                    live.update(self._render())
                     continue
-                stripped = _ANSI_RE.sub("", clean)
-                self._parse_line(stripped)
-                ts = time.strftime("%H:%M:%S")
-                self.log_buffer.append(f"[dim]{ts}[/dim] {escape(stripped)}")
-                live.update(self._render())
-            returncode = proc.wait()
+
+                break
 
         elapsed = time.monotonic() - self.start_time
         mins, secs = divmod(int(elapsed), 60)
@@ -127,10 +140,11 @@ class LibFuzzerUI:  # noqa: D101
 
         if "Test unit written to" in line:
             self.last_crash_time = time.monotonic()
-            try:
-                self.stats["crashes"] = str(int(self.stats["crashes"]) + 1)
-            except ValueError:
-                self.stats["crashes"] = "1"
+
+    def _count_crashes(self) -> int:
+        if self.crashes_dir and self.crashes_dir.exists():
+            return sum(1 for f in self.crashes_dir.iterdir() if f.is_file())
+        return 0
 
     def _render(self) -> Group:
         now = time.monotonic()
@@ -145,12 +159,10 @@ class LibFuzzerUI:  # noqa: D101
         else:
             event_tag = event
 
-        # Crash count styling
-        crashes = _fmt_num(s["crashes"])
-        if int(s.get("crashes", "0") or "0") > 0:
-            crashes = f"[bold red]{crashes}[/bold red]"
-        else:
-            crashes = f"[green]{crashes}[/green]"
+        # Crash count from disk (deduplicates by hash automatically)
+        n_crashes = self._count_crashes()
+        crashes = _fmt_num(str(n_crashes))
+        crashes = f"[bold red]{crashes}[/bold red]" if n_crashes > 0 else f"[green]{crashes}[/green]"
 
         # Timing
         run_time = _fmt_duration(now - self.start_time)
@@ -185,7 +197,6 @@ class LibFuzzerUI:  # noqa: D101
 
         # Log panel
         log_content = "\n".join(self.log_buffer) if self.log_buffer else "[dim]waiting for output...[/dim]"
-        panel_width = min(self.max_width, self.console.width)
-        log_panel = Panel(log_content, box=_EMPTY_BOX, height=self.log_height + 2, width=panel_width)
+        log_panel = Panel(log_content, box=_EMPTY_BOX, height=self.log_height + 2)
 
         return Group(stats_panel, log_panel)

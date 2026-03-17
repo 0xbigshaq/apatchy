@@ -398,8 +398,19 @@ class ReportManager:
 
         return built
 
+    def _is_proto_harness(self, harness_name: str | None) -> bool:
+        """Return True if harness_name resolves to a .cc (proto) harness."""
+        if not harness_name:
+            return False
+        resolved = HarnessBuilder.resolve_harness(harness_name)
+        return resolved is not None and resolved.suffix == ".cc"
+
     def _build_coverage_harness(self, cc: str, harness_name: str = None) -> Tuple[Path, Path]:
-        """Build fuzz_harness_coverage with coverage instrumentation flags.
+        """Build a coverage-instrumented harness.
+
+        For plain C harnesses: builds fuzz_harness_coverage (standalone replay).
+        For proto (.cc) harnesses: builds fuzz_harness_libfuzzer with coverage
+        flags so LPM deserialization runs during replay (via -runs=0).
 
         Uses the separate coverage build tree so the AFL build is untouched.
         Returns (harness_path, cov_httpd_root).
@@ -409,6 +420,40 @@ class ReportManager:
         build_config = self.config_manager.generate_build_config()
         cflags = build_config.get("CFLAGS", "")
         ldflags = build_config.get("LDFLAGS", "")
+
+        if self._is_proto_harness(harness_name):
+            harness = self.work_dir / "fuzz_harness_libfuzzer_cov"
+            libmain = cov_root / "server" / "libmain.la"
+            if harness.exists() and libmain.exists() and harness.stat().st_mtime > libmain.stat().st_mtime:
+                self.logger.info(f"Coverage harness up to date: {harness}")
+                return harness, cov_root
+
+            import shutil
+
+            fuzz_bin = self.work_dir / "fuzz_harness_libfuzzer"
+            fuzz_backup = self.work_dir / "fuzz_harness_libfuzzer.bak"
+            if fuzz_bin.exists():
+                shutil.copy2(str(fuzz_bin), str(fuzz_backup))
+
+            try:
+                builder = HarnessBuilder(cov_root)
+                self.logger.info("Building coverage-instrumented proto harness...")
+                cov_cflags = f"-fprofile-instr-generate -fcoverage-mapping {cflags}"
+                cov_ldflags = f"-fprofile-instr-generate {ldflags}"
+                builder.build(
+                    mode="libfuzzer", cflags=cov_cflags, ldflags=cov_ldflags, cc=cc, harness_name=harness_name
+                )
+
+                if not fuzz_bin.exists():
+                    raise FileNotFoundError("Failed to build coverage-instrumented proto harness")
+
+                shutil.copy2(str(fuzz_bin), str(harness))
+            finally:
+                if fuzz_backup.exists():
+                    shutil.move(str(fuzz_backup), str(fuzz_bin))
+
+            self.logger.info(f"Coverage harness built: {harness}")
+            return harness, cov_root
 
         # Skip harness rebuild if it's already newer than the coverage libs
         harness = self.work_dir / "fuzz_harness_coverage"
@@ -525,6 +570,52 @@ class ReportManager:
         self.logger.info(f"Replayed {count}/{total} test cases")
         return count
 
+    def _replay_corpus_proto(
+        self,
+        harness: Path,
+        corpus_dirs: List[Path],
+        prof_dir: Path,
+        config_path: Path,
+    ) -> int:
+        """Replay a proto harness corpus by running libFuzzer with -runs=0.
+
+        Passes all corpus directories to the libFuzzer binary at once so LPM
+        deserializes each file as a proto message before calling the fuzzer
+        body - the same path taken during actual fuzzing.
+        """
+        existing = [d for d in corpus_dirs if d.exists()]
+        total = sum(len([f for f in d.iterdir() if f.is_file() and f.name != ".state"]) for d in existing)
+        if total == 0:
+            self.logger.error("No corpus files found for proto replay")
+            return 0
+
+        # Exclude crash dirs: replaying known-bad inputs in one in-process run
+        # guarantees an abort midway. Non-proto replay uses per-subprocess
+        # execution so it can safely include crashes; proto replay cannot.
+        replay = [d for d in existing if "crash" not in d.name]
+
+        env = os.environ.copy()
+        env["FUZZ_CONF"] = str(config_path)
+        env["FUZZ_ROOT"] = str(self.work_dir)
+        env["LLVM_PROFILE_FILE"] = str(prof_dir / "proto-cov-%p.profraw")
+
+        crash_sink = prof_dir / "replay-crashes"
+        crash_sink.mkdir(exist_ok=True)
+
+        self.logger.info(f"Replaying {total} proto corpus files via libFuzzer -runs=0...")
+        cmd = [
+            str(harness),
+            "-runs=0",
+            "-keep_going=1000000",
+            f"-artifact_prefix={crash_sink}/",
+        ] + [str(d) for d in replay]
+        try:
+            subprocess.run(cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=300)
+        except subprocess.TimeoutExpired:
+            self.logger.warning("Proto corpus replay timed out")
+
+        return total
+
     def generate_coverage(
         self,
         corpus_dir: str = "fuzz-output",
@@ -566,14 +657,20 @@ class ReportManager:
 
         # Replay corpus
         prof_dir = Path(output_dir).resolve() / "profraw"
+        if prof_dir.exists():
+            for f in prof_dir.glob("*.profraw"):
+                f.unlink()
         prof_dir.mkdir(parents=True, exist_ok=True)
 
         count = 0
-        for replay_dir in replay_dirs:
-            self.logger.info(f"Replaying {replay_dir.name}/ ({len(list(replay_dir.iterdir()))} entries)...")
-            count += self._replay_corpus(
-                harness, replay_dir, prof_dir, config_path, httpd_root=cov_root, prof_offset=count, jobs=jobs
-            )
+        if self._is_proto_harness(harness_name):
+            count = self._replay_corpus_proto(harness, replay_dirs, prof_dir, config_path)
+        else:
+            for replay_dir in replay_dirs:
+                self.logger.info(f"Replaying {replay_dir.name}/ ({len(list(replay_dir.iterdir()))} entries)...")
+                count += self._replay_corpus(
+                    harness, replay_dir, prof_dir, config_path, httpd_root=cov_root, prof_offset=count, jobs=jobs
+                )
 
         if count == 0:
             self.logger.error("No test cases were replayed successfully")

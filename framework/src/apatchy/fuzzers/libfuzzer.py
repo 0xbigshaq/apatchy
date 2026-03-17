@@ -37,9 +37,10 @@ class LibFuzzer(BaseFuzzer):
             str(harness),
             str(queue_dir),
             f"-artifact_prefix={crashes_dir}/",
+            "-keep_going=1000000",
         ]
 
         from apatchy.utils.libfuzzer_ui import LibFuzzerUI
 
-        ui = LibFuzzerUI()
+        ui = LibFuzzerUI(crashes_dir=crashes_dir)
         ui.run(cmd, env=env)
