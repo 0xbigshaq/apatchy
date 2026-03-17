@@ -26,10 +26,6 @@
 #include <string.h>
 #include <unistd.h>
 
-/* ----------------------------------------------------------------
- * Multi-request splitting
- * ---------------------------------------------------------------- */
-
 #define MAX_REQUESTS_PER_INPUT 16
 
 static int fuzz_multi_input(const char *data, size_t size)
@@ -59,9 +55,7 @@ static int fuzz_multi_input(const char *data, size_t size)
     return 0;
 }
 
-/* ----------------------------------------------------------------
- * Stdin reading helper (used by AFL non-persistent and standalone)
- * ---------------------------------------------------------------- */
+/* Stdin reading helper (standalone mode) */
 
 static int read_stdin_and_process(void)
 {
@@ -99,10 +93,6 @@ static int read_stdin_and_process(void)
     return 0;
 }
 
-/* ----------------------------------------------------------------
- * Entry points
- * ---------------------------------------------------------------- */
-
 #ifdef LIBFUZZER
 
 static int g_init_failed = 0;
@@ -134,61 +124,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 
     fuzz_multi_input((const char *)data, size);
     return 0;
-}
-
-#elif defined(AFL_FUZZ)
-
-#ifdef __AFL_HAVE_MANUAL_CONTROL
-__AFL_FUZZ_INIT();
-#endif
-
-int main(int argc, const char *const argv[])
-{
-    const char *conf = getenv("FUZZ_CONF");
-    const char *root = getenv("FUZZ_ROOT");
-
-    if (!conf)
-        conf = "fuzz.conf";
-    if (!root)
-        root = ".";
-
-    apr_status_t rv = apr_app_initialize(&argc, &argv, NULL);
-    if (rv != APR_SUCCESS) {
-        fprintf(stderr, "apr_app_initialize failed\n");
-        return 1;
-    }
-
-    if (fuzz_init(conf, root) < 0) {
-        fprintf(stderr, "Fuzzer initialization failed\n");
-        return 1;
-    }
-
-#ifdef __AFL_HAVE_MANUAL_CONTROL
-    __AFL_INIT();
-
-    unsigned char *buf = __AFL_FUZZ_TESTCASE_BUF;
-
-    if (__AFL_LOOP(10000)) {
-        /* Running under afl-fuzz: use shared-memory test cases. */
-        do {
-            int len = __AFL_FUZZ_TESTCASE_LEN;
-            if (len > 0) {
-                fuzz_multi_input((const char *)buf, len);
-            }
-        } while (__AFL_LOOP(10000));
-    } else {
-        /* Not under afl-fuzz (standalone triage): read from stdin. */
-        read_stdin_and_process();
-    }
-#else
-    read_stdin_and_process();
-#endif
-
-    /* Use fuzz_exit() instead of normal cleanup - apr_pool_destroy /
-     * apr_terminate would try to pthread_join mod_watchdog's background
-     * threads, which deadlocks because there is no MPM event loop to
-     * signal them.  fuzz_exit() calls _exit() to tear down immediately. */
-    fuzz_exit(0);
 }
 
 #else /* Standalone */
@@ -255,4 +190,4 @@ int main(int argc, const char *const argv[])
     fuzz_exit(0);
 }
 
-#endif /* LIBFUZZER / AFL_FUZZ */
+#endif /* LIBFUZZER */

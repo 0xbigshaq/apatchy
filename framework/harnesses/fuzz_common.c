@@ -91,10 +91,8 @@ static void ubsan_signal_handler(int sig)
     (void)sig;
     write_err("[*] ubsan_signal_handler :: custom handler triggered!\n");
     write_err("SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior\n");
-#ifndef AFL_FUZZ
     __sanitizer_print_stack_trace();
-#endif
-    _exit(66); // must match AFL_CRASH_EXITCODE
+    _exit(1);
 }
 
 static void register_ubsan_signal_handler()
@@ -632,9 +630,9 @@ int fuzz_init(const char *confname, const char *server_root)
         return -1;
     }
 
-    /* Skip open_logs in LIBFUZZER/AFL mode - it can hang due to
+    /* Skip open_logs in LIBFUZZER mode - it can hang due to
      * signal handling conflicts */
-#if !defined(LIBFUZZER) && !defined(AFL_FUZZ)
+#if !defined(LIBFUZZER)
     apr_pool_clear(g_plog);
     if (ap_run_open_logs(g_pconf, g_plog, ptemp, g_server) != OK) {
         fprintf(stderr, "open_logs failed\n");
