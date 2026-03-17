@@ -1,0 +1,34 @@
+syntax = "proto2";
+
+import "http_request.proto";
+
+enum SessionRoute {
+  ROUTE_A = 0;   // /a  session_crypto     encrypted (primary)
+  ROUTE_B = 1;   // /b  session_plain      plaintext
+  ROUTE_C = 2;   // /c  session_ovr        plaintext
+  ROUTE_D = 3;   // /d  session_filter     encrypted (primary)
+  ROUTE_E = 4;   // /e  session_expiry     plaintext
+  ROUTE_F = 5;   // /f  session_auth       plaintext
+  ROUTE_G = 6;   // /g  session_auth       plaintext
+  ROUTE_H = 7;   // /h  session_auth       plaintext
+  ROUTE_I = 8;   // /i  session2_rfc2965   plaintext
+  ROUTE_J = 9;   // /j  session_dual       plaintext
+  ROUTE_K = 10;  // /k  session_strip      plaintext
+  ROUTE_L = 11;  // /l  session_empty      plaintext
+  ROUTE_M = 12;  // /m  session_pf         encrypted (primary)
+  ROUTE_N = 13;  // /n  session_alt        encrypted (alt key)
+  ROUTE_O = 14;  // /o  session_multi      encrypted (primary)
+  ROUTE_P = 15;  // /p  session_shared     encrypted (primary)
+  ROUTE_Q = 16;  // /q  session_exec       encrypted (primary)
+}
+
+message SessionCookie {
+  optional string session_data = 1;
+  optional bytes raw_override = 2;
+}
+
+message SessionCryptoRequest {
+  required HttpRequest http = 1;
+  required SessionCookie cookie = 2;
+  required SessionRoute route = 3;
+}
