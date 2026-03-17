@@ -43,20 +43,17 @@ def _parse(args):
 
         # Link
         link = _sub(subparsers, "link")
-        link.add_argument("engine", choices=["afl", "libfuzzer", "standalone"])
+        link.add_argument("engine", choices=["libfuzzer", "standalone"])
         link.add_argument("--harness")
         link.add_argument("--bear", action="store_true")
 
         # Fuzz
         fuzz = _sub(subparsers, "fuzz")
-        fuzz.add_argument("--engine", choices=["afl", "libfuzzer"], default="afl")
+        fuzz.add_argument("--engine", choices=["libfuzzer"], default="libfuzzer")
         fuzz.add_argument("--config", default="fuzz.conf")
-        fuzz.add_argument("--mutator", "-m")
         fuzz.add_argument("--grammar", "-g")
         fuzz.add_argument("--resume", action="store_true")
         fuzz.add_argument("--output-dir", default="fuzz-output")
-        fuzz.add_argument("--role", choices=["main", "secondary"], default=None)
-        fuzz.add_argument("--name", default=None)
         fuzz.add_argument("--suppress", default=None)
 
         # Triage
@@ -79,7 +76,6 @@ def _parse(args):
         setup.add_argument("--standalone", action="store_true")
         setup_sub = setup.add_subparsers(dest="action")
         _sub(setup_sub, "check")
-        _sub(setup_sub, "afl")
         _sub(setup_sub, "llvm")
 
         return parser.parse_args(args)
@@ -172,13 +168,6 @@ def test_make_with_bear():
 # --- link ---
 
 
-def test_link_afl():
-    """Parse 'link afl'."""
-    args = _parse(["link", "afl"])
-    assert args.command == "link"
-    assert args.engine == "afl"
-
-
 def test_link_libfuzzer():
     """Parse 'link libfuzzer'."""
     args = _parse(["link", "libfuzzer"])
@@ -192,8 +181,8 @@ def test_link_standalone():
 
 
 def test_link_with_harness():
-    """Parse 'link afl --harness mod_fuzzy'."""
-    args = _parse(["link", "afl", "--harness", "mod_fuzzy"])
+    """Parse 'link libfuzzer --harness mod_fuzzy'."""
+    args = _parse(["link", "libfuzzer", "--harness", "mod_fuzzy"])
     assert args.harness == "mod_fuzzy"
 
 
@@ -207,10 +196,10 @@ def test_link_invalid_engine():
 
 
 def test_fuzz_defaults():
-    """Fuzz defaults to afl engine, fuzz.conf, no resume."""
+    """Fuzz defaults to libfuzzer engine, fuzz.conf, no resume."""
     args = _parse(["fuzz"])
     assert args.command == "fuzz"
-    assert args.engine == "afl"
+    assert args.engine == "libfuzzer"
     assert args.config == "fuzz.conf"
     assert args.resume is False
     assert args.output_dir == "fuzz-output"
@@ -220,12 +209,6 @@ def test_fuzz_libfuzzer():
     """Parse 'fuzz --engine libfuzzer'."""
     args = _parse(["fuzz", "--engine", "libfuzzer"])
     assert args.engine == "libfuzzer"
-
-
-def test_fuzz_with_mutator():
-    """Parse 'fuzz -m /path/to/mutator.so'."""
-    args = _parse(["fuzz", "-m", "/path/to/mutator.so"])
-    assert args.mutator == "/path/to/mutator.so"
 
 
 def test_fuzz_with_grammar():
@@ -238,13 +221,6 @@ def test_fuzz_resume():
     """Parse 'fuzz --resume'."""
     args = _parse(["fuzz", "--resume"])
     assert args.resume is True
-
-
-def test_fuzz_parallel_main():
-    """Parse 'fuzz --role main --name fuzzer01'."""
-    args = _parse(["fuzz", "--role", "main", "--name", "fuzzer01"])
-    assert args.role == "main"
-    assert args.name == "fuzzer01"
 
 
 def test_fuzz_suppress():
@@ -294,12 +270,6 @@ def test_setup_check():
     args = _parse(["setup", "check"])
     assert args.command == "setup"
     assert args.action == "check"
-
-
-def test_setup_afl():
-    """Parse 'setup afl'."""
-    args = _parse(["setup", "afl"])
-    assert args.action == "afl"
 
 
 def test_setup_llvm():

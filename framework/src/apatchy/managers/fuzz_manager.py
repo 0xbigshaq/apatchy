@@ -3,7 +3,6 @@
 from pathlib import Path
 from typing import Optional
 
-from apatchy.fuzzers.afl import AflFuzzer
 from apatchy.fuzzers.base import BaseFuzzer
 from apatchy.fuzzers.libfuzzer import LibFuzzer
 from apatchy.managers.config_manager import ConfigManager
@@ -12,7 +11,6 @@ from apatchy.utils.logger import get_logger
 logger = get_logger(__name__)
 
 ENGINES = {
-    "afl": AflFuzzer,
     "libfuzzer": LibFuzzer,
 }
 
@@ -21,8 +19,8 @@ class FuzzManager:
     """Thin factory that selects and launches the appropriate fuzzing engine.
 
     ``FuzzManager`` is the main entry point for starting a fuzzing run. It
-    delegates all engine-specific logic to :class:`~apatchy.fuzzers.afl.AflFuzzer`
-    and :class:`~apatchy.fuzzers.libfuzzer.LibFuzzer`, which inherit shared
+    delegates all engine-specific logic to
+    :class:`~apatchy.fuzzers.libfuzzer.LibFuzzer`, which inherits shared
     corpus preparation and environment setup from
     :class:`~apatchy.fuzzers.base.BaseFuzzer`.
 
@@ -46,24 +44,17 @@ class FuzzManager:
 
     .. code-block:: bash
 
-        # Basic AFL++ run
-        apatchy fuzz
+        # Basic LibFuzzer run
+        apatchy fuzz --engine libfuzzer
 
         # LibFuzzer with grammar seeds
         apatchy fuzz --engine libfuzzer --grammar grammars/http.json
 
         # Resume a previous session
-        apatchy fuzz --resume
-
-        # Parallel AFL++ instances
-        apatchy fuzz --role main --name main01
-        apatchy fuzz --role secondary --name sec01
-
-        # Custom mutator with per-execution timeout
-        apatchy fuzz --mutator mutators/my_mutator.so --timeout 5
+        apatchy fuzz --engine libfuzzer --resume
 
         # Custom output directory
-        apatchy fuzz --output-dir my-output
+        apatchy fuzz --engine libfuzzer --output-dir my-output
 
     Example:
         .. code-block:: python
@@ -74,14 +65,6 @@ class FuzzManager:
             config = ConfigManager()
             fm = FuzzManager(config)
 
-            # Start a solo AFL++ run with grammar seeds
-            fm.start_fuzzer(
-                harness_path=Path("fuzz_harness_afl"),
-                engine="afl",
-                grammar="grammars/http.json",
-            )
-
-            # Start a LibFuzzer run
             fm.start_fuzzer(
                 harness_path=Path("fuzz_harness_libfuzzer"),
                 engine="libfuzzer",
@@ -94,17 +77,15 @@ class FuzzManager:
     def start_fuzzer(  # noqa: D102
         self,
         harness_path: Path,
-        engine: str = "afl",
-        mutator: Optional[list[str]] = None,
+        engine: str = "libfuzzer",
         grammar: Optional[str] = None,
         seed_dir: Optional[str] = None,
         resume: bool = False,
         output_dir: str = BaseFuzzer.DEFAULT_OUTPUT_DIR,
-        role: Optional[str] = None,
-        name: Optional[str] = None,
         suppress: Optional[str] = None,
         timeout: Optional[int] = None,
         debug: bool = False,
+        **kwargs,
     ) -> None:
         engine_cls = ENGINES.get(engine)
         if not engine_cls:
@@ -118,10 +99,7 @@ class FuzzManager:
             harness_path,
             seed_path,
             out_dir,
-            mutator=mutator,
             resume=resume,
-            role=role,
-            name=name,
             suppress=suppress,
             timeout=timeout,
             debug=debug,
