@@ -41,7 +41,7 @@ class BugManager:
 
     1. Download the vulnerable Apache version if not already present.
     2. Configure and build Apache with the sanitizers listed in the manifest.
-    3. Link the fuzzing harnesses (AFL++ and standalone).
+    3. Link the fuzzing harnesses (LibFuzzer and standalone).
     4. Run any bug-specific setup (e.g. creating files in DocumentRoot).
     5. Generate seed inputs.
 
@@ -181,7 +181,7 @@ class BugManager:
 
         # Link harnesses (always relink to match the version we just built)
         harness_name = bug.harness
-        for engine in ("afl", "standalone"):
+        for engine in ("libfuzzer", "standalone"):
             logger.info(f"Linking {engine} harness...")
             build_manager.build_harness(mode=engine, harness_name=harness_name)
 
@@ -321,7 +321,7 @@ class BugManager:
     @staticmethod
     def _find_harness() -> Optional[Path]:
         """Find a harness binary for triage."""
-        for name in ("fuzz_harness_standalone", "fuzz_harness_afl"):
+        for name in ("fuzz_harness_standalone", "fuzz_harness_libfuzzer"):
             candidate = Config.WORK_DIR / name
             if candidate.exists():
                 return candidate

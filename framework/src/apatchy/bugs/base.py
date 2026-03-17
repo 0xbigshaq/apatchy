@@ -159,8 +159,7 @@ class Bug:
     def fuzz_env(self) -> Dict[str, str]:
         """Extra environment variables for fuzzing this bug.
 
-        Override to set custom env vars (e.g. ``AFL_PRELOAD``,
-        custom dictionary paths).
+        Override to set custom env vars (e.g. custom dictionary paths).
         """
         return {}
 
