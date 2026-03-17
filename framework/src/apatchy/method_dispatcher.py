@@ -18,7 +18,6 @@ from apatchy.managers.config_manager import ConfigManager
 from apatchy.managers.dev_manager import DevManager
 from apatchy.managers.fuzz_manager import FuzzManager
 from apatchy.managers.module_manager import ModuleManager
-from apatchy.managers.mutator_manager import MutatorManager
 from apatchy.managers.report_manager import ReportManager
 from apatchy.managers.toolchain_manager import ToolchainManager
 from apatchy.utils.logger import get_logger
@@ -42,7 +41,6 @@ class MethodDispatcher:
         self.build_manager: Optional[BuildManager] = None
         self.fuzz_manager: Optional[FuzzManager] = None
         self.report_manager: Optional[ReportManager] = None
-        self.mutator_manager: Optional[MutatorManager] = None
         self.toolchain_manager: Optional[ToolchainManager] = None
 
     def dispatch(self, args: argparse.Namespace) -> None:
@@ -70,12 +68,8 @@ class MethodDispatcher:
             self._handle_profile(args)
         elif command == "setup":
             self._handle_setup(args)
-        elif command == "grammar":
-            self._handle_grammar(args)
         elif command == "harness":
             self._handle_harness(args)
-        elif command == "mutator":
-            self._handle_mutator(args)
         elif command == "module":
             self._handle_module(args)
         elif command == "dev":
@@ -237,7 +231,6 @@ class MethodDispatcher:
         self.fuzz_manager.start_fuzzer(
             harness_path,
             engine=args.engine,
-            mutator=getattr(args, "mutator", None) and args.mutator.split(","),
             grammar=getattr(args, "grammar", None),
             seed_dir=getattr(args, "seed_dir", None),
             resume=getattr(args, "resume", False),
@@ -304,11 +297,6 @@ class MethodDispatcher:
                 timeout=args.timeout,
             )
 
-    def _get_mutator_manager(self) -> MutatorManager:
-        if self.mutator_manager is None:
-            self.mutator_manager = MutatorManager()
-        return self.mutator_manager
-
     def _get_toolchain_manager(self, verbose: bool = False) -> ToolchainManager:
         if self.toolchain_manager is None:
             self.toolchain_manager = ToolchainManager(verbose=verbose)
@@ -367,81 +355,6 @@ class MethodDispatcher:
         elif action == "lpm":
             tm.setup("lpm", force=force)
             console.print(f"[dim]Toolchain config: {Config.TOOLCHAIN_CONFIG}[/dim]")
-
-    def _handle_grammar(self, args: argparse.Namespace) -> None:
-        from rich.console import Console
-        from rich.table import Table
-
-        console = Console()
-        mm = self._get_mutator_manager()
-
-        action = getattr(args, "action", None)
-        if not action:
-            logger.error("No grammar sub-command specified. Use: setup, build, status, list")
-            return
-
-        if action == "setup":
-            mm.setup()
-
-        elif action == "build":
-            result = mm.build_grammar(args.grammar_name)
-            if result:
-                console.print(f"[green]Built:[/green] {result}")
-
-        elif action == "status":
-            info = mm.status()
-            table = Table(box=None, show_edge=False, pad_edge=False, header_style="bold underline")
-            table.add_column("Property", style="cyan")
-            table.add_column("Value", style="magenta")
-            table.add_row("Setup", "yes" if info["setup"] else "no")
-            table.add_row("Directory", str(info["grammar_mutator_dir"]))
-            built = info["built_grammars"]
-            table.add_row("Built grammars", ", ".join(built) if built else "(none)")
-            built_cm = info["built_custom_mutators"]
-            table.add_row("Built custom mutators", ", ".join(built_cm) if built_cm else "(none)")
-            console.print(table)
-
-        elif action == "list":
-            grammars = mm.list_grammars()
-            if not grammars:
-                console.print("[yellow]No grammar files found.[/yellow]")
-                return
-            table = Table(box=None, show_edge=False, pad_edge=False, header_style="bold underline")
-            table.add_column("Name", style="cyan")
-            for g in grammars:
-                table.add_row(g)
-            console.print(table)
-
-    def _handle_mutator(self, args: argparse.Namespace) -> None:
-        from rich.console import Console
-        from rich.table import Table
-
-        console = Console()
-        mm = self._get_mutator_manager()
-
-        action = getattr(args, "action", None)
-        if not action:
-            logger.error("No mutator sub-command specified. Use: build, list")
-            return
-
-        if action == "build":
-            mm.build_custom_mutator(name=getattr(args, "name", None))
-
-        elif action == "list":
-            mutators = mm.list_custom_mutators()
-            if not mutators:
-                console.print("[yellow]No custom mutator sources found.[/yellow]")
-                return
-            table = Table(box=None, show_edge=False, pad_edge=False, header_style="bold underline")
-            table.add_column("Name", style="cyan")
-            table.add_column("Source", style="dim")
-            table.add_column("Built", style="green")
-            fw = str(Config.FRAMEWORK_DIR)
-            for m in mutators:
-                src = m["source"].replace(fw + "/", "")
-                built = m["built"].replace(fw + "/", "") if m["built"] else "(not built)"
-                table.add_row(m["name"], src, built)
-            console.print(table)
 
     def _handle_harness(self, args: argparse.Namespace) -> None:
         from rich.console import Console

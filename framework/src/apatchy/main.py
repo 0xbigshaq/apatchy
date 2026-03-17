@@ -161,9 +161,6 @@ def main():
     fuzz_parser = _sub(subparsers, "fuzz", help="Start fuzzing")
     fuzz_parser.add_argument("--engine", choices=["afl", "libfuzzer"], default="afl", help="Fuzzing engine")
     fuzz_parser.add_argument("--config", default="fuzz.conf", help="Httpd config file to use")
-    fuzz_parser.add_argument(
-        "--mutator", "-m", help="Comma-separated AFL++ custom mutator .so libraries (chained in order)"
-    )
     fuzz_parser.add_argument("--grammar", "-g", help="Path to grammar file (sets GRAMMAR_FILE env var)")
     fuzz_parser.add_argument("--seed-dir", default=None, help="Seed directory (default: fuzz-seeds)")
     fuzz_parser.add_argument("--resume", action="store_true", help="Resume from existing AFL output directory")
@@ -280,22 +277,6 @@ def main():
     profile_callgrind.add_argument(
         "--timeout", type=int, default=120, help="Per-testcase timeout in seconds (default: 120, callgrind is slow)"
     )
-
-    # Grammar mutator
-    grammar_parser = _sub(subparsers, "grammar", help="Manage AFL++ grammar mutators")
-    grammar_sub = grammar_parser.add_subparsers(dest="action", help="Grammar sub-commands")
-    _sub(grammar_sub, "setup", help="Clone AFL++, init submodule, download antlr4")
-    grammar_build = _sub(grammar_sub, "build", help="Build grammar mutator .so for a grammar")
-    grammar_build.add_argument("grammar_name", help="Name of grammar (e.g. 'http')")
-    _sub(grammar_sub, "status", help="Show grammar mutator setup/build status")
-    _sub(grammar_sub, "list", help="List available grammar JSON files")
-
-    # Custom mutator
-    mutator_parser = _sub(subparsers, "mutator", help="Manage custom mutators")
-    mutator_sub = mutator_parser.add_subparsers(dest="action", help="Mutator sub-commands")
-    mutator_build = _sub(mutator_sub, "build", help="Build custom mutator .so from .c source")
-    mutator_build.add_argument("name", nargs="?", default=None, help="Mutator name (builds all if omitted)")
-    _sub(mutator_sub, "list", help="List available custom mutators")
 
     # Setup / toolchain
     setup_parser = _sub(subparsers, "setup", help="Manage toolchain and dependencies")

@@ -1,0 +1,93 @@
+syntax = "proto2";
+
+import "http_request.proto";
+
+enum RewriteUri {
+  RW_FOO_BAR = 0;
+  RW_TRAVERSAL = 1;
+  RW_TRAVERSAL_ENC = 2;
+  RW_NULL_BYTE = 3;
+  RW_PLAIN_A = 4;
+  RW_UPPER = 5;
+  RW_MIXED_CASE = 6;
+  RW_ENCODED_SLASH = 7;
+  RW_HYPHEN = 8;
+  RW_ADMIN_DEEP = 9;
+  RW_MULTI_NULL = 10;
+  RW_LONG_SEGMENTS = 11;
+  RW_TEST = 12;
+  RW_AMPERSAND_ENC = 13;
+  RW_B_CLEAN = 14;
+  RW_B_TRACK = 15;
+  RW_B_SETCOOKIE = 16;
+  RW_B_CHAIN = 17;
+  RW_B_DOWNLOAD = 18;
+  RW_B_CGI = 19;
+  RW_B_SHORT_X = 20;
+  RW_B_LONG_X = 21;
+  RW_B_XXX_FOO = 22;
+  RW_B_CATCHALL = 23;
+  RW_ROOT = 24;
+  RW_EMPTY = 25;
+  RW_C_DEEP_TRAVERSAL = 26;
+  RW_QS_FRAGMENT = 27;
+  RW_D_MULTI_TRAVERSAL = 28;
+  RW_D_REWRITE_LOOP = 29;
+  RW_D_CONTROL_CHARS = 30;
+  RW_D_OLD_SPACES = 31;
+  RW_D_UTF8 = 32;
+  RW_D_ZWSP = 33;
+  RW_D_DOUBLE_ENC = 34;
+  RW_D_DOUBLE_ENC2 = 35;
+  RW_LITERAL_SPACE = 36;
+  RW_OLD_HIGHBYTES = 37;
+  RW_CRLF_INJECT = 38;
+  RW_TRACK_VARS = 39;
+  RW_COOKIE_DOMAIN = 40;
+}
+
+enum RewriteQueryString {
+  QS_ID_42 = 0;
+  QS_ID_HUGE = 1;
+  QS_ID_NEG = 2;
+  QS_ID_ZERO = 3;
+  QS_ID_ALPHA = 4;
+  QS_BARE_NEEDLE = 5;
+  QS_MANY_PARAMS = 6;
+  QS_NULL_BYTE = 7;
+  QS_CRLF_INJECT = 8;
+  QS_HELLO_WORLD = 9;
+  QS_REDIRECT = 10;
+  QS_PATH_TRAVERSAL = 11;
+  QS_EMPTY = 12;
+  QS_LONG_VALUE = 13;
+  QS_NULL_NULL = 14;
+  QS_SQLI = 15;
+  QS_XSS = 16;
+  QS_DUPE_KEYS = 17;
+}
+
+enum SegMutation {
+  SEG_DOTDOT = 0;
+  SEG_DOT = 1;
+  SEG_DOTDOT_ENC = 2;
+  SEG_NULL = 3;
+  SEG_AAAA = 4;
+  SEG_NULL_MID = 5;
+  SEG_JNDI = 6;
+  SEG_CRLF = 7;
+  SEG_BACKSLASH = 8;
+  SEG_DOUBLE_SLASH = 9;
+  SEG_A = 10;
+  SEG_LONG_A = 11;
+}
+
+message RewriteRequest {
+  required HttpRequest http = 1;
+  optional RewriteUri uri_override = 2;
+  optional RewriteQueryString query_override = 3;
+  optional SegMutation path_segment_mutation = 4;
+  optional bool use_long_path = 5 [default = false];
+  optional uint32 long_path_variant = 6 [default = 0];
+  optional uint32 long_path_depth = 7 [default = 50];
+}

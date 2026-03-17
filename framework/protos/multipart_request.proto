@@ -1,0 +1,40 @@
+syntax = "proto2";
+
+import "http_request.proto";
+
+enum MultipartBoundary {
+  BOUND_A = 0;
+  BOUND_AB = 1;
+  BOUND_X = 2;
+  BOUND_DASHES = 3;
+  BOUND_WORD = 4;
+  BOUND_FUZZ = 5;
+  BOUND_AAAA = 6;
+  BOUND_QUAD_DASH = 7;
+  BOUND_ZERO = 8;
+  BOUND_CRLF = 9;
+}
+
+enum MultipartDisposition {
+  DISP_FORM_DATA = 0;
+  DISP_ATTACHMENT = 1;
+  DISP_INLINE = 2;
+  DISP_EMPTY = 3;
+  DISP_WITH_FILENAME = 4;
+  DISP_MINIMAL = 5;
+}
+
+message MultipartPart {
+  optional MultipartDisposition disposition = 1 [default = DISP_FORM_DATA];
+  optional string field_name = 2;
+  optional bytes body = 3;
+  optional bool inject_fake_boundary = 4 [default = false];
+  optional uint32 extra_dashes = 5 [default = 0];
+}
+
+message MultipartRequest {
+  required HttpRequest http = 1;
+  required MultipartBoundary boundary = 2;
+  repeated MultipartPart parts = 3;
+  optional bool tight_spacing = 4 [default = false];
+}
