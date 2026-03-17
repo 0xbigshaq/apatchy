@@ -5,11 +5,11 @@ from apatchy.managers.config_manager import ConfigManager
 # --- fuzz mode ---
 
 
-def test_fuzz_mode_cc():
-    """Fuzz mode sets CC to afl-clang-fast."""
+def test_fuzz_mode_no_cc():
+    """Fuzz mode does not override CC."""
     cm = ConfigManager(build_mode="fuzz")
     result = cm.generate_build_config()
-    assert result["CC"].endswith("afl-clang-fast")
+    assert "CC" not in result
 
 
 def test_fuzz_mode_debug_flags():

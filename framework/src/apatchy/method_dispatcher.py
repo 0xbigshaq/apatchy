@@ -220,7 +220,7 @@ class MethodDispatcher:
             logger.error("--role and --name are only supported with --engine afl")
             return
 
-        self.config_manager = ConfigManager(engine=args.engine, config_name=args.config)
+        self.config_manager = ConfigManager(config_name=args.config)
         self.fuzz_manager = FuzzManager(self.config_manager)
 
         harness_path = Config.WORK_DIR / f"fuzz_harness_{args.engine}"
@@ -247,7 +247,7 @@ class MethodDispatcher:
         if not httpd_root:
             return
 
-        self.config_manager = ConfigManager(config_name=args.config)  # Defaults engine/mode
+        self.config_manager = ConfigManager(config_name=args.config)
 
         self.report_manager = ReportManager(httpd_root, self.config_manager)
 

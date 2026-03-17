@@ -1,7 +1,7 @@
 """Persistent toolchain configuration via INI file.
 
 Stores discovered tool paths in WORK_DIR/toolchain.config so that
-setup commands (check, afl, llvm) don't require manual PATH exports.
+setup commands (check, llvm) don't require manual PATH exports.
 Human-editable: clear a value to force re-detection, set a value to
 override auto-detection.
 """

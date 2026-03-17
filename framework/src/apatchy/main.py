@@ -288,7 +288,6 @@ def main():
     setup_sub = setup_parser.add_subparsers(dest="action", help="Setup sub-commands")
     _sub(setup_sub, "check", help="Check all dependency status")
     _sub(setup_sub, "libtool", help="Download libtool into toolchain/")
-    _sub(setup_sub, "afl", help="Clone and build AFL++ into toolchain/")
     llvm_sub = _sub(setup_sub, "llvm", help="Detect and suggest LLVM tool installation")
     llvm_sub.add_argument(
         "--llvm-version",
