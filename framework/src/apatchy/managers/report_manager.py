@@ -37,7 +37,7 @@ class ReportManager:
     output from a fuzzing session and produces actionable reports:
 
     **Coverage** (:meth:`generate_coverage`) - Rebuilds Apache with LLVM
-    source-based coverage instrumentation, replays the AFL++ corpus
+    source-based coverage instrumentation, replays the fuzzer corpus
     through the harness, merges the raw profiles with ``llvm-profdata``,
     and generates an HTML report with ``llvm-cov``. Dark-mode CSS is
     injected automatically. Optionally chains into introspection.
@@ -201,10 +201,9 @@ class ReportManager:
         Returns a list of directories containing files to replay.
 
         Supported layouts:
-        - AFL single:   <dir>/default/queue/   -> [default/queue, default/crashes]
-        - AFL parallel: <dir>/main01/queue/, <dir>/sec01/queue/, ...
-        - AFL flat:     <dir>/queue/           -> [queue/, crashes/]
-        - Plain:        <dir>/ (files directly) -> [dir]
+        - Fuzzer output: <dir>/default/queue/   -> [default/queue, default/crashes]
+        - Flat:          <dir>/queue/           -> [queue/, crashes/]
+        - Plain:         <dir>/ (files directly) -> [dir]
         """
         corpus_path = Path(corpus_dir).resolve()
         if not corpus_path.exists():
@@ -213,19 +212,19 @@ class ReportManager:
 
         replay_dirs = []
 
-        # AFL layout: look for queue/ subdirectories
-        afl_instances = []
+        # Fuzzer output layout: look for queue/ subdirectories
+        instances = []
         for child in sorted(corpus_path.iterdir()):
             if child.is_dir() and (child / "queue").is_dir():
-                afl_instances.append(child)
+                instances.append(child)
 
-        if not afl_instances and (corpus_path / "queue").is_dir():
-            afl_instances.append(corpus_path)
+        if not instances and (corpus_path / "queue").is_dir():
+            instances.append(corpus_path)
 
-        if afl_instances:
-            names = [p.name for p in afl_instances]
-            self.logger.info(f"Found {len(afl_instances)} AFL instance(s): {', '.join(names)}")
-            for inst in afl_instances:
+        if instances:
+            names = [p.name for p in instances]
+            self.logger.info(f"Found {len(instances)} fuzzer instance(s): {', '.join(names)}")
+            for inst in instances:
                 replay_dirs.append(inst / "queue")
                 crashes = inst / "crashes"
                 if crashes.is_dir() and any(crashes.iterdir()):
@@ -240,7 +239,7 @@ class ReportManager:
             return replay_dirs
 
         self.logger.error(
-            f"No test cases found in {corpus_path}. Provide an AFL output directory or a plain directory of files."
+            f"No test cases found in {corpus_path}. Provide a fuzzer output directory or a plain directory of files."
         )
         return []
 
@@ -260,21 +259,22 @@ class ReportManager:
             if path:
                 return path
 
-        # Also try versioned names from config
+        # Try versioned name matching the compiler
         compiler_ver: Optional[int] = None
-        try:
-            out = subprocess.check_output(
-                ["afl-clang-fast", "--version"],
-                stderr=subprocess.DEVNULL,
-                text=True,
-                timeout=5,
-            )
-
-            m = re.search(r"clang version (\d+)", out)
-            if m:
-                compiler_ver = int(m.group(1))
-        except (OSError, subprocess.SubprocessError):
-            pass
+        cc = toolchain_config.resolve_tool("clang")
+        if cc:
+            try:
+                out = subprocess.check_output(
+                    [cc, "--version"],
+                    stderr=subprocess.DEVNULL,
+                    text=True,
+                    timeout=5,
+                )
+                m = re.search(r"clang version (\d+)", out)
+                if m:
+                    compiler_ver = int(m.group(1))
+            except (OSError, subprocess.SubprocessError):
+                pass
 
         if compiler_ver:
             path = toolchain_config.resolve_tool(f"llvm-symbolizer-{compiler_ver}")
@@ -345,7 +345,7 @@ class ReportManager:
 
         Looks for module sources in EXTERNAL_MODULES_DIR, compiles each with
         coverage flags, and places them in <work_dir>/modules/ (overwriting
-        the AFL-instrumented version).  Returns the list of built .so paths.
+        the fuzz-instrumented version).  Returns the list of built .so paths.
         """
         from apatchy.config import Config
 
@@ -412,7 +412,7 @@ class ReportManager:
         For proto (.cc) harnesses: builds fuzz_harness_libfuzzer with coverage
         flags so LPM deserialization runs during replay (via -runs=0).
 
-        Uses the separate coverage build tree so the AFL build is untouched.
+        Uses the separate coverage build tree so the fuzz build is untouched.
         Returns (harness_path, cov_httpd_root).
         """
         cov_root = self._ensure_coverage_build(cc)
@@ -483,9 +483,9 @@ class ReportManager:
         prof_offset: int = 0,
         jobs: int = 1,
     ) -> int:
-        """Replay AFL queue through coverage harness, producing .profraw files."""
+        """Replay corpus through coverage harness, producing .profraw files."""
         env = os.environ.copy()
-        # Set env vars for LIBFUZZER/AFL entry points (kept for compatibility)
+        # Set env vars for harness entry points
         env["FUZZ_CONF"] = str(config_path)
         env["FUZZ_ROOT"] = str(self.work_dir)
 
@@ -499,7 +499,7 @@ class ReportManager:
             str(self.work_dir),
         ]
 
-        # Collect test cases (AFL names them id:NNNNNN,...)
+        # Collect test cases
         test_cases = sorted(queue_dir.glob("id:*"))
         if not test_cases:
             # Fall back: try all files
@@ -634,12 +634,12 @@ class ReportManager:
             self.logger.error(str(e))
             return
 
-        # Collect corpus directories (AFL layout or plain)
+        # Collect corpus directories
         replay_dirs = self._collect_corpus_dirs(corpus_dir)
         if not replay_dirs:
             return
 
-        # Build coverage harness (uses separate -cov tree, AFL build untouched)
+        # Build coverage harness (uses separate -cov tree, fuzz build untouched)
         try:
             harness, cov_root = self._build_coverage_harness(cc, harness_name=harness_name)
         except Exception as e:
@@ -1107,7 +1107,7 @@ class ReportManager:
     def _build_profile_harness(self, cc: str, harness_name: str = None) -> Tuple[Path, Path]:
         """Build fuzz_harness_profile with debug symbols and no sanitizers.
 
-        Uses a separate ``-prof`` build tree so the AFL build is untouched.
+        Uses a separate ``-prof`` build tree so the fuzz build is untouched.
         Returns (harness_path, prof_httpd_root).
         """
         prof_root = self._ensure_profile_build(cc)
@@ -1147,7 +1147,7 @@ class ReportManager:
         jobs: int = 1,
         timeout: int = 120,
     ) -> int:
-        """Replay AFL queue through harness under callgrind, producing .callgrind files."""
+        """Replay corpus through harness under callgrind, producing .callgrind files."""
         env = os.environ.copy()
         env["FUZZ_CONF"] = str(config_path)
         env["FUZZ_ROOT"] = str(self.work_dir)
@@ -1367,8 +1367,6 @@ class ReportManager:
             supp_opt = f"suppressions={supp_path}"
             env["UBSAN_OPTIONS"] = f"{existing}:{supp_opt}" if existing else supp_opt
 
-        env["AFL_IGNORE_PROBLEMS"] = "1"
-
         return env, config_path
 
     def triage_pipeline(
@@ -1391,8 +1389,7 @@ class ReportManager:
             return
 
         # Collect and sort files lexicographically.  Works for both plain
-        # numeric names (0, 1, 2) and AFL crash IDs (id:000000, id:000001, ...)
-        # since AFL zero-pads the IDs.
+        # numeric names (0, 1, 2) and crash IDs (id:000000, id:000001, ...)
         files = sorted(
             (f for f in crash_dir.iterdir() if f.is_file()),
             key=lambda f: f.name,
