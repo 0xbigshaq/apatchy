@@ -236,8 +236,6 @@ class IntrospectorManager:
                         continue
                     if arg == "-fno-experimental-new-pass-manager":
                         continue
-                    if arg.startswith("-D__AFL_") or arg == "-DAFL_FUZZ":
-                        continue
                     new_args.append(arg)
                 if "-o" not in new_args:
                     new_args.extend(["-o", str(output)])

@@ -1,8 +1,8 @@
 """Utility for creating alternate Apache build trees with different compiler flags.
 
 Used by coverage and standalone modes to build a separate copy of the Apache
-source tree without AFL instrumentation, so that harnesses link cleanly against
-vanilla or coverage-instrumented objects.
+source tree with different compiler flags, so that harnesses link cleanly
+against vanilla or coverage-instrumented objects.
 """
 
 import hashlib
@@ -40,12 +40,12 @@ class AlternateBuildTree:
             self._ensure_tree()
 
         # Staleness detection: if user re-ran `apatchy configure`, rebuild.
-        hash_file = self.alt_root / ".afl_config_hash"
-        current_hash = self.afl_config_hash(self.httpd_root)
+        hash_file = self.alt_root / ".config_hash"
+        current_hash = self.config_hash(self.httpd_root)
         if hash_file.exists():
             saved_hash = hash_file.read_text().strip()
             if saved_hash != current_hash:
-                logger.info(f"AFL config changed since last {self.suffix} build - recreating...")
+                logger.info(f"Config changed since last {self.suffix} build - recreating...")
                 shutil.rmtree(self.alt_root)
                 self._ensure_tree()
         else:
@@ -127,11 +127,11 @@ class AlternateBuildTree:
     def patch_build_flags(cc: str, cflags: str, ldflags: str, httpd_root: Path) -> None:
         """Patch CC, CFLAGS, and LDFLAGS across all build-system files.
 
-        The AFL build bakes afl-clang-fast, -fsanitize=address, and other
-        AFL-specific flags into config_vars.mk, apr_rules.mk, rules.mk,
-        and libtool scripts throughout the tree (including srclib/apr and
-        srclib/apr-util).  We must patch ALL of them so the alternate build
-        compiles and links cleanly without AFL or ASan references.
+        The original build bakes compiler paths and sanitizer flags into
+        config_vars.mk, apr_rules.mk, rules.mk, and libtool scripts
+        throughout the tree (including srclib/apr and srclib/apr-util).
+        We must patch ALL of them so the alternate build compiles and
+        links cleanly with the desired flags.
 
         LDFLAGS is patched in config files rather than passed on the make
         command line because command-line LDFLAGS clobbers the Makefile
@@ -235,7 +235,7 @@ class AlternateBuildTree:
                 logger.info(f"Patched CPP in {mf}")
 
     @staticmethod
-    def afl_config_hash(httpd_root: Path) -> str:
+    def config_hash(httpd_root: Path) -> str:
         """Hash the ac_cs_config line from config.status for staleness detection."""
         config_status = httpd_root / "config.status"
         if not config_status.exists():

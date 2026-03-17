@@ -97,9 +97,9 @@ def test_alternate_build_tree_creation(httpd: Path, work_dir: Path) -> None:
             shutil.rmtree(tree.alt_root)
 
 
-def test_afl_config_hash_deterministic(httpd: Path) -> None:
-    """afl_config_hash returns consistent hash for the same config."""
-    h1 = AlternateBuildTree.afl_config_hash(httpd)
-    h2 = AlternateBuildTree.afl_config_hash(httpd)
+def test_config_hash_deterministic(httpd: Path) -> None:
+    """config_hash returns consistent hash for the same config."""
+    h1 = AlternateBuildTree.config_hash(httpd)
+    h2 = AlternateBuildTree.config_hash(httpd)
     assert h1 == h2
     assert len(h1) == 64  # SHA-256 hex
