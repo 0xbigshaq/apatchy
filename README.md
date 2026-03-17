@@ -52,21 +52,41 @@ source .venv/bin/activate
 # 2. init setup (one-time setup)
 apatchy setup check                            # verify dependencies
 apatchy setup --force llvm --llvm-version 18   # install LLVM tools locally
-# 3. build
-apatchy download          # download apache
-apatchy configure         # ./configure
-apatchy make --bear       # compile apache w/ compilation db
-apatchy link libfuzzer --bear   # link the harness w/ compilation db
 
-# 4. fuzz :D 
-mkdir /tmp/htdocs               # required by some configs
-apatchy fuzz --config configs/rewrite.conf
+# 3. download
+apatchy download --version 2.4.65
 
-# 5. see coverage
-apatchy coverage report --with-introspect --jobs 8 --config configs/rewrite.conf
+# 4. configure 
+apatchy configure --asan --ubsan --ubsan-ignorelist ./configs/ubsan.ignorelist
 
-# 6. Build/generate the call-tree & start the GUI
-apatchy introspect --entry ap_process_request
+# 5. make (`--bear` for IDE navigation)
+apatchy make --bear
+
+# 6. setup for protobuf
+apatchy setup lpm
+
+# 7. list avail. harnesses
+apatchy harness list
+
+# 8. link target harness
+apatchy link libfuzzer --harness mod_fuzzy_proto_session --bear
+
+# 9. fuzz
+apatchy fuzz     \
+    --engine libfuzzer     \
+    --config configs/session-coverage.conf     \
+    --seed-dir /tmp/htdocs/
+
+# 10. Generate HTML cov report
+apatchy coverage report \
+    --with-introspect \
+    --config configs/session-coverage.conf \
+    --jobs 8 \
+    --harness mod_fuzzy_proto_session
+
+# 11. Launch interactive gui w/ call-tree analysis 
+apatchy introspect \
+    --entry session_crypto_decode,session_crypto_encode,session_crypto_init
 ```
 
 ## Documentation
