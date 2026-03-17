@@ -151,7 +151,7 @@ def main():
 
     # Link Harness
     link_parser = _sub(subparsers, "link", help="Link fuzzing harness")
-    link_parser.add_argument("engine", choices=["afl", "libfuzzer", "standalone"], help="Fuzzing engine")
+    link_parser.add_argument("engine", choices=["libfuzzer", "standalone"], help="Fuzzing engine")
     link_parser.add_argument("--harness", help="Harness name to use (e.g. 'mod_fuzzy')")
     link_parser.add_argument(
         "--bear", action="store_true", help="Wrap compilation with bear to generate compile_commands.json"
@@ -159,32 +159,25 @@ def main():
 
     # Fuzz
     fuzz_parser = _sub(subparsers, "fuzz", help="Start fuzzing")
-    fuzz_parser.add_argument("--engine", choices=["afl", "libfuzzer"], default="afl", help="Fuzzing engine")
+    fuzz_parser.add_argument("--engine", choices=["libfuzzer"], default="libfuzzer", help="Fuzzing engine")
     fuzz_parser.add_argument("--config", default="fuzz.conf", help="Httpd config file to use")
     fuzz_parser.add_argument("--grammar", "-g", help="Path to grammar file (sets GRAMMAR_FILE env var)")
     fuzz_parser.add_argument("--seed-dir", default=None, help="Seed directory (default: fuzz-seeds)")
-    fuzz_parser.add_argument("--resume", action="store_true", help="Resume from existing AFL output directory")
+    fuzz_parser.add_argument("--resume", action="store_true", help="Resume from existing output directory")
     fuzz_parser.add_argument(
         "--output-dir", default="fuzz-output", help="Fuzzer output directory (default: fuzz-output)"
     )
     fuzz_parser.add_argument(
-        "--role",
-        choices=["main", "secondary"],
-        default=None,
-        help="AFL parallel mode: 'main' (-M) or 'secondary' (-S) instance",
-    )
-    fuzz_parser.add_argument("--name", default=None, help="AFL instance name for parallel mode (default: main01/sec01)")
-    fuzz_parser.add_argument(
         "--timeout",
         type=int,
         default=None,
-        help="Per-execution timeout in seconds (AFL -t flag). Default: let AFL auto-calibrate.",
+        help="Per-execution timeout in seconds",
     )
     fuzz_parser.add_argument(
         "--suppress", default=None, help="UBSan suppression file (e.g. ubsan.supp). See configs/ for examples."
     )
     fuzz_parser.add_argument(
-        "--debug", action="store_true", help="Show AFL++ child process output for debugging/troubleshooting purposes"
+        "--debug", action="store_true", help="Show child process output for debugging"
     )
 
     # Triage

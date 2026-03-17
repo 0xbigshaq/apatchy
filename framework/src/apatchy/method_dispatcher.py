@@ -212,14 +212,6 @@ class MethodDispatcher:
         )
 
     def _handle_fuzz(self, args: argparse.Namespace) -> None:
-        role = getattr(args, "role", None)
-        name = getattr(args, "name", None)
-
-        # --role and --name are AFL-only features
-        if (role or name) and args.engine != "afl":
-            logger.error("--role and --name are only supported with --engine afl")
-            return
-
         self.config_manager = ConfigManager(config_name=args.config)
         self.fuzz_manager = FuzzManager(self.config_manager)
 
@@ -235,8 +227,6 @@ class MethodDispatcher:
             seed_dir=getattr(args, "seed_dir", None),
             resume=getattr(args, "resume", False),
             output_dir=getattr(args, "output_dir", "fuzz-output"),
-            role=role,
-            name=name,
             suppress=getattr(args, "suppress", None),
             timeout=getattr(args, "timeout", None),
             debug=getattr(args, "debug", False),

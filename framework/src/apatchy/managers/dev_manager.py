@@ -22,7 +22,7 @@ class DevManager:
     under the ``dev/`` directory. Each project gets its own directory with a
     template ``harness.c``, a seed input directory, and a
     ``compile_commands.json`` for IDE auto-completion. Projects can then be
-    compiled against the Apache build tree for either AFL++ or standalone
+    compiled against the Apache build tree for LibFuzzer or standalone
     (stdin-based) execution.
 
     A project directory looks like::
@@ -33,11 +33,11 @@ class DevManager:
             fuzz-seeds/              # seed corpus
               sample.txt
             compile_commands.json   # auto-generated for clangd
-            fuzz_harness_afl        # built binary (after build)
+            fuzz_harness_libfuzzer  # built binary (after build)
             fuzz_harness_standalone # built binary (after build)
 
     When building in standalone mode, ``DevManager`` automatically creates
-    an alternate Apache build tree compiled with plain ``clang`` (no AFL++
+    an alternate Apache build tree compiled with plain ``clang`` (no
     instrumentation) to avoid runtime conflicts. This tree is cached and
     reused across builds.
 
@@ -54,7 +54,7 @@ class DevManager:
 
         # Edit dev/my_harness/harness.c, then build
         apatchy dev build my_harness
-        apatchy dev build my_harness --engine afl
+        apatchy dev build my_harness --engine libfuzzer
 
         # List all projects and their build status
         apatchy dev list
@@ -71,7 +71,7 @@ class DevManager:
             project_dir = dm.init_project("my_harness")
 
             # Edit dev/my_harness/harness.c, then build
-            dm.build_project("my_harness", engine="afl")
+            dm.build_project("my_harness", engine="libfuzzer")
             dm.build_project("my_harness", engine="standalone")
 
             # List all projects and their build status
@@ -127,7 +127,7 @@ class DevManager:
         # Regenerate compile_commands.json
         self._generate_compile_commands(project_dir)
 
-        # Standalone mode needs Apache compiled with plain clang (no AFL
+        # Standalone mode needs Apache compiled with plain clang (no
         # instrumentation) to avoid runtime conflicts.
         if engine == "standalone":
             tree = AlternateBuildTree(self.httpd_root, "-standalone")
@@ -174,7 +174,7 @@ class DevManager:
 
             # Check which engines have been built
             built = []
-            for engine in ("afl", "libfuzzer", "standalone"):
+            for engine in ("libfuzzer", "standalone"):
                 binary = d / f"fuzz_harness_{engine}"
                 if binary.exists():
                     built.append(engine)
@@ -249,15 +249,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 
 #ifndef LIBFUZZER_MODE
 #include <unistd.h>
-#ifndef __AFL_LOOP
-#define __AFL_LOOP(x) 1
-#endif
 int main(int argc, char **argv) {
     uint8_t buf[1024 * 64];
-    while (__AFL_LOOP(10000)) {
-        ssize_t n = read(0, buf, sizeof(buf));
-        if (n > 0) LLVMFuzzerTestOneInput(buf, (size_t)n);
-    }
+    ssize_t n = read(0, buf, sizeof(buf));
+    if (n > 0) LLVMFuzzerTestOneInput(buf, (size_t)n);
     return 0;
 }
 #endif

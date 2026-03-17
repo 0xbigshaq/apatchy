@@ -4,7 +4,7 @@ from apatchy.fuzzers.base import BaseFuzzer
 
 
 class LibFuzzer(BaseFuzzer):
-    """LibFuzzer engine with AFL-compatible output directory layout."""
+    """LibFuzzer engine."""
 
     def start(  # noqa: D102
         self,

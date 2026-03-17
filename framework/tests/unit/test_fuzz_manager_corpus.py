@@ -1,14 +1,14 @@
 """Tests for BaseFuzzer corpus preparation."""
 
-from apatchy.fuzzers.afl import AflFuzzer
+from apatchy.fuzzers.libfuzzer import LibFuzzer
 from apatchy.fuzzers.grammar import generate_seeds
 from apatchy.managers.config_manager import ConfigManager
 
 
 def _make_fuzzer(work_dir):
-    """Create an AflFuzzer with work_dir overridden."""
+    """Create a LibFuzzer with work_dir overridden."""
     cm = ConfigManager()
-    fuzzer = AflFuzzer(cm)
+    fuzzer = LibFuzzer(cm)
     fuzzer.work_dir = work_dir
     return fuzzer
 
