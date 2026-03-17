@@ -14,8 +14,7 @@ class ToolchainManager:
     ``ToolchainManager`` scans for required dependencies (compilers,
     fuzzing tools, coverage utilities, libraries) and records their
     resolved paths in the toolchain config file. Other managers read
-    this config to locate binaries like ``afl-clang-fast``,
-    ``llvm-profdata``, and ``libtool``.
+    this config to locate binaries like ``llvm-profdata`` and ``libtool``.
 
     The :meth:`check` method walks a registry of
     :class:`~apatchy.core.toolchain.base.ToolchainTool` plugins, each of
@@ -26,7 +25,6 @@ class ToolchainManager:
     The :meth:`setup` method delegates to a tool plugin's installer.
     Currently supported installers:
 
-    * ``afl`` - builds AFL++ from source.
     * ``llvm`` - locates or installs a specific LLVM version.
     * ``libtool`` - installs GNU libtool (needed for Apache's build system).
 
@@ -41,12 +39,8 @@ class ToolchainManager:
         apatchy setup check
 
         # Install / build specific tools
-        apatchy setup afl
         apatchy setup llvm --llvm-version 18
         apatchy setup libtool
-
-        # Force re-install
-        apatchy setup afl --force
 
     Example:
         .. code-block:: python
@@ -60,8 +54,8 @@ class ToolchainManager:
                 status = "OK" if dep.found else "MISSING"
                 print(f"{dep.category}  {dep.name}  {status}  {dep.path or dep.install_hint}")
 
-            # Install AFL++ from source
-            tm.setup("afl")
+            # Install LPM from source
+            tm.setup("lpm")
     """
 
     def __init__(self, verbose: bool = False) -> None:

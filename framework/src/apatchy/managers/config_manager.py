@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from apatchy.compat import get_compat_flags
-from apatchy.core import toolchain_config
 from apatchy.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -20,8 +19,7 @@ class ConfigManager:
 
     Build modes:
 
-    * ``"fuzz"`` - optimized build (``-O2``) with AFL++ instrumentation via
-      ``afl-clang-fast``.
+    * ``"fuzz"`` - optimized build (``-O2``) for fuzzing throughput.
     * ``"coverage"`` - unoptimized build (``-O0 -g``) with LLVM source-based
       coverage (``-fcoverage-mapping`` / ``-fprofile-instr-generate``).
     * anything else - plain debug build (``-O0 -g``), no special instrumentation.
@@ -43,7 +41,6 @@ class ConfigManager:
     Args:
         build_mode: Build profile. ``"fuzz"`` (default), ``"coverage"``, or
             any other string for a plain debug build.
-        engine: Fuzzing engine name. Currently only used for labeling.
         config_name: Filename of the httpd config to resolve at runtime.
             Defaults to ``"fuzz.conf"``.
         asan: Enable AddressSanitizer.
@@ -75,8 +72,7 @@ class ConfigManager:
             # Fuzz build with ASan + UBSan
             config = ConfigManager(build_mode="fuzz", asan=True, ubsan=True)
             flags = config.generate_build_config(httpd_version="2.4.58")
-            # flags == {"CC": "afl-clang-fast",
-            #           "CFLAGS": "-O2 -fno-omit-frame-pointer ...",
+            # flags == {"CFLAGS": "-O2 -fno-omit-frame-pointer ...",
             #           "LDFLAGS": "-no-pie -fsanitize=address ..."}
 
             # Coverage build for triage
@@ -87,7 +83,6 @@ class ConfigManager:
     def __init__(
         self,
         build_mode: str = "fuzz",
-        engine: str = "afl",
         config_name: str = "fuzz.conf",
         asan: bool = False,
         ubsan: bool = False,
@@ -96,7 +91,6 @@ class ConfigManager:
         truncsan: bool = False,
     ) -> None:
         self.build_mode = build_mode
-        self.engine = engine
         self.config_name = config_name
         self.asan = asan
         self.ubsan = ubsan
@@ -132,37 +126,13 @@ class ConfigManager:
             (cflags.append(flag), ldflags.append(flag))
 
         if self.build_mode == "fuzz":
-            # afl-clang-fast injects -fsanitize-trap=undefined after user CFLAGS,
-            # overriding -fno-sanitize-trap and breaking -fsanitize-ignorelist.
-            # Use afl-clang-fast-ubsan-compat which calls clang directly with
-            # AFL's SanCov pass plugin, bypassing the forced trap injection.
-            if self.ubsan and self.ubsan_ignorelist:
-                from apatchy.config import Config
-
-                compat = Config.TOOLCHAIN_DIR / "aflplusplus" / "afl-clang-fast-ubsan-compat"
-                if compat.exists():
-                    self.logger.info("Using afl-clang-fast-ubsan-compat for AFL + UBSan ignorelist")
-                    cc = str(compat)
-                else:
-                    self.logger.warning("afl-clang-fast-ubsan-compat not found, UBSan ignorelist may not work")
-                    cc = toolchain_config.resolve_tool("afl-clang-fast") or "afl-clang-fast"
-            else:
-                self.logger.info("Using afl-clang-fast for AFL instrumentation")
-                cc = toolchain_config.resolve_tool("afl-clang-fast") or "afl-clang-fast"
-            # Clang is stricter than gcc; suppress format warnings that
-            # Apache's upstream code triggers under -Werror (maintainer-mode).
             cflags.append("-Wno-error=format")
-            # AFL SanCov instrumentation produces non-PIC objects.
-            # Disable PIE to avoid R_X86_64_32S relocation errors at link time.
             ldflags.append("-no-pie")
 
         elif self.build_mode == "coverage":
             self.logger.info("Enabling Coverage Instrumentation")
             cflags.append("-fcoverage-mapping")
             both("-fprofile-instr-generate")
-            # Apache modules may have been compiled with AFL SanCov
-            # instrumentation (non-PIC). Disable PIE to avoid
-            # R_X86_64_32S relocation errors at link time.
             ldflags.append("-no-pie")
 
         elif self.build_mode == "libfuzzer":

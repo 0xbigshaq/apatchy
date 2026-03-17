@@ -36,12 +36,12 @@ def test_save_and_load_roundtrip(mock_path, tmp_path):
 
     cp = toolchain_config.load()
     cp.set("build", "cc", "/usr/bin/clang")
-    cp.set("fuzzing", "afl-fuzz", "/usr/bin/afl-fuzz")
+    cp.set("fuzzing", "protoc", "/usr/bin/protoc")
     toolchain_config.save(cp)
 
     cp2 = toolchain_config.load()
     assert cp2.get("build", "cc") == "/usr/bin/clang"
-    assert cp2.get("fuzzing", "afl-fuzz") == "/usr/bin/afl-fuzz"
+    assert cp2.get("fuzzing", "protoc") == "/usr/bin/protoc"
 
 
 @patch.object(toolchain_config, "_config_path")

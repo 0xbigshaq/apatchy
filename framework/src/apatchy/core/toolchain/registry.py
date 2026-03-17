@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Dict, List
 
-from apatchy.core.toolchain.afl import AflTool
 from apatchy.core.toolchain.base import ToolchainTool
 from apatchy.core.toolchain.libtool import LibtoolTool
 from apatchy.core.toolchain.llvm import LlvmTool
@@ -25,7 +24,6 @@ def build_registry(toolchain_dir: Path, verbose: bool = False) -> List[Toolchain
         BinaryTool("dot", "Docs", "apt install graphviz", toolchain_dir, verbose),
         # Fuzzing
         BinaryTool("protoc", "Build", "apt install protobuf-compiler", toolchain_dir, verbose),
-        AflTool(toolchain_dir, verbose),
         LpmTool(toolchain_dir, verbose),
         # Coverage (LLVM)
         LlvmTool(toolchain_dir, verbose),
