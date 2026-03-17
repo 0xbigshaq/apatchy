@@ -80,17 +80,17 @@ class ReportManager:
         # Replay numbered crash files as sequential requests
         apatchy triage --pipeline fuzz-output/
 
-        # Generate a coverage report from AFL++ output
-        apatchy coverage report --afl-dir fuzz-output/
+        # Generate a coverage report from corpus
+        apatchy coverage report --fuzzer-dir fuzz-output/
 
         # Coverage with introspection chained in
-        apatchy coverage report --afl-dir fuzz-output/ --with-introspect
+        apatchy coverage report --fuzzer-dir fuzz-output/ --with-introspect
 
         # Generate introspection data with interactive viewer
         apatchy introspect --entry ap_process_request
 
         # Generate callgrind profiles
-        apatchy profile callgrind --afl-dir fuzz-output/
+        apatchy profile callgrind --fuzzer-dir fuzz-output/
 
     Example:
         .. code-block:: python

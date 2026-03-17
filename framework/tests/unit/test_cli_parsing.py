@@ -67,7 +67,7 @@ def _parse(args):
         cov = _sub(subparsers, "coverage")
         cov_sub = cov.add_subparsers(dest="action")
         cov_report = _sub(cov_sub, "report")
-        cov_report.add_argument("--afl-dir", default="fuzz-output")
+        cov_report.add_argument("--fuzzer-dir", default="fuzz-output")
         cov_report.add_argument("--output", default="coverage-report")
         cov_report.add_argument("--harness", default=None)
 
@@ -253,7 +253,7 @@ def test_coverage_report():
     args = _parse(["coverage", "report"])
     assert args.command == "coverage"
     assert args.action == "report"
-    assert args.afl_dir == "fuzz-output"
+    assert args.fuzzer_dir == "fuzz-output"
 
 
 def test_coverage_report_custom_output():

@@ -70,7 +70,7 @@ class IntrospectorManager:
     .. code-block:: bash
 
         # Coverage report with introspection chained in
-        apatchy coverage report --afl-dir fuzz-output/ --with-introspect
+        apatchy coverage report --fuzzer-dir fuzz-output/ --with-introspect
 
         # Standalone introspection (auto-builds bitcode if missing)
         apatchy introspect ap_process_request_internal
