@@ -1,10 +1,8 @@
-<p align="center">
-  <img src="docs/apatchy-logo-transparent.png" alt="apatchy" width="200">
-</p>
 
-<h1 align="center">apatchy</h1>
+<img align="right" src="docs/apatchy-logo-transparent.png" alt="apatchy" width="200">
 
-<p align="center">
+<p align="left">
+<h1 style="border: none; margin-bottom:0px;" align="left">apatchy</h1>
   <i>An in-process fuzzing framework for Apache HTTPD</i>
   <br />
   <a href='https://pwner.gg/apatchy/'>
