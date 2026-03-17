@@ -115,10 +115,7 @@ def test_all_harnesses_compile(httpd: Path, build_dir: Path, mp: pytest.MonkeyPa
 
     # Skip companion files and C++ proto harnesses (need LPM installed)
     skip = {"fuzz_common"}
-    harness_names = [
-        h["name"] for h in harnesses
-        if h["name"] not in skip and h["source"].endswith(".c")
-    ]
+    harness_names = [h["name"] for h in harnesses if h["name"] not in skip and h["source"].endswith(".c")]
 
     for name in harness_names:
         harness_src = builder.resolve_harness(name)
