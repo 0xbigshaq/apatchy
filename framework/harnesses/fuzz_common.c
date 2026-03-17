@@ -371,15 +371,9 @@ static apr_status_t fuzz_input_filter(
 
 static apr_socket_t *g_dummy_socket = NULL;
 
-/* Modules whose pre_connection hooks allocate per-connection configs.
- * We init these manually since returning DONE blocks the hook chain. */
-extern module AP_MODULE_DECLARE_DATA logio_module;
-extern module AP_MODULE_DECLARE_DATA remoteip_module;
-
 static int fuzz_pre_connection(conn_rec *c, void *csd)
 {
     fuzz_net_rec *net;
-    void *logio_cf;
 
     /* Only intercept connections we created (tagged in fuzz_one_input).
      * Let proxy backend connections use normal socket I/O. */
@@ -394,28 +388,15 @@ static int fuzz_pre_connection(conn_rec *c, void *csd)
 
     ap_set_core_module_config(c->conn_config, g_dummy_socket);
 
-    /* Init logio per-connection config (normally done by logio_pre_conn).
-     * The struct is just counters, apr_pcalloc zeros them. */
-    logio_cf = apr_pcalloc(c->pool, 32);
-    ap_set_module_config(c->conn_config, &logio_module, logio_cf);
-
-    /* Init remoteip conn config and add PROXY protocol filter.
-     * remoteip_hook_pre_connection is blocked by DONE, so we replicate
-     * what it does: allocate conn_conf (two NULL pointers) and add the
-     * REMOTEIP_INPUT filter. The filter reads PROXY headers from the
-     * fuzz input before passing data to the HTTP parser. */
-    if (ap_add_input_filter("REMOTEIP_INPUT", NULL, NULL, c)) {
-        void *ri_cf = apr_pcalloc(c->pool, 32);
-        ap_set_module_config(c->conn_config, &remoteip_module, ri_cf);
-    }
-
     ap_add_input_filter_handle(fuzz_input_filter_handle, net, NULL, c);
     ap_add_output_filter_handle(fuzz_output_filter_handle, NULL, NULL, c);
 
-    /* Return DONE to prevent core_pre_connection from adding core I/O
-     * filters that would interfere with fuzz I/O (read/write to the
-     * dummy socket instead of the in-memory fuzz buffer). */
-    return DONE;
+    /* Setting c->master causes core_pre_connection (APR_HOOK_REALLY_LAST)
+     * to return DECLINED, skipping real socket I/O filter registration.
+     * Other module hooks (remoteip, logio, etc.) run normally since we
+     * return OK and do not terminate the hook chain. */
+    c->master = c;
+    return OK;
 }
 
 /* ----------------------------------------------------------------
