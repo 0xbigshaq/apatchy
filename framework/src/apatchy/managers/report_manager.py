@@ -604,17 +604,21 @@ class ReportManager:
         crash_sink = prof_dir / "replay-crashes"
         crash_sink.mkdir(exist_ok=True)
 
-        self.logger.info(f"Replaying {total} proto corpus files via libFuzzer -runs=0...")
         cmd = [
             str(harness),
             "-runs=0",
             "-keep_going=1000000",
             f"-artifact_prefix={crash_sink}/",
         ] + [str(d) for d in replay]
-        try:
-            subprocess.run(cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=300)
-        except subprocess.TimeoutExpired:
-            self.logger.warning("Proto corpus replay timed out")
+
+        console = Console()
+        spinner = Progress(SpinnerColumn(), TextColumn("{task.description}"))
+        spinner.add_task(f"[yellow]Replaying[/yellow] [dim]{total} proto corpus files[/dim]")
+        with Live(spinner, console=console, refresh_per_second=12):
+            try:
+                subprocess.run(cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=300)
+            except subprocess.TimeoutExpired:
+                self.logger.warning("Proto corpus replay timed out")
 
         return total
 
