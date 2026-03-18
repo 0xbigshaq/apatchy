@@ -1,4 +1,4 @@
-GET /private/secret HTTP/1.1
-Host: localhost
-User-Agent: Googlebot/2.1
-
+method: GET
+uri: "/private/secret"
+headers { name: "Host" value: "localhost" }
+headers { name: "User-Agent" value: "Googlebot/2.1" }

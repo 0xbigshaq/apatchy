@@ -1,3 +1,3 @@
-GET /search/test?extra=1 HTTP/1.1
-Host: localhost
-
+method: GET
+uri: "/search/test?extra=1"
+headers { name: "Host" value: "localhost" }

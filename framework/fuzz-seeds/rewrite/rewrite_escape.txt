@@ -1,3 +1,3 @@
-GET /escape/hello%20world%3Cscript%3E HTTP/1.1
-Host: localhost
-
+method: GET
+uri: "/escape/hello%20world%3Cscript%3E"
+headers { name: "Host" value: "localhost" }

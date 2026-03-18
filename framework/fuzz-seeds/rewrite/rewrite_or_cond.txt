@@ -1,5 +1,5 @@
-GET /or/test?needle HTTP/1.1
-Host: localhost
-X-Custom: needle
-Accept: text/html
-
+method: GET
+uri: "/or/test?needle"
+headers { name: "Host" value: "localhost" }
+headers { name: "X-Custom" value: "needle" }
+headers { name: "Accept" value: "text/html" }

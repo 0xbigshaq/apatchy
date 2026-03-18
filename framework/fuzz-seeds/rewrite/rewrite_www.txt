@@ -1,4 +1,4 @@
-GET /page HTTP/1.1
-Host: www.example.com
-User-Agent: Mozilla/5.0
-
+method: GET
+uri: "/page"
+headers { name: "Host" value: "www.example.com" }
+headers { name: "User-Agent" value: "Mozilla/5.0" }

@@ -1,3 +1,3 @@
-GET /nested/Hello-World HTTP/1.1
-Host: localhost
-
+method: GET
+uri: "/nested/Hello-World"
+headers { name: "Host" value: "localhost" }

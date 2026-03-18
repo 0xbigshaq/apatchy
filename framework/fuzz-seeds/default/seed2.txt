@@ -1,7 +1,8 @@
-CHECKIN https://R:w@127.0.0.1:8080/w/#4 HTTP/1.0
-Access-Control-Request-Headers: 127.0.0.1:8080
-Accept-Language: 
-Max-Forwards: Sat, 29 Oct 1994 19:43:31 GMT
-If-Range: Sat, 29 Oct 1994 19:43:31 GMT
-Proxy-Authorization: Sat, 29 Oct 1994 19:43:31 GMT
-
+method: GET
+uri: "https://R:w@127.0.0.1:8080/w/#4"
+http_version: "HTTP/1.0"
+headers { name: "Access-Control-Request-Headers" value: "127.0.0.1:8080" }
+headers { name: "Accept-Language" value: "" }
+headers { name: "Max-Forwards" value: "Sat, 29 Oct 1994 19:43:31 GMT" }
+headers { name: "If-Range" value: "Sat, 29 Oct 1994 19:43:31 GMT" }
+headers { name: "Proxy-Authorization" value: "Sat, 29 Oct 1994 19:43:31 GMT" }

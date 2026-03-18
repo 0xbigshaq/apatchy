@@ -1,4 +1,4 @@
-GET /api/users/list?format=json HTTP/1.1
-Host: localhost
-Accept: application/json
-
+method: GET
+uri: "/api/users/list?format=json"
+headers { name: "Host" value: "localhost" }
+headers { name: "Accept" value: "application/json" }
