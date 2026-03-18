@@ -420,8 +420,12 @@ class ReportManager:
 
         if self._is_proto_harness(harness_name):
             harness = self.work_dir / "fuzz_harness_libfuzzer_cov"
+            harness_stamp = self.work_dir / ".cov_harness_name"
             libmain = cov_root / "server" / "libmain.la"
-            if harness.exists() and libmain.exists() and harness.stat().st_mtime > libmain.stat().st_mtime:
+            cached_name = harness_stamp.read_text().strip() if harness_stamp.exists() else None
+            name_matches = cached_name == (harness_name or "")
+            mtime_ok = harness.exists() and libmain.exists() and harness.stat().st_mtime > libmain.stat().st_mtime
+            if name_matches and mtime_ok:
                 self.logger.info(f"Coverage harness up to date: {harness}")
                 return harness, cov_root
 
@@ -449,6 +453,7 @@ class ReportManager:
                 if fuzz_backup.exists():
                     shutil.move(str(fuzz_backup), str(fuzz_bin))
 
+            harness_stamp.write_text(harness_name or "")
             self.logger.info(f"Coverage harness built: {harness}")
             return harness, cov_root
 
