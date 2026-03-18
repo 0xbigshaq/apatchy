@@ -230,6 +230,7 @@ class MethodDispatcher:
             suppress=getattr(args, "suppress", None),
             timeout=getattr(args, "timeout", None),
             debug=getattr(args, "debug", False),
+            workers=getattr(args, "workers", 1),
         )
 
     def _handle_triage(self, args: argparse.Namespace) -> None:

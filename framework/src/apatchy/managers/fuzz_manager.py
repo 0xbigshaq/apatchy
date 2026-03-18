@@ -85,6 +85,7 @@ class FuzzManager:
         suppress: Optional[str] = None,
         timeout: Optional[int] = None,
         debug: bool = False,
+        workers: int = 1,
         **kwargs,
     ) -> None:
         engine_cls = ENGINES.get(engine)
@@ -103,4 +104,5 @@ class FuzzManager:
             suppress=suppress,
             timeout=timeout,
             debug=debug,
+            workers=workers,
         )

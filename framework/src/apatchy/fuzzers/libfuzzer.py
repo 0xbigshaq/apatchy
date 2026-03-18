@@ -12,6 +12,7 @@ class LibFuzzer(BaseFuzzer):
         seed_dir: Path,
         output_dir: Path,
         resume: bool = False,
+        workers: int = 1,
         **kwargs,
     ) -> None:
         instance_dir = output_dir / "default"
@@ -39,6 +40,10 @@ class LibFuzzer(BaseFuzzer):
             f"-artifact_prefix={crashes_dir}/",
             "-keep_going=1000000",
         ]
+
+        if workers > 1:
+            cmd.append(f"-fork={workers}")
+            self.logger.info(f"Parallel mode: {workers} workers (-fork={workers})")
 
         from apatchy.utils.libfuzzer_ui import LibFuzzerUI
 

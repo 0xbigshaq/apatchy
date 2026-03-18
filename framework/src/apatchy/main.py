@@ -177,6 +177,9 @@ def main():
         "--suppress", default=None, help="UBSan suppression file (e.g. ubsan.supp). See configs/ for examples."
     )
     fuzz_parser.add_argument("--debug", action="store_true", help="Show child process output for debugging")
+    fuzz_parser.add_argument(
+        "--workers", "-w", type=int, default=1, help="Number of parallel workers (uses libfuzzer -fork=N)"
+    )
 
     # Triage
     triage_parser = _sub(subparsers, "triage", help="Triage crashes")

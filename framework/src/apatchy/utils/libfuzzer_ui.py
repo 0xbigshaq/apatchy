@@ -25,6 +25,19 @@ _STATUS_RE = re.compile(
     r"MS:\s*\d+\s+(.*)"
 )
 
+_FORK_RE = re.compile(
+    r"#(\d+):\s+"
+    r"cov:\s*(\d+)\s+"
+    r"ft:\s*(\d+)\s+"
+    r"corp:\s*(\d+)\s+"
+    r"exec/s:\s*(\d+)\s+"
+    r"oom/timeout/crash:\s*(\d+)/(\d+)/(\d+)\s+"
+    r"time:\s*(\d+)s\s+"
+    r"job:\s*(\d+)"
+)
+
+_NEW_FUNC_RE = re.compile(r"NEW_FUNC:.*? in (\S+)\s+(\S+)")
+
 
 def _fmt_duration(seconds: float) -> str:
     s = int(seconds)
@@ -138,6 +151,37 @@ class LibFuzzerUI:  # noqa: D101
                 self.last_new_time = time.monotonic()
             return
 
+        fm = _FORK_RE.match(line)
+        if fm:
+            self.stats["run"] = fm.group(1)
+            self.stats["event"] = f"job {fm.group(10)}"
+            self.stats["cov"] = fm.group(2)
+            self.stats["ft"] = fm.group(3)
+            self.stats["corp_n"] = fm.group(4)
+            elapsed = time.monotonic() - self.start_time
+            self.stats["exec_s"] = str(int(int(fm.group(1)) / elapsed)) if elapsed > 0 else fm.group(5)
+            self.stats["worker_exec_s"] = fm.group(5)
+            ooms, timeouts, crashes = fm.group(6), fm.group(7), fm.group(8)
+            self.stats["strategy"] = f"oom:{ooms} tout:{timeouts} crash:{crashes}"
+            old_cov = getattr(self, "_last_cov", 0)
+            new_cov = int(fm.group(2))
+            if new_cov > old_cov:
+                self.last_new_time = time.monotonic()
+            self._last_cov = new_cov
+            return
+
+        nf = _NEW_FUNC_RE.search(line)
+        if nf:
+            func_name = nf.group(1)
+            raw_path = nf.group(2)
+            parts = raw_path.split("/")
+            for i, part in enumerate(parts):
+                if part.startswith("httpd-"):
+                    raw_path = "/".join(parts[i + 1 :])
+                    break
+            self.stats["last_func"] = f"{func_name}  ({raw_path})"
+            return
+
         if "Test unit written to" in line:
             self.last_crash_time = time.monotonic()
 
@@ -182,17 +226,35 @@ class LibFuzzerUI:  # noqa: D101
         table.add_column("value_r", width=22)
 
         table.add_row("run time", run_time, "total execs", f"[bold]{_fmt_num(s['run'])}[/bold]")
-        table.add_row("last new cov", last_new, "exec/sec", _fmt_num(s["exec_s"]))
+        worker_exec_s = s.get("worker_exec_s")
+        if worker_exec_s:
+            exec_label = "exec/s (all)"
+            exec_val = _fmt_num(s["exec_s"])
+        else:
+            exec_label = "exec/sec"
+            exec_val = _fmt_num(s["exec_s"])
+
+        table.add_row("last new cov", last_new, exec_label, exec_val)
         table.add_row("last crash", last_crash, "corpus", f"{_fmt_num(s['corp_n'])} ({s['corp_size']})")
         table.add_row(
             "edges", f"[green]{_fmt_num(s['cov'])}[/green]", "features", f"[green]{_fmt_num(s['ft'])}[/green]"
         )
         table.add_row("mutator", s["strategy"], "crashes", crashes)
-        table.add_row("rss", s["rss"], "input limit", _fmt_num(s["limit"]))
+        if worker_exec_s:
+            table.add_row("rss", s["rss"], "exec/s (worker)", _fmt_num(worker_exec_s))
+        else:
+            table.add_row("rss", s["rss"], "input limit", _fmt_num(s["limit"]))
+
+        last_func = s.get("last_func")
+        panel_body = Group(table, f"  [dim]last func[/dim]  [cyan]{last_func}[/cyan]") if last_func else table
 
         title = f"[bold cyan]apatchy libfuzzer[/bold cyan]  {event_tag}  [dim]{run_time}[/dim]"
         stats_panel = Panel(
-            table, title=title, title_align="left", border_style="cyan", width=min(self.max_width, self.console.width)
+            panel_body,
+            title=title,
+            title_align="left",
+            border_style="cyan",
+            width=min(self.max_width, self.console.width),
         )
 
         # Log panel
