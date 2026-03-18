@@ -39,6 +39,7 @@ class LibFuzzer(BaseFuzzer):
             str(queue_dir),
             f"-artifact_prefix={crashes_dir}/",
             "-keep_going=1000000",
+            "-print_new_func_on_new=1",
         ]
 
         if workers > 1:

@@ -36,7 +36,7 @@ _FORK_RE = re.compile(
     r"job:\s*(\d+)"
 )
 
-_NEW_FUNC_RE = re.compile(r"NEW_FUNC:.*? in (\S+)\s+(\S+)")
+_NEW_FUNC_RE = re.compile(r"NEW_FUNC.*? in (\S+)\s+(\S+)")
 
 
 def _fmt_duration(seconds: float) -> str:
