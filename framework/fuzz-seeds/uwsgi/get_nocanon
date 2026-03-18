@@ -1,0 +1,3 @@
+method: GET
+uri: "/a"
+headers { name: "Host" value: "localhost" }
