@@ -227,6 +227,9 @@ def main():
     coverage_report.add_argument(
         "--with-introspect", action="store_true", default=False, help="Emit LLVM bitcode for compiled objects"
     )
+    coverage_report.add_argument(
+        "--with-modules", action="store_true", default=False, help="Build coverage-instrumented external modules"
+    )
 
     # Introspect
     introspect_parser = _sub(subparsers, "introspect", help="Merge call tree analysis with coverage data")

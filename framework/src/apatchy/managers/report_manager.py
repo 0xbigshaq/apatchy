@@ -627,6 +627,7 @@ class ReportManager:
         exclude_file: str | None = None,
         jobs: int = 1,
         with_introspect=False,
+        with_modules=False,
     ) -> None:
         """Full coverage pipeline: build harness, replay corpus, merge, generate report."""
         # Detect LLVM toolchain (matched compiler + analysis tools)
@@ -648,8 +649,9 @@ class ReportManager:
             self.logger.error(f"Failed to build coverage harness: {e}")
             return
 
-        # Build coverage-instrumented external modules (e.g. mod_pwn.so)
-        cov_modules = self._build_coverage_modules(cc, cov_root)
+        cov_modules = []
+        if with_modules:
+            cov_modules = self._build_coverage_modules(cc, cov_root)
 
         # Resolve httpd config
         config_path = self.config_manager.get_httpd_config(config_name)

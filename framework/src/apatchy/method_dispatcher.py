@@ -394,6 +394,7 @@ class MethodDispatcher:
                 exclude_file=getattr(args, "exclude", None),
                 jobs=getattr(args, "jobs", 1),
                 with_introspect=getattr(args, "with_introspect", False),
+                with_modules=getattr(args, "with_modules", False),
             )
         else:
             logger.error("No coverage sub-command specified. Use: report")
