@@ -395,6 +395,7 @@ class MethodDispatcher:
             binary_path=getattr(args, "binary", None),
             bitcode_path=getattr(args, "bitcode", None),
             output_path=getattr(args, "output", "introspect.json"),
+            fuzzer_dir=getattr(args, "fuzzer_dir", "fuzz-output"),
             serve=not getattr(args, "no_serve", False),
             port=getattr(args, "port", 9000),
         )
