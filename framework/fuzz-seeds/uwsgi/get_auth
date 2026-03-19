@@ -1,4 +1,4 @@
-method: GET
+method: UWSGI_GET
 uri: "/"
 headers { name: "Host" value: "localhost" }
 headers { name: "Authorization" value: "Basic dGVzdDp0ZXN0" }
