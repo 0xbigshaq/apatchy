@@ -390,9 +390,10 @@ class HarnessBuilder:
                 self._compile_object(str(src), obj_name, harness_cflags, cxx)
                 converter_objects.append(str(Config.OBJ_DIR / obj_name))
 
-        # Compile fuzz_common.c with the C compiler via libtool
+        # Compile fuzz_common.c and fuzz_backend.c with the C compiler via libtool
         c_cflags = f"-I{harness_dir} {cflags}"
         self._compile_object(str(harness_dir / "fuzz_common.c"), "fuzz_common.lo", c_cflags, c_cc)
+        self._compile_object(str(harness_dir / "fuzz_backend.c"), "fuzz_backend.lo", c_cflags, c_cc)
 
         # Compile buildmark.c and modules.c
         self._compile_object(str(self.httpd_root / "server" / "buildmark.c"), "buildmark.lo", c_cflags, c_cc)
@@ -408,7 +409,7 @@ class HarnessBuilder:
         objects = (
             [f"{obj}/fuzz_harness.lo"]
             + converter_objects
-            + [f"{obj}/fuzz_common.lo"]
+            + [f"{obj}/fuzz_common.lo", f"{obj}/fuzz_backend.lo"]
             + pb_objects
             + [f"{obj}/buildmark.lo", f"{obj}/modules.lo"]
         )
