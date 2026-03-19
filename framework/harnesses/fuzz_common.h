@@ -53,4 +53,11 @@ extern server_rec *g_server;
  */
 void fuzz_exit(int status);
 
+/*
+ * Optional hook registration callback. Set by specialized harnesses
+ * (e.g. fuzz_backend) to register extra hooks during fuzz_init().
+ * Called after fuzz_register_hooks, before config processing.
+ */
+extern void (*fuzz_extra_hooks)(apr_pool_t *p);
+
 #endif /* FUZZ_COMMON_H */

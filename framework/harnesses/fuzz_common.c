@@ -531,6 +531,7 @@ static int g_initialized = 0;
 static apr_pool_t *g_pconf = NULL;
 static apr_pool_t *g_plog = NULL;
 server_rec *g_server = NULL;
+void (*fuzz_extra_hooks)(apr_pool_t *p) = NULL;
 
 int fuzz_init(const char *confname, const char *server_root)
 {
@@ -593,6 +594,8 @@ int fuzz_init(const char *confname, const char *server_root)
 
     fuzz_register_hooks(g_pconf);
     fuzz_mpm_hooks(g_pconf);
+    if (fuzz_extra_hooks)
+        fuzz_extra_hooks(g_pconf);
 
     apr_pool_create(&g_plog, g_pool);
     apr_pool_tag(g_plog, "plog");
