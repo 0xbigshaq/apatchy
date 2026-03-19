@@ -138,6 +138,9 @@ class HarnessBuilder:
         if mode == "libfuzzer":
             cflags = f"-DLIBFUZZER -fsanitize=fuzzer {cflags}"
             ldflags = f"-fsanitize=fuzzer {ldflags}"
+        elif mode == "coverage":
+            cflags = f"-DLIBFUZZER -fsanitize=fuzzer -fprofile-instr-generate -fcoverage-mapping {cflags}"
+            ldflags = f"-fsanitize=fuzzer -fprofile-instr-generate {ldflags}"
 
         # Resolve harness source file
         if not harness_name:

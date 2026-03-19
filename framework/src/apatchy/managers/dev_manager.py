@@ -34,7 +34,7 @@ class DevManager:
               sample.txt
             compile_commands.json   # auto-generated for clangd
             fuzz_harness_libfuzzer  # built binary (after build)
-            fuzz_harness_standalone # built binary (after build)
+            fuzz_harness_coverage   # coverage binary (after coverage build)
 
     When building in standalone mode, ``DevManager`` automatically creates
     an alternate Apache build tree compiled with plain ``clang`` (no
