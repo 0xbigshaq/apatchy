@@ -1,0 +1,7 @@
+method: UWSGI_GET
+uri: "/"
+headers { name: "Host" value: "localhost" }
+resp {
+    rc: REDIRECT_301
+    headers { name: "Location" value: "http://localhost/new" }
+}

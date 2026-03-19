@@ -1,0 +1,8 @@
+method: UWSGI_GET
+uri: "/"
+headers { name: "Host" value: "localhost" }
+resp {
+    rc: SERVER_ERROR_500
+    headers { name: "Content-Type" value: "text/plain" }
+    body: "error"
+}
