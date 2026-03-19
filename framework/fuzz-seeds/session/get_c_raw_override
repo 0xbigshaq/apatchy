@@ -1,0 +1,9 @@
+http {
+  method: GET
+  uri: "/c"
+  headers { name: "Host" value: "localhost" }
+}
+cookie {
+  raw_override: "user=overridden&token=xyz789&flag=1"
+}
+route: ROUTE_C

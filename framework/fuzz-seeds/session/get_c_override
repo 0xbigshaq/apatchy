@@ -1,0 +1,10 @@
+http {
+  method: GET
+  uri: "/c"
+  headers { name: "Host" value: "localhost" }
+  headers { name: "X-Session-Data" value: "user=testuser&role=admin&token=abc123" }
+}
+cookie {
+  session_data: "user=old&role=guest"
+}
+route: ROUTE_C

@@ -24,3 +24,8 @@ slotmem
 srclib
 ssl
 unix
+pb.h
+protobuf.h
+proto_converters
+libprotobuf-mutator
+harnesses
