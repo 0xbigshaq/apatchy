@@ -141,7 +141,7 @@ class HarnessBuilder:
 
         # Resolve harness source file
         if not harness_name:
-            harness_name = "mod_fuzzy"
+            harness_name = "mod_fuzzy_proto"
         harness_src = self.resolve_harness(harness_name)
         if harness_src is None:
             self.logger.error(f"Harness '{harness_name}' not found")
