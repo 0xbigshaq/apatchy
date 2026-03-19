@@ -7,10 +7,16 @@ class SessionCookie;
 class PwnRequest;
 class MultipartRequest;
 class RewriteRequest;
+class UwsgiRequest;
+class UwsgiResponse;
 enum SessionRoute : int;
 
 // Base HTTP conversion: method line, headers, body
 std::string BuildHttpRequest(const HttpRequest &req);
+
+// fuzz the entire request cycle
+std::string BuildUwsgiRequest(const UwsgiRequest &req);
+std::string BuildUwsgiResponse(const UwsgiResponse &resp);
 
 // Session crypto: encrypt/encode session data, set path, inject Cookie header
 void ApplySessionCrypto(const SessionCookie &cookie, SessionRoute route, std::string &request);
