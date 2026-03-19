@@ -180,6 +180,13 @@ def main():
     fuzz_parser.add_argument(
         "--workers", "-w", type=int, default=1, help="Number of parallel workers (uses libfuzzer -fork=N)"
     )
+    fuzz_parser.add_argument(
+        "--pulse",
+        type=int,
+        default=60,
+        dest="pulse_interval",
+        help="Stats export interval in seconds (default: 60)",
+    )
 
     # Triage
     triage_parser = _sub(subparsers, "triage", help="Triage crashes")
@@ -220,9 +227,6 @@ def main():
         "--exclude",
         default=None,
         help="Path to file containing exclude regex (passed to llvm-cov -ignore-filename-regex)",
-    )
-    coverage_report.add_argument(
-        "--jobs", "-j", type=int, default=1, help="Number of parallel replay workers (default: 1)"
     )
     coverage_report.add_argument(
         "--with-introspect", action="store_true", default=False, help="Emit LLVM bitcode for compiled objects"

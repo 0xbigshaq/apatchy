@@ -231,6 +231,7 @@ class MethodDispatcher:
             timeout=getattr(args, "timeout", None),
             debug=getattr(args, "debug", False),
             workers=getattr(args, "workers", 1),
+            pulse_interval=getattr(args, "pulse_interval", 60),
         )
 
     def _handle_triage(self, args: argparse.Namespace) -> None:
@@ -242,47 +243,31 @@ class MethodDispatcher:
 
         self.report_manager = ReportManager(httpd_root, self.config_manager)
 
-        # Find a harness binary for triage. Prefer libfuzzer (handles proto).
-        harness_path = None
-        is_libfuzzer = False
-        for name in ("fuzz_harness_libfuzzer", "fuzz_harness_standalone"):
-            candidate = Config.WORK_DIR / name
-            if candidate.exists():
-                harness_path = candidate
-                is_libfuzzer = name == "fuzz_harness_libfuzzer"
-                break
-
-        if not harness_path:
-            logger.error("No harness binary found. Run 'apatchy link standalone' or 'apatchy link afl' first.")
-            return
-
-        modes = sum(bool(x) for x in (args.crash_file, args.pipeline, args.bulk))
-        if modes == 0:
-            logger.error("Either a crash file, --pipeline <dir>, or --bulk <dir> is required.")
-            return
-        if modes > 1:
-            logger.error("Only one of crash file, --pipeline, and --bulk can be used at a time.")
+        harness_path = Config.WORK_DIR / "fuzz_harness_coverage"
+        if not harness_path.exists():
+            logger.error("No coverage harness found. Run 'apatchy coverage' first to build it.")
             return
 
         if args.pipeline:
-            if is_libfuzzer:
-                logger.error("Pipeline triage requires fuzz_harness_standalone (multi-request concatenation).")
-                return
-            self.report_manager.triage_pipeline(
-                args.pipeline,
-                harness_path,
-                no_color=args.no_color,
-                suppress=getattr(args, "suppress", None),
-                timeout=args.timeout,
-            )
-        elif args.bulk:
+            logger.error("--pipeline is deprecated and will be re-written with proto multi-request support.")
+            return
+
+        modes = sum(bool(x) for x in (args.crash_file, args.bulk))
+        if modes == 0:
+            logger.error("Either a crash file or --bulk <dir> is required.")
+            return
+        if modes > 1:
+            logger.error("Only one of crash file and --bulk can be used at a time.")
+            return
+
+        if args.bulk:
             self.report_manager.triage_bulk(
                 args.bulk,
                 harness_path,
                 no_color=args.no_color,
                 suppress=getattr(args, "suppress", None),
                 timeout=args.timeout,
-                is_libfuzzer=is_libfuzzer,
+                is_libfuzzer=True,
             )
         else:
             self.report_manager.triage_crash(
@@ -291,7 +276,7 @@ class MethodDispatcher:
                 no_color=args.no_color,
                 suppress=getattr(args, "suppress", None),
                 timeout=args.timeout,
-                is_libfuzzer=is_libfuzzer,
+                is_libfuzzer=True,
             )
 
     def _get_toolchain_manager(self, verbose: bool = False) -> ToolchainManager:
@@ -392,7 +377,6 @@ class MethodDispatcher:
                 output_dir=args.output,
                 harness_name=getattr(args, "harness", None),
                 exclude_file=getattr(args, "exclude", None),
-                jobs=getattr(args, "jobs", 1),
                 with_introspect=getattr(args, "with_introspect", False),
                 with_modules=getattr(args, "with_modules", False),
             )

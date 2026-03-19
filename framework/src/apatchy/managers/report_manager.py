@@ -49,13 +49,10 @@ class ReportManager:
     interactive web UI.
 
     **Triage** - Replays individual crash files or entire directories
-    through the standalone harness to extract sanitizer reports:
+    through the coverage harness to extract sanitizer reports:
 
     * :meth:`triage_crash` - single file
     * :meth:`triage_bulk` - all files in a directory (parallel)
-    * :meth:`triage_pipeline` - concatenates numbered crash files from a
-      directory and replays them as sequential HTTP requests, for bugs
-      that require multiple requests to trigger
 
     **Profiling** (:meth:`generate_callgrind`) - Replays the corpus
     through ``valgrind --tool=callgrind`` to produce callgrind profiles
@@ -102,7 +99,7 @@ class ReportManager:
             # Triage a crash
             config = ConfigManager(config_name="fuzz.conf")
             rm = ReportManager(Path("httpd-2.4.58"), config)
-            rm.triage_crash("fuzz-output/default/crashes/id:000000", Path("fuzz_harness_standalone"))
+            rm.triage_crash("fuzz-output/default/crashes/id:000000", Path("fuzz_harness_coverage"))
 
             # Generate coverage
             cov_config = ConfigManager(build_mode="coverage")
@@ -398,179 +395,38 @@ class ReportManager:
 
         return built
 
-    def _is_proto_harness(self, harness_name: str | None) -> bool:
-        """Return True if harness_name resolves to a .cc (proto) harness."""
-        return HarnessBuilder.is_proto(harness_name)
-
     def _build_coverage_harness(self, cc: str, harness_name: str = None) -> Tuple[Path, Path]:
-        """Build a coverage-instrumented harness.
-
-        For plain C harnesses: builds fuzz_harness_coverage (standalone replay).
-        For proto (.cc) harnesses: builds fuzz_harness_libfuzzer with coverage
-        flags so LPM deserialization runs during replay (via -runs=0).
+        """Build a coverage-instrumented proto harness.
 
         Uses the separate coverage build tree so the fuzz build is untouched.
         Returns (harness_path, cov_httpd_root).
         """
         cov_root = self._ensure_coverage_build(cc)
 
+        harness = self.work_dir / "fuzz_harness_coverage"
+        harness_stamp = self.work_dir / ".cov_harness_name"
+        libmain = cov_root / "server" / "libmain.la"
+        cached_name = harness_stamp.read_text().strip() if harness_stamp.exists() else None
+        name_matches = cached_name == (harness_name or "")
+        mtime_ok = harness.exists() and libmain.exists() and harness.stat().st_mtime > libmain.stat().st_mtime
+        if name_matches and mtime_ok:
+            self.logger.info(f"Coverage harness up to date: {harness}")
+            return harness, cov_root
+
         build_config = self.config_manager.generate_build_config()
         cflags = build_config.get("CFLAGS", "")
         ldflags = build_config.get("LDFLAGS", "")
-
-        if self._is_proto_harness(harness_name):
-            harness = self.work_dir / "fuzz_harness_libfuzzer_cov"
-            harness_stamp = self.work_dir / ".cov_harness_name"
-            libmain = cov_root / "server" / "libmain.la"
-            cached_name = harness_stamp.read_text().strip() if harness_stamp.exists() else None
-            name_matches = cached_name == (harness_name or "")
-            mtime_ok = harness.exists() and libmain.exists() and harness.stat().st_mtime > libmain.stat().st_mtime
-            if name_matches and mtime_ok:
-                self.logger.info(f"Coverage harness up to date: {harness}")
-                return harness, cov_root
-
-            import shutil
-
-            fuzz_bin = self.work_dir / "fuzz_harness_libfuzzer"
-            fuzz_backup = self.work_dir / "fuzz_harness_libfuzzer.bak"
-            if fuzz_bin.exists():
-                shutil.copy2(str(fuzz_bin), str(fuzz_backup))
-
-            try:
-                builder = HarnessBuilder(cov_root)
-                self.logger.info("Building coverage-instrumented proto harness...")
-                cov_cflags = f"-fprofile-instr-generate -fcoverage-mapping {cflags}"
-                cov_ldflags = f"-fprofile-instr-generate {ldflags}"
-                builder.build(
-                    mode="libfuzzer", cflags=cov_cflags, ldflags=cov_ldflags, cc=cc, harness_name=harness_name
-                )
-
-                if not fuzz_bin.exists():
-                    raise FileNotFoundError("Failed to build coverage-instrumented proto harness")
-
-                shutil.copy2(str(fuzz_bin), str(harness))
-            finally:
-                if fuzz_backup.exists():
-                    shutil.move(str(fuzz_backup), str(fuzz_bin))
-
-            harness_stamp.write_text(harness_name or "")
-            self.logger.info(f"Coverage harness built: {harness}")
-            return harness, cov_root
-
-        # Skip harness rebuild if it's already newer than the coverage libs
-        harness = self.work_dir / "fuzz_harness_coverage"
-        libmain = cov_root / "server" / "libmain.la"
-        if harness.exists() and libmain.exists() and harness.stat().st_mtime > libmain.stat().st_mtime:
-            self.logger.info(f"Coverage harness up to date: {harness}")
-            return harness, cov_root
 
         builder = HarnessBuilder(cov_root)
         self.logger.info("Building coverage-instrumented harness...")
         builder.build(mode="coverage", cflags=cflags, ldflags=ldflags, cc=cc, harness_name=harness_name)
 
-        harness = self.work_dir / "fuzz_harness_coverage"
         if not harness.exists():
             raise FileNotFoundError("Failed to build fuzz_harness_coverage")
 
+        harness_stamp.write_text(harness_name or "")
         self.logger.info(f"Coverage harness built: {harness}")
         return harness, cov_root
-
-    def _replay_corpus(
-        self,
-        harness: Path,
-        queue_dir: Path,
-        prof_dir: Path,
-        config_path: Path,
-        httpd_root: Optional[Path] = None,
-        prof_offset: int = 0,
-        jobs: int = 1,
-    ) -> int:
-        """Replay corpus through coverage harness, producing .profraw files."""
-        env = os.environ.copy()
-        # Set env vars for harness entry points
-        env["FUZZ_CONF"] = str(config_path)
-        env["FUZZ_ROOT"] = str(self.work_dir)
-
-        # The standalone entry point (used by coverage builds) reads -f/-d
-        # command-line args, not FUZZ_CONF/FUZZ_ROOT env vars.
-        harness_cmd = [
-            str(harness),
-            "-f",
-            str(config_path),
-            "-d",
-            str(self.work_dir),
-        ]
-
-        # Collect test cases
-        test_cases = sorted(queue_dir.glob("id:*"))
-        if not test_cases:
-            # Fall back: try all files
-            test_cases = sorted(f for f in queue_dir.iterdir() if f.is_file() and f.name != ".state")
-
-        if not test_cases:
-            self.logger.error(f"No test cases found in {queue_dir}")
-            return 0
-
-        total = len(test_cases)
-        workers = min(jobs, total)
-        self.logger.info(f"Replaying {total} test cases ({workers} workers)...")
-
-        count = 0
-        progress = Progress(
-            SpinnerColumn(),
-            BarColumn(bar_width=20),
-            TextColumn("[progress.description]{task.description}"),
-            TextColumn("{task.completed}/{task.total}"),
-        )
-        overall_task = progress.add_task("Overall", total=total)
-
-        # Pre-assign test cases to workers via round-robin
-        worker_batches: list[list[tuple[int, Path]]] = [[] for _ in range(workers)]
-        for i, tc in enumerate(test_cases):
-            worker_batches[i % workers].append((i, tc))
-
-        worker_task_ids = [progress.add_task(f"  Worker {w + 1}", total=len(worker_batches[w])) for w in range(workers)]
-
-        def _run_worker(worker_id: int) -> int:
-            ok = 0
-            for i, tc in worker_batches[worker_id]:
-                name = tc.name[:70].ljust(70)
-                progress.update(worker_task_ids[worker_id], description=f"  [cyan]{name}[/]")
-                prof_file = prof_dir / f"prof-{prof_offset + i}.profraw"
-                run_env = env.copy()
-                run_env["LLVM_PROFILE_FILE"] = str(prof_file)
-                try:
-                    with open(tc, "rb") as stdin_f:
-                        subprocess.run(
-                            harness_cmd,
-                            stdin=stdin_f,
-                            stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL,
-                            env=run_env,
-                            timeout=10,
-                        )
-                    ok += 1
-                except subprocess.TimeoutExpired:
-                    self.logger.warning(f"Timeout replaying {tc.name}, skipping")
-                except Exception as e:
-                    self.logger.warning(f"Error replaying {tc.name}: {e}")
-                progress.advance(worker_task_ids[worker_id])
-                progress.advance(overall_task)
-            progress.update(worker_task_ids[worker_id], description="  Done")
-            return ok
-
-        with Live(progress, console=Console(stderr=True), refresh_per_second=10):
-            with ThreadPoolExecutor(max_workers=workers) as pool:
-                futures = [pool.submit(_run_worker, w) for w in range(workers)]
-                for future in as_completed(futures):
-                    count += future.result()
-
-            for tid in worker_task_ids:
-                progress.remove_task(tid)
-            progress.update(overall_task, description="Done", completed=total)
-
-        self.logger.info(f"Replayed {count}/{total} test cases")
-        return count
 
     def _replay_corpus_proto(
         self,
@@ -629,7 +485,6 @@ class ReportManager:
         output_dir: str = "coverage-report",
         harness_name: str = None,
         exclude_file: str | None = None,
-        jobs: int = 1,
         with_introspect=False,
         with_modules=False,
     ) -> None:
@@ -670,15 +525,7 @@ class ReportManager:
                 f.unlink()
         prof_dir.mkdir(parents=True, exist_ok=True)
 
-        count = 0
-        if self._is_proto_harness(harness_name):
-            count = self._replay_corpus_proto(harness, replay_dirs, prof_dir, config_path)
-        else:
-            for replay_dir in replay_dirs:
-                self.logger.info(f"Replaying {replay_dir.name}/ ({len(list(replay_dir.iterdir()))} entries)...")
-                count += self._replay_corpus(
-                    harness, replay_dir, prof_dir, config_path, httpd_root=cov_root, prof_offset=count, jobs=jobs
-                )
+        count = self._replay_corpus_proto(harness, replay_dirs, prof_dir, config_path)
 
         if count == 0:
             self.logger.error("No test cases were replayed successfully")
@@ -1376,85 +1223,6 @@ class ReportManager:
             env["UBSAN_OPTIONS"] = f"{existing}:{supp_opt}" if existing else supp_opt
 
         return env, config_path
-
-    def triage_pipeline(
-        self,
-        crash_dir: Path,
-        harness_binary: Path,
-        no_color: bool = False,
-        suppress: Optional[str] = None,
-        timeout: int = 30,
-    ) -> None:
-        r"""Concatenate numbered crash files from *crash_dir* and replay them.
-
-        Files are sorted numerically (0, 1, 2, ...).  The harness must be
-        built from ``mod_fuzzy_multi`` so it splits on ``\r\n\r\n``
-        boundaries.
-        """
-        crash_dir = Path(crash_dir)
-        if not crash_dir.is_dir():
-            self.logger.error(f"Not a directory: {crash_dir}")
-            return
-
-        # Collect and sort files lexicographically.  Works for both plain
-        # numeric names (0, 1, 2) and crash IDs (id:000000, id:000001, ...)
-        files = sorted(
-            (f for f in crash_dir.iterdir() if f.is_file()),
-            key=lambda f: f.name,
-        )
-        if not files:
-            self.logger.error(f"No files found in {crash_dir}")
-            return
-
-        self.logger.info(f"Pipeline triage: {len(files)} crash files from {crash_dir}")
-        for f in files:
-            self.logger.info(f"  [{f.name}] {f}")
-
-        # Concatenate all crash data.  The multi harness splits on \r\n\r\n.
-        combined = b""
-        for f in files:
-            data = f.read_bytes()
-            combined += data
-            # Make sure segment ends with \r\n\r\n so the multi harness
-            # sees it as a complete request.
-            if not data.endswith(b"\r\n\r\n"):
-                combined += b"\r\n\r\n"
-
-        try:
-            env, config_path = self._triage_env(no_color=no_color, suppress=suppress)
-        except FileNotFoundError as e:
-            self.logger.error(str(e))
-            return
-
-        cmd = [
-            str(harness_binary),
-            "-f",
-            str(config_path),
-            "-d",
-            str(self.work_dir),
-        ]
-
-        try:
-            result = subprocess.run(  # noqa: UP022
-                cmd,
-                env=env,
-                input=combined,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                timeout=timeout,
-            )
-
-            self.logger.info("Crash Output (Stderr):")
-            print(result.stderr.decode("utf-8", errors="replace"))
-
-            if result.stdout:
-                self.logger.info("Stdout:")
-                print(result.stdout.decode("utf-8", errors="replace"))
-
-        except subprocess.TimeoutExpired:
-            self.logger.error(f"Triage timed out ({timeout}s)")
-        except Exception as e:
-            self.logger.error(f"Failed to triage pipeline: {e}")
 
     def triage_crash(
         self,
