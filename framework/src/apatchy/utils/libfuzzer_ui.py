@@ -11,6 +11,7 @@ from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 
+from apatchy.utils.stats_exporter import StatsExporter
 from apatchy.utils.ui import _ANSI_RE, _EMPTY_BOX
 
 _STATUS_RE = re.compile(
@@ -64,7 +65,15 @@ def _fmt_num(n: str) -> str:
 class LibFuzzerUI:  # noqa: D101
     MAX_WIDTH = 90
 
-    def __init__(self, log_height: int = 8, max_width: int = MAX_WIDTH, crashes_dir: Optional[Path] = None):
+    def __init__(
+        self,
+        log_height: int = 8,
+        max_width: int = MAX_WIDTH,
+        crashes_dir: Optional[Path] = None,
+        output_dir: Optional[Path] = None,
+        workers: int = 1,
+        pulse_interval: int = 60,
+    ):
         self.console = Console()
         self.log_height = log_height
         self.max_width = max_width
@@ -73,7 +82,7 @@ class LibFuzzerUI:  # noqa: D101
         self.start_time = 0.0
         self.last_new_time = 0.0
         self.last_crash_time = 0.0
-        self.stats = {
+        self.stats: Dict[str, Optional[str]] = {
             "run": "0",
             "event": "INIT",
             "cov": "0",
@@ -86,6 +95,14 @@ class LibFuzzerUI:  # noqa: D101
             "length": "0/0",
             "strategy": "-",
         }
+        self.exporter: Optional[StatsExporter] = None
+        if output_dir:
+            self.exporter = StatsExporter(
+                output_dir=output_dir,
+                workers=workers,
+                pulse_interval=pulse_interval,
+                crash_counter=self._count_crashes,
+            )
 
     def run(self, command: Union[str, List[str]], env: Optional[Dict[str, str]] = None) -> int:  # noqa: D102
         self.start_time = time.monotonic()
@@ -106,6 +123,8 @@ class LibFuzzerUI:  # noqa: D101
                             continue
                         stripped = _ANSI_RE.sub("", clean)
                         self._parse_line(stripped)
+                        if self.exporter:
+                            self.exporter.maybe_pulse(self.stats)
                         ts = time.strftime("%H:%M:%S")
                         self.log_buffer.append(f"[dim]{ts}[/dim] {escape(stripped)}")
                         live.update(self._render())
@@ -119,6 +138,9 @@ class LibFuzzerUI:  # noqa: D101
                     continue
 
                 break
+
+        if self.exporter:
+            self.exporter.final_flush(self.stats)
 
         elapsed = time.monotonic() - self.start_time
         mins, secs = divmod(int(elapsed), 60)
@@ -149,6 +171,8 @@ class LibFuzzerUI:  # noqa: D101
             self.stats["strategy"] = m.group(11).rstrip("-").strip()
             if self.stats["event"] == "NEW":
                 self.last_new_time = time.monotonic()
+                if self.exporter and self.stats["strategy"]:
+                    self.exporter.record_mutators(self.stats["strategy"])
             return
 
         fm = _FORK_RE.match(line)
@@ -180,6 +204,8 @@ class LibFuzzerUI:  # noqa: D101
                     raw_path = "/".join(parts[i + 1 :])
                     break
             self.stats["last_func"] = f"{func_name}  ({raw_path})"
+            if self.exporter:
+                self.exporter.record_event("last_func", self.stats["last_func"])
             return
 
         if "Test unit written to" in line:

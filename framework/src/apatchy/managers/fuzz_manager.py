@@ -86,6 +86,7 @@ class FuzzManager:
         timeout: Optional[int] = None,
         debug: bool = False,
         workers: int = 1,
+        pulse_interval: int = 60,
         **kwargs,
     ) -> None:
         engine_cls = ENGINES.get(engine)
@@ -105,4 +106,5 @@ class FuzzManager:
             timeout=timeout,
             debug=debug,
             workers=workers,
+            pulse_interval=pulse_interval,
         )
