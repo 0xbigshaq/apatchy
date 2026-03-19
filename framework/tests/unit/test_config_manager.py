@@ -5,11 +5,11 @@ from apatchy.managers.config_manager import ConfigManager
 # --- fuzz mode ---
 
 
-def test_fuzz_mode_no_cc():
-    """Fuzz mode does not override CC."""
+def test_fuzz_mode_sets_cc():
+    """Fuzz mode sets CC to clang."""
     cm = ConfigManager(build_mode="fuzz")
     result = cm.generate_build_config()
-    assert "CC" not in result
+    assert "CC" in result
 
 
 def test_fuzz_mode_debug_flags():
@@ -46,11 +46,11 @@ def test_coverage_mode_ldflags():
     assert "-no-pie" in result["LDFLAGS"]
 
 
-def test_coverage_mode_no_cc():
-    """Coverage mode does not override CC."""
+def test_coverage_mode_sets_cc():
+    """Coverage mode sets CC to clang."""
     cm = ConfigManager(build_mode="coverage")
     result = cm.generate_build_config()
-    assert "CC" not in result
+    assert "CC" in result
 
 
 # --- sanitizers ---
@@ -151,7 +151,7 @@ def test_coverage_with_asan():
     result = cm.generate_build_config()
     assert "-fprofile-instr-generate" in result["CFLAGS"]
     assert "-fsanitize=address" in result["CFLAGS"]
-    assert "CC" not in result
+    assert "CC" in result
 
 
 # --- config path resolution ---
