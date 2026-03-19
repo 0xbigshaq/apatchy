@@ -1,0 +1,42 @@
+syntax = "proto2";
+
+import "http_request.proto";
+
+enum ResponseCode {
+    OK_200 = 0;
+    REDIRECT_301 = 1;
+    REDIRECT_302 = 2;
+    CLIENT_ERROR_400 = 3;
+    SERVER_ERROR_500 = 4;
+}
+
+enum UwsgiHttpMethod {
+  UWSGI_GET = 0;
+  UWSGI_POST = 1;
+  UWSGI_PUT = 2;
+  UWSGI_DELETE = 3;
+  UWSGI_HEAD = 4;
+  UWSGI_OPTIONS = 5;
+  UWSGI_PATCH = 6;
+  UWSGI_TRACE = 7;
+  UWSGI_CONNECT = 8;
+  UWSGI_PROPFIND = 9;
+  UWSGI_PROXY = 10;
+}
+
+
+message UwsgiResponse {
+    required ResponseCode rc = 1;
+    optional string http_version = 2 [default = "HTTP/1.1"];
+    repeated Header headers = 3;
+    optional bytes body = 4;
+}
+
+message UwsgiRequest {
+    required UwsgiHttpMethod method = 1;
+    required string uri = 2;
+    optional string http_version = 3 [default = "HTTP/1.1"];
+    repeated Header headers = 4;
+    optional bytes req_body = 5;
+    optional UwsgiResponse resp = 6;
+}
