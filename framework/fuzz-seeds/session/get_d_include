@@ -1,0 +1,9 @@
+http {
+  method: GET
+  uri: "/d/app/dashboard"
+  headers { name: "Host" value: "localhost" }
+}
+cookie {
+  session_data: "user=john&role=admin"
+}
+route: ROUTE_D

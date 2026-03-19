@@ -1,0 +1,9 @@
+http {
+  method: GET
+  uri: "/b"
+  headers { name: "Host" value: "localhost" }
+}
+cookie {
+  session_data: "user=john&role=admin"
+}
+route: ROUTE_B

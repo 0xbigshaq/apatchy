@@ -1,0 +1,9 @@
+http {
+  method: POST
+  uri: "/f"
+  headers { name: "Host" value: "localhost" }
+  headers { name: "Content-Type" value: "application/x-www-form-urlencoded" }
+  body: "httpd_username=admin&httpd_password=admin"
+}
+cookie {}
+route: ROUTE_F

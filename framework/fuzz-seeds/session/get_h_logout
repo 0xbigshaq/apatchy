@@ -1,0 +1,9 @@
+http {
+  method: GET
+  uri: "/h"
+  headers { name: "Host" value: "localhost" }
+}
+cookie {
+  session_data: "myrealm-user=admin&myrealm-pw=admin"
+}
+route: ROUTE_H
