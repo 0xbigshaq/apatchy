@@ -1,0 +1,3 @@
+method: UWSGI_GET
+uri: "/c"
+headers { name: "Host" value: "localhost" }

@@ -1,0 +1,10 @@
+method: UWSGI_POST
+uri: "/"
+headers { name: "Host" value: "localhost" }
+headers { name: "Content-Type" value: "application/x-www-form-urlencoded" }
+req_body: "key=value"
+resp {
+    rc: OK_200
+    headers { name: "Content-Type" value: "text/plain" }
+    body: "ok"
+}
