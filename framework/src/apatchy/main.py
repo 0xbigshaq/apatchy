@@ -250,6 +250,12 @@ def main():
         "--bitcode", default=None, help="Path to combined.bc (auto-detected from coverage build tree)"
     )
     introspect_parser.add_argument(
+        "--fuzzer-dir",
+        default="fuzz-output",
+        dest="fuzzer_dir",
+        help="Fuzzer output directory for stat.json (default: fuzz-output)",
+    )
+    introspect_parser.add_argument(
         "--output", "-o", default="introspect.json", help="Output JSON file (default: introspect.json)"
     )
     introspect_parser.add_argument(
