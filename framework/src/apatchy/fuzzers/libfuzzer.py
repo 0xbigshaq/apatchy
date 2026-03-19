@@ -48,5 +48,11 @@ class LibFuzzer(BaseFuzzer):
 
         from apatchy.utils.libfuzzer_ui import LibFuzzerUI
 
-        ui = LibFuzzerUI(crashes_dir=crashes_dir)
+        pulse_interval = kwargs.get("pulse_interval", 60)
+        ui = LibFuzzerUI(
+            crashes_dir=crashes_dir,
+            output_dir=output_dir,
+            workers=workers,
+            pulse_interval=pulse_interval,
+        )
         ui.run(cmd, env=env)

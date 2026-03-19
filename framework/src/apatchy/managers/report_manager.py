@@ -622,6 +622,7 @@ class ReportManager:
         binary_path: str | None = None,
         bitcode_path: str | None = None,
         output_path: str = "introspect.json",
+        fuzzer_dir: str = "fuzz-output",
         serve: bool = True,
         port: int = 9000,
     ) -> None:
@@ -882,6 +883,13 @@ class ReportManager:
             self.logger.warning(f"GUI dist not found at {gui_dist}, output will have no viewer")
 
         (out_dir / "introspect.json").write_text(json.dumps(introspect, indent=2))
+
+        stat_file = Path(fuzzer_dir) / "stat.json"
+        if stat_file.is_file():
+            shutil.copy2(stat_file, out_dir / "stat.json")
+            self.logger.info(f"Copied stat.json from {stat_file}")
+        else:
+            self.logger.info(f"No stat.json found in {fuzzer_dir}, stats tab will be empty")
 
         # generate HTML coverage report directly into the output directory
         cov_html_dir = out_dir / "coverage-report" / "html"
