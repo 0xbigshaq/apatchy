@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { BottomTabs } from './components/BottomTabs';
 import { CallTree } from './components/CallTree';
 import { CoveragePanel } from './components/CoveragePanel';
 import { SearchBar } from './components/SearchBar';
 import { SourceView } from './components/SourceView';
+import { StatsPanel } from './components/StatsPanel';
 import { Summary } from './components/Summary';
 import { useIntrospectData } from './hooks/useIntrospectData';
+import { useStatsData } from './hooks/useStatsData';
 import { useTreeState } from './hooks/useTreeState';
 import type { CallTreeNode } from './types';
 
@@ -13,6 +16,7 @@ const REPORT_BASE_URL = './coverage-report/html';
 
 function App() {
   const { data, error, loading } = useIntrospectData();
+  const { sessions: statsSessions } = useStatsData();
   const { isExpanded, toggle, expandAll, collapseAll, expandPath } = useTreeState(2);
   const [searchQuery, setSearchQuery] = useState('');
   const [selection, setSelection] = useState<{
@@ -227,24 +231,29 @@ function App() {
 
             <PanelResizeHandle className="h-1 bg-zinc-800 hover:bg-zinc-600 transition-colors" />
 
-            {/* Bottom - coverage panel */}
-            <Panel defaultSize={30} minSize={10} maxSize={50} id="coverage">
-              {selection ? (
-                <CoveragePanel
-                  functions={fileFunctions}
-                  selectedName={selection.node.name}
-                  reportBaseUrl={REPORT_BASE_URL}
-                  onFunctionClick={(f) => {
-                    if (!f.source_dir || !f.source_file) return;
-                    const dir = f.source_dir.replace(/^\//, '');
-                    const url = `${REPORT_BASE_URL}/coverage/${dir}/${f.source_file}.html#L${f.line_start}`;
-                    setPanelOverrideUrl(url);
-                    updateHash(selection?.nodeKey ?? null, `coverage/${dir}/${f.source_file}.html#L${f.line_start}`);
-                  }}
-                />
-              ) : (
-                <div className="h-full bg-zinc-900 border-t border-zinc-800" />
-              )}
+            {/* Bottom - tabbed panel (functions + stats) */}
+            <Panel defaultSize={30} minSize={10} maxSize={80} id="coverage">
+              <BottomTabs
+                functionsPanel={
+                  selection ? (
+                    <CoveragePanel
+                      functions={fileFunctions}
+                      selectedName={selection.node.name}
+                      reportBaseUrl={REPORT_BASE_URL}
+                      onFunctionClick={(f) => {
+                        if (!f.source_dir || !f.source_file) return;
+                        const dir = f.source_dir.replace(/^\//, '');
+                        const url = `${REPORT_BASE_URL}/coverage/${dir}/${f.source_file}.html#L${f.line_start}`;
+                        setPanelOverrideUrl(url);
+                        updateHash(selection?.nodeKey ?? null, `coverage/${dir}/${f.source_file}.html#L${f.line_start}`);
+                      }}
+                    />
+                  ) : (
+                    <div className="h-full bg-zinc-900 border-t border-zinc-800" />
+                  )
+                }
+                statsPanel={<StatsPanel sessions={statsSessions} />}
+              />
             </Panel>
           </PanelGroup>
         </Panel>
