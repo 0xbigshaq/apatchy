@@ -179,10 +179,57 @@ class BugManager:
         logger.info("Building Apache...")
         build_manager.compile_httpd()
 
-        # Link harness (always relink to match the version we just built)
+        # Build libfuzzer branch and link harness
+        from apatchy.core.harness import HarnessBuilder
+        from apatchy.utils.build_tree import AlternateBuildTree
+
         harness_name = bug.harness
+
+        logger.info("Building libfuzzer branch...")
+        lf_cm = ConfigManager(
+            build_mode="libfuzzer",
+            asan=sanitizer_flags.get("asan", False),
+            ubsan=sanitizer_flags.get("ubsan", False),
+            intsan=sanitizer_flags.get("intsan", False),
+            truncsan=sanitizer_flags.get("truncsan", False),
+        )
+        lf_config = lf_cm.generate_build_config(httpd_version=version)
+        from apatchy.core import toolchain_config
+
+        cc = toolchain_config.resolve_tool("clang") or "clang"
+        lf_tree = AlternateBuildTree(httpd_dir, "-lf")
+        lf_root = lf_tree.ensure_build(cc=cc, cflags=lf_config["CFLAGS"], ldflags=lf_config["LDFLAGS"])
+
         logger.info("Linking libfuzzer harness...")
-        build_manager.build_harness(mode="libfuzzer", harness_name=harness_name)
+        lf_builder = HarnessBuilder(lf_root, verbose=self.verbose)
+        lf_builder.build(
+            mode="libfuzzer",
+            cflags=lf_config["CFLAGS"],
+            ldflags=lf_config["LDFLAGS"],
+            harness_name=harness_name,
+        )
+
+        # Build coverage branch and link coverage harness
+        logger.info("Building coverage branch...")
+        cov_cm = ConfigManager(
+            build_mode="coverage",
+            asan=sanitizer_flags.get("asan", False),
+            ubsan=sanitizer_flags.get("ubsan", False),
+            intsan=sanitizer_flags.get("intsan", False),
+            truncsan=sanitizer_flags.get("truncsan", False),
+        )
+        cov_config = cov_cm.generate_build_config(httpd_version=version)
+        cov_tree = AlternateBuildTree(httpd_dir, "-cov")
+        cov_root = cov_tree.ensure_build(cc=cc, cflags=cov_config["CFLAGS"], ldflags=cov_config["LDFLAGS"])
+
+        logger.info("Linking coverage harness...")
+        cov_builder = HarnessBuilder(cov_root, verbose=self.verbose)
+        cov_builder.build(
+            mode="coverage",
+            cflags=cov_config["CFLAGS"],
+            ldflags=cov_config["LDFLAGS"],
+            harness_name=harness_name,
+        )
 
         # Bug-specific setup
         logger.info("Running bug-specific setup...")
