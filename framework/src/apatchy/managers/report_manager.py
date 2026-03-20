@@ -1303,6 +1303,27 @@ class ReportManager:
         return str(returncode)
 
     @staticmethod
+    def _extract_crash_site(stderr: str) -> str:
+        """Extract crash site from sanitizer output as ``pc (func)``."""
+        pc = None
+        func = None
+        pc_m = re.search(r"\(pc\s+(0x[0-9a-fA-F]+)", stderr)
+        if pc_m:
+            pc = pc_m.group(1)
+        frame_m = re.search(r"#0\s+(0x[0-9a-fA-F]+)\s+in\s+(\S+)", stderr)
+        if frame_m:
+            if not pc:
+                pc = frame_m.group(1)
+            func = frame_m.group(2)
+        if pc and func:
+            return f"{pc} ({func})"
+        if func:
+            return func
+        if pc:
+            return pc
+        return "-"
+
+    @staticmethod
     def _classify_bugs(stderr: str) -> str:
         """Extract all bug types from sanitizer SUMMARY lines in *stderr*.
 
@@ -1360,7 +1381,7 @@ class ReportManager:
         self.logger.info(f"Bulk triage: {len(files)} crash files from {crash_dir}")
 
         console = Console()
-        results: list[tuple[str, str, str]] = []
+        results: list[tuple[str, str, str, str]] = []
         bug_counts: Counter[str] = Counter()
 
         spinner = Progress(SpinnerColumn(), TextColumn("{task.description}"))
@@ -1403,17 +1424,18 @@ class ReportManager:
                         )
                     stderr_text = result.stderr.decode("utf-8", errors="replace")
                     bug_type = self._classify_bugs(stderr_text)
+                    crash_site = self._extract_crash_site(stderr_text)
                     exit_str = self._format_exit(result.returncode)
                     if result.returncode == 0 and bug_type == "unknown":
                         bug_type = "ok"
-                    results.append((crash_file.name, bug_type, exit_str))
+                    results.append((crash_file.name, bug_type, crash_site, exit_str))
                     for label in bug_type.split(", "):
                         bug_counts[label] += 1
                 except subprocess.TimeoutExpired:
-                    results.append((crash_file.name, "timeout", "-"))
+                    results.append((crash_file.name, "timeout", "-", "-"))
                     bug_counts["timeout"] += 1
                 except Exception as e:
-                    results.append((crash_file.name, f"error: {e}", "-"))
+                    results.append((crash_file.name, f"error: {e}", "-", "-"))
                     bug_counts["error"] += 1
 
         if not results:
@@ -1423,12 +1445,13 @@ class ReportManager:
         table = Table(box=None, show_edge=False, pad_edge=False, header_style="bold underline")
         table.add_column("File", style="cyan")
         table.add_column("Bug Type", style="magenta")
+        table.add_column("Crash Site", style="yellow")
         table.add_column("Exit", style="dim", justify="right")
 
-        for name, bug, exit_code in results:
+        for name, bug, site, exit_code in results:
             if bug == "ok":
                 continue
-            table.add_row(name, bug, exit_code)
+            table.add_row(name, bug, site, exit_code)
 
         console.print()
         console.print(table)
