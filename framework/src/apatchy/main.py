@@ -116,10 +116,7 @@ def main():
     _sub(download_sub, "list", help="List available Apache HTTPD versions")
 
     # Configure
-    configure_parser = _sub(subparsers, "configure", help="Configure Apache for fuzzing")
-    configure_parser.add_argument(
-        "--mode", choices=["fuzz", "coverage"], default="fuzz", help="Build mode (compiler selection)"
-    )
+    configure_parser = _sub(subparsers, "configure", help="Configure Apache (vanilla root tree)")
     configure_parser.add_argument(
         "--asan", action="store_true", help="Enable AddressSanitizer (can combine with any mode)"
     )
@@ -141,7 +138,13 @@ def main():
     )
 
     # Make (compile Apache)
-    compile_parser = _sub(subparsers, "make", help="Compile Apache")
+    compile_parser = _sub(subparsers, "make", help="Compile Apache build tree")
+    compile_parser.add_argument(
+        "--tree",
+        required=True,
+        choices=["vanilla", "lf", "cov"],
+        help="Build tree: vanilla (root), lf (libfuzzer branch), cov (coverage branch)",
+    )
     compile_parser.add_argument(
         "-j", "--jobs", type=int, default=None, help="Number of parallel make jobs (default: nproc)"
     )
@@ -151,8 +154,9 @@ def main():
 
     # Link Harness
     link_parser = _sub(subparsers, "link", help="Link fuzzing harness")
-    link_parser.add_argument("engine", choices=["libfuzzer", "standalone"], help="Fuzzing engine")
-    link_parser.add_argument("--harness", help="Harness name to use (e.g. 'mod_fuzzy')")
+    link_parser.add_argument("engine", nargs="?", choices=["libfuzzer"], default="libfuzzer", help="Fuzzing engine")
+    link_parser.add_argument("--harness", help="Harness name to use (e.g. 'mod_fuzzy_proto_session')")
+    link_parser.add_argument("--list-harnesses", action="store_true", help="List available harnesses and exit")
     link_parser.add_argument(
         "--bear", action="store_true", help="Wrap compilation with bear to generate compile_commands.json"
     )
@@ -301,11 +305,6 @@ def main():
     )
     _sub(setup_sub, "lpm", help="Clone and build libprotobuf-mutator into toolchain/")
 
-    # Harness
-    harness_parser = _sub(subparsers, "harness", help="Manage fuzzing harnesses")
-    harness_sub = harness_parser.add_subparsers(dest="action")
-    _sub(harness_sub, "list", help="List available harnesses")
-
     # Module (external DSO modules)
     module_parser = _sub(subparsers, "module", help="Manage external Apache modules")
     module_sub = module_parser.add_subparsers(dest="action", help="Module sub-commands")
@@ -324,9 +323,9 @@ def main():
     dev_build.add_argument(
         "engine",
         nargs="?",
-        default="standalone",
-        choices=["afl", "libfuzzer", "standalone"],
-        help="Fuzzing engine (default: standalone)",
+        default="libfuzzer",
+        choices=["libfuzzer", "standalone"],
+        help="Fuzzing engine (default: libfuzzer)",
     )
     _sub(dev_sub, "list", help="List dev harness projects")
 

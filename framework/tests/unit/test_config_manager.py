@@ -2,6 +2,41 @@
 
 from apatchy.managers.config_manager import ConfigManager
 
+# --- vanilla mode ---
+
+
+def test_vanilla_mode_flags():
+    """Vanilla mode uses -g -O0 debug flags."""
+    cm = ConfigManager(build_mode="vanilla")
+    result = cm.generate_build_config()
+    assert "-g" in result["CFLAGS"]
+    assert "-O0" in result["CFLAGS"]
+    assert "-fno-omit-frame-pointer" in result["CFLAGS"]
+
+
+def test_vanilla_mode_no_pie():
+    """Vanilla mode adds -no-pie to LDFLAGS."""
+    cm = ConfigManager(build_mode="vanilla")
+    result = cm.generate_build_config()
+    assert "-no-pie" in result["LDFLAGS"]
+
+
+def test_vanilla_mode_sets_cc():
+    """Vanilla mode sets CC to clang."""
+    cm = ConfigManager(build_mode="vanilla")
+    result = cm.generate_build_config()
+    assert "CC" in result
+
+
+def test_vanilla_with_asan():
+    """Vanilla + ASan combines both flag sets."""
+    cm = ConfigManager(build_mode="vanilla", asan=True)
+    result = cm.generate_build_config()
+    assert "-g" in result["CFLAGS"]
+    assert "-fsanitize=address" in result["CFLAGS"]
+    assert "-fsanitize=address" in result["LDFLAGS"]
+
+
 # --- fuzz mode ---
 
 

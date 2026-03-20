@@ -30,7 +30,6 @@ def _parse(args):
 
         # Configure
         cfg = _sub(subparsers, "configure")
-        cfg.add_argument("--mode", choices=["fuzz", "coverage"], default="fuzz")
         cfg.add_argument("--asan", action="store_true")
         cfg.add_argument("--ubsan", action="store_true")
         cfg.add_argument("--intsan", action="store_true")
@@ -38,12 +37,13 @@ def _parse(args):
 
         # Make (compile Apache)
         comp = _sub(subparsers, "make")
+        comp.add_argument("--tree", required=True, choices=["vanilla", "lf", "cov"])
         comp.add_argument("-j", "--jobs", type=int, default=None)
         comp.add_argument("--bear", action="store_true")
 
         # Link
         link = _sub(subparsers, "link")
-        link.add_argument("engine", choices=["libfuzzer", "standalone"])
+        link.add_argument("engine", choices=["libfuzzer"])
         link.add_argument("--harness")
         link.add_argument("--bear", action="store_true")
 
@@ -119,18 +119,11 @@ def test_download_no_action_is_none():
 
 
 def test_configure_defaults():
-    """Configure defaults to fuzz mode, no sanitizers."""
+    """Configure defaults to no sanitizers."""
     args = _parse(["configure"])
     assert args.command == "configure"
-    assert args.mode == "fuzz"
     assert args.asan is False
     assert args.ubsan is False
-
-
-def test_configure_coverage_mode():
-    """Parse 'configure --mode coverage'."""
-    args = _parse(["configure", "--mode", "coverage"])
-    assert args.mode == "coverage"
 
 
 def test_configure_sanitizers():
@@ -145,24 +138,49 @@ def test_configure_sanitizers():
 # --- make ---
 
 
-def test_make_defaults():
-    """Make defaults to no jobs, no bear."""
-    args = _parse(["make"])
+def test_make_requires_tree():
+    """Make without --tree raises SystemExit."""
+    with pytest.raises(SystemExit):
+        _parse(["make"])
+
+
+def test_make_vanilla():
+    """Parse 'make --tree vanilla'."""
+    args = _parse(["make", "--tree", "vanilla"])
     assert args.command == "make"
+    assert args.tree == "vanilla"
     assert args.jobs is None
     assert args.bear is False
 
 
+def test_make_lf():
+    """Parse 'make --tree lf'."""
+    args = _parse(["make", "--tree", "lf"])
+    assert args.tree == "lf"
+
+
+def test_make_cov():
+    """Parse 'make --tree cov'."""
+    args = _parse(["make", "--tree", "cov"])
+    assert args.tree == "cov"
+
+
 def test_make_with_jobs():
-    """Parse 'make -j 8'."""
-    args = _parse(["make", "-j", "8"])
+    """Parse 'make --tree vanilla -j 8'."""
+    args = _parse(["make", "--tree", "vanilla", "-j", "8"])
     assert args.jobs == 8
 
 
 def test_make_with_bear():
-    """Parse 'make --bear'."""
-    args = _parse(["make", "--bear"])
+    """Parse 'make --tree vanilla --bear'."""
+    args = _parse(["make", "--tree", "vanilla", "--bear"])
     assert args.bear is True
+
+
+def test_make_invalid_tree():
+    """Invalid tree raises SystemExit."""
+    with pytest.raises(SystemExit):
+        _parse(["make", "--tree", "invalid"])
 
 
 # --- link ---
@@ -172,12 +190,6 @@ def test_link_libfuzzer():
     """Parse 'link libfuzzer'."""
     args = _parse(["link", "libfuzzer"])
     assert args.engine == "libfuzzer"
-
-
-def test_link_standalone():
-    """Parse 'link standalone'."""
-    args = _parse(["link", "standalone"])
-    assert args.engine == "standalone"
 
 
 def test_link_with_harness():

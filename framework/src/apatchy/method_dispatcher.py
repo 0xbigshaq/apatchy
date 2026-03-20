@@ -68,8 +68,6 @@ class MethodDispatcher:
             self._handle_profile(args)
         elif command == "setup":
             self._handle_setup(args)
-        elif command == "harness":
-            self._handle_harness(args)
         elif command == "module":
             self._handle_module(args)
         elif command == "dev":
@@ -167,16 +165,13 @@ class MethodDispatcher:
         self.downloader.download_apache(selected_version)
 
     def _handle_configure(self, args: argparse.Namespace) -> None:
-        # We need to know which Apache version we are working with
-        # For now, assume default or find unique one in work dir
-        # Todo: Add logic to find active httpd dir
         httpd_root = self._get_active_httpd()
         if not httpd_root:
             return
 
         verbose = getattr(args, "verbose", False)
         self.config_manager = ConfigManager(
-            build_mode=args.mode,
+            build_mode="vanilla",
             asan=getattr(args, "asan", False),
             ubsan=getattr(args, "ubsan", False),
             ubsan_ignorelist=getattr(args, "ubsan_ignorelist", None),
@@ -187,26 +182,105 @@ class MethodDispatcher:
         self.build_manager.configure_httpd()
 
     def _handle_compile(self, args: argparse.Namespace) -> None:
+        from apatchy.core.build_meta import BuildMeta
+        from apatchy.utils.build_tree import AlternateBuildTree
+
         httpd_root = self._get_active_httpd()
         if not httpd_root:
             return
 
+        tree = args.tree
         verbose = getattr(args, "verbose", False)
-        self.config_manager = ConfigManager()  # Defaults
-        self.build_manager = BuildManager(httpd_root, self.config_manager, verbose=verbose)
         jobs = getattr(args, "jobs", None)
-        self.build_manager.compile_httpd(jobs=jobs, bear=getattr(args, "bear", False))
+        bear = getattr(args, "bear", False)
+
+        if tree == "vanilla":
+            self.config_manager = ConfigManager()
+            self.build_manager = BuildManager(httpd_root, self.config_manager, verbose=verbose)
+            self.build_manager.compile_httpd(jobs=jobs, bear=bear)
+            return
+
+        # Branch builds (lf, cov) require a configured root with metadata
+        if not BuildMeta.exists(httpd_root):
+            logger.error(
+                "No configured root tree found. Run 'apatchy configure' first, then 'apatchy make --tree vanilla'."
+            )
+            return
+
+        root_meta = BuildMeta.load(httpd_root)
+        mode_map = {"lf": "libfuzzer", "cov": "coverage"}
+        branch_mode = mode_map[tree]
+        suffix = f"-{tree}"
+
+        branch_cm = ConfigManager(
+            build_mode=branch_mode,
+            asan=root_meta.asan,
+            ubsan=root_meta.ubsan,
+            ubsan_ignorelist=root_meta.ubsan_ignorelist,
+            intsan=root_meta.intsan,
+            truncsan=root_meta.truncsan,
+        )
+        httpd_version = root_meta.httpd_version
+        branch_config = branch_cm.generate_build_config(httpd_version=httpd_version)
+        cc = toolchain_config.resolve_tool("clang") or "clang"
+
+        alt = AlternateBuildTree(httpd_root, suffix)
+        alt.ensure_build(
+            cc=cc,
+            cflags=branch_config["CFLAGS"],
+            ldflags=branch_config["LDFLAGS"],
+        )
+
+        # Save branch metadata
+        branch_meta = BuildMeta(
+            tree=tree,
+            cc=cc,
+            cflags=branch_config["CFLAGS"],
+            ldflags=branch_config["LDFLAGS"],
+            asan=root_meta.asan,
+            ubsan=root_meta.ubsan,
+            ubsan_ignorelist=root_meta.ubsan_ignorelist,
+            intsan=root_meta.intsan,
+            truncsan=root_meta.truncsan,
+            httpd_version=httpd_version,
+            config_hash=root_meta.config_hash,
+        )
+        branch_meta.save(alt.alt_root)
+        logger.info(f"Branch '{tree}' built: {alt.alt_root.name}/")
 
     def _handle_link(self, args: argparse.Namespace) -> None:
+        from apatchy.core.build_meta import BuildMeta
+        from apatchy.core.harness import HarnessBuilder
+
+        if getattr(args, "list_harnesses", False):
+            self._list_harnesses()
+            return
+
         httpd_root = self._get_active_httpd()
         if not httpd_root:
             return
 
+        lf_root = httpd_root.parent / (httpd_root.name + "-lf")
+        if not lf_root.exists():
+            logger.error(f"LibFuzzer tree not found at {lf_root.name}/. Run 'apatchy make --tree lf' first.")
+            return
+
         verbose = getattr(args, "verbose", False)
-        self.config_manager = ConfigManager()
-        self.build_manager = BuildManager(httpd_root, self.config_manager, verbose=verbose)
-        self.build_manager.build_harness(
-            mode=args.engine,
+
+        # Read branch metadata for flags, fall back to defaults
+        if BuildMeta.exists(lf_root):
+            meta = BuildMeta.load(lf_root)
+            cflags = meta.cflags
+            ldflags = meta.ldflags
+        else:
+            cflags = ""
+            ldflags = ""
+
+        harness_builder = HarnessBuilder(lf_root, verbose=verbose)
+        harness_builder.build(
+            mode="libfuzzer",
+            cflags=cflags,
+            ldflags=ldflags,
             harness_name=getattr(args, "harness", None),
             bear=getattr(args, "bear", False),
         )
@@ -338,30 +412,24 @@ class MethodDispatcher:
             tm.setup("lpm", force=force)
             console.print(f"[dim]Toolchain config: {Config.TOOLCHAIN_CONFIG}[/dim]")
 
-    def _handle_harness(self, args: argparse.Namespace) -> None:
+    @staticmethod
+    def _list_harnesses() -> None:
         from rich.console import Console
         from rich.table import Table
 
         from apatchy.core.harness import HarnessBuilder
 
         console = Console()
-
-        action = getattr(args, "action", None)
-        if not action:
-            logger.error("No harness sub-command specified. Use: list")
+        harnesses = HarnessBuilder.list_harnesses()
+        if not harnesses:
+            console.print("[yellow]No harness files found.[/yellow]")
             return
-
-        if action == "list":
-            harnesses = HarnessBuilder.list_harnesses()
-            if not harnesses:
-                console.print("[yellow]No harness files found.[/yellow]")
-                return
-            table = Table(box=None, show_edge=False, pad_edge=False, header_style="bold underline")
-            table.add_column("Name", style="cyan")
-            table.add_column("Description", style="magenta")
-            for h in harnesses:
-                table.add_row(h["name"], h["description"] or "(no description)")
-            console.print(table)
+        table = Table(box=None, show_edge=False, pad_edge=False, header_style="bold underline")
+        table.add_column("Name", style="cyan")
+        table.add_column("Description", style="magenta")
+        for h in harnesses:
+            table.add_row(h["name"], h["description"] or "(no description)")
+        console.print(table)
 
     def _handle_coverage(self, args: argparse.Namespace) -> None:
         action = getattr(args, "action", None)

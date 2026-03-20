@@ -18,12 +18,15 @@ class ConfigManager:
     ``./configure``. It also resolves the path to the Apache config file
     (e.g. ``fuzz.conf``) that other managers pass to the harness at runtime.
 
-    Build modes:
+    Build modes (mapped to tree types):
 
-    * ``"fuzz"`` - optimized build (``-O2``) for fuzzing throughput.
-    * ``"coverage"`` - unoptimized build (``-O0 -g``) with LLVM source-based
-      coverage (``-fcoverage-mapping`` / ``-fprofile-instr-generate``).
-    * anything else - plain debug build (``-O0 -g``), no special instrumentation.
+    * ``"vanilla"`` - root tree. Plain debug build (``-O0 -g``) for running
+      a real Apache server to manually verify bugs.
+    * ``"libfuzzer"`` - ``lf`` branch. Adds ``-fsanitize=fuzzer-no-link``
+      (SanCov instrumentation) for LibFuzzer coverage-guided fuzzing.
+    * ``"coverage"`` - ``cov`` branch. Adds ``-fprofile-instr-generate``
+      and ``-fcoverage-mapping`` for coverage reports and triage.
+    * ``"fuzz"`` - legacy mode (``-O2``), used by :class:`BugManager`.
 
     Sanitizers are orthogonal to the build mode and can be freely combined:
 
@@ -116,11 +119,15 @@ class ConfigManager:
         ldflags = []
         cc = None
 
-        # Fuzz builds use -O2 for throughput; debug/coverage/standalone
-        # builds use -O0 -g for accurate crash triage and debugging.
-        if self.build_mode == "fuzz":
+        if self.build_mode == "vanilla":
+            # Root tree: plain debug build for running real Apache.
+            cflags = ["-g", "-O0", "-fno-omit-frame-pointer", "-Wno-error=format"]
+            ldflags = ["-no-pie"]
+        elif self.build_mode == "fuzz":
+            # Legacy/BugManager: optimized build for fuzzing throughput.
             cflags = ["-O2", "-fno-omit-frame-pointer"]
         else:
+            # Coverage/libfuzzer branches: debug build for accurate triage.
             cflags = ["-g", "-O0", "-fno-omit-frame-pointer"]
 
         def both(flag: str):

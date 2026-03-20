@@ -41,11 +41,13 @@ class BuildManager:
     the ``.clangd`` config for IDE integration.
 
     The link step (:meth:`build_harness`) compiles and links the fuzzing
-    harness against the Apache build tree. Two modes are supported:
+    harness against the Apache build tree:
 
     * ``"libfuzzer"`` - compiled with ``clang`` and ``-fsanitize=fuzzer``.
-    * ``"standalone"`` - compiled with plain ``clang`` to produce a binary
-      that reads from stdin, used for crash triage and debugging.
+
+    A coverage-instrumented harness (``fuzz_harness_coverage``) is built
+    separately by :class:`~apatchy.managers.report_manager.ReportManager`
+    for triage and coverage reports.
 
     Args:
         httpd_root: Path to the Apache HTTPD source directory
@@ -64,9 +66,8 @@ class BuildManager:
         # Compile with bear for IDE support
         apatchy compile --bear
 
-        # Link the harnesses
+        # Link the harness
         apatchy link --engine libfuzzer
-        apatchy link --engine standalone
 
     Example:
         .. code-block:: python
@@ -81,7 +82,6 @@ class BuildManager:
             bm.configure_httpd()
             bm.compile_httpd(bear=True)
             bm.build_harness(mode="libfuzzer")
-            bm.build_harness(mode="standalone")
     """
 
     def __init__(self, httpd_root: Path, config_manager: ConfigManager, verbose: bool = False) -> None:
@@ -216,6 +216,26 @@ class BuildManager:
 
         self.runner.run_build(configure_cmd, label="Configuring Apache", cwd=self.httpd_root)
 
+        # Save build metadata so branches can inherit sanitizer state
+        from apatchy.core.build_meta import BuildMeta
+        from apatchy.utils.build_tree import AlternateBuildTree
+
+        meta = BuildMeta(
+            tree="vanilla",
+            cc=cc or "clang",
+            cflags=cflags,
+            ldflags=ldflags,
+            asan=self.config_manager.asan,
+            ubsan=self.config_manager.ubsan,
+            ubsan_ignorelist=self.config_manager.ubsan_ignorelist,
+            intsan=self.config_manager.intsan,
+            truncsan=self.config_manager.truncsan,
+            httpd_version=httpd_version or "",
+            config_hash=AlternateBuildTree.config_hash(self.httpd_root),
+        )
+        meta.save(self.httpd_root)
+        self.logger.info(f"Saved build metadata to {self.httpd_root.name}/.apatchy_build.json")
+
     def compile_httpd(self, jobs: int = None, clean: bool = True, bear: bool = False) -> None:
         """Compile Apache HTTPD with ``make``, optionally wrapped by ``bear``."""
         if jobs is None:
@@ -240,54 +260,31 @@ class BuildManager:
             self.runner.run_build(["make", f"-j{jobs}"], label="Compiling Apache", cwd=self.httpd_root)
 
     def build_harness(
-        self, mode: str = "standalone", engine: str = "standalone", harness_name: str = None, bear: bool = False
+        self,
+        mode: str = "libfuzzer",
+        harness_name: str = None,
+        bear: bool = False,
+        cflags: str = "",
+        ldflags: str = "",
     ) -> None:
-        """Build the fuzzing harness for the given engine."""
+        """Build the fuzzing harness for the given engine.
+
+        The caller is responsible for pointing ``httpd_root`` at the
+        correct build tree (e.g. the ``-lf`` branch for libfuzzer).
+        """
         self.logger.info(f"Building harness for engine: {mode}")
 
         if bear and not _bear_available():
             self.logger.error("bear not found in PATH. Install it: apt install bear")
             raise FileNotFoundError("bear not found in PATH")
 
-        # Get flags from config manager again to ensure consistency
-        # (e.g. if we are building ASan harness, we need ASan flags)
-        # Note: 'mode' arg here comes from CLI (e.g. 'libfuzzer', 'standalone')
-
-        httpd_version = extract_version_from_path(self.httpd_root)
-        config = self.config_manager.generate_build_config(httpd_version=httpd_version)
-        cflags = config["CFLAGS"]
-        ldflags = config["LDFLAGS"]
-
-        harness_builder = self.harness_builder
-
-        if mode == "libfuzzer":
-            # LibFuzzer needs its own instrumentation flags baked into the
-            # Apache objects. Build a separate tree with libfuzzer instrumentation.
-            from apatchy.utils.build_tree import AlternateBuildTree
-
-            lf_cm = ConfigManager(
-                build_mode="libfuzzer",
-                asan=self.config_manager.asan,
-                ubsan=self.config_manager.ubsan,
-                intsan=self.config_manager.intsan,
-                truncsan=self.config_manager.truncsan,
-            )
-            lf_config = lf_cm.generate_build_config(httpd_version=httpd_version)
-            cc = toolchain_config.resolve_tool("clang") or "clang"
-            tree = AlternateBuildTree(self.httpd_root, "-lf")
-            lf_root = tree.ensure_build(cc=cc, cflags=lf_config["CFLAGS"], ldflags=lf_config["LDFLAGS"])
-            harness_builder = HarnessBuilder(lf_root, verbose=self.verbose)
-
-        # Standalone harness is compiled with plain clang
-        # but links against the existing Apache build tree. This avoids
-        # the expensive separate tree rebuild while still producing a
-        # binary that reads from stdin (for crash triage).
-        if mode == "standalone":
-            harness_builder.build(
-                mode=mode, cflags=cflags, ldflags=ldflags, harness_name=harness_name, cc="clang", bear=bear
-            )
-        else:
-            harness_builder.build(mode=mode, cflags=cflags, ldflags=ldflags, harness_name=harness_name, bear=bear)
+        self.harness_builder.build(
+            mode=mode,
+            cflags=cflags,
+            ldflags=ldflags,
+            harness_name=harness_name,
+            bear=bear,
+        )
 
         if bear:
             self._update_clangd()

@@ -307,36 +307,6 @@ class ReportManager:
             return candidates[compiler_ver]
         return candidates[min(candidates)]
 
-    def _ensure_coverage_build(self, cc: str) -> Path:
-        """Ensure the separate coverage tree is configured and compiled.
-
-        Returns the Path to the coverage httpd root.
-        """
-        cflags = [
-            "-g",
-            "-O0",
-            "-fno-omit-frame-pointer",
-            "-fprofile-instr-generate",
-            "-fcoverage-mapping",
-            "-Wno-error",
-        ]
-        ldflags = ["-fprofile-instr-generate", "-lcrypt", "-lm"]
-
-        httpd_version = extract_version_from_path(self.httpd_root)
-        if httpd_version:
-            compat = get_compat_flags(httpd_version)
-            for entry_id in compat.applied_ids:
-                logger.info(f"Applying compat fix: {entry_id}")
-            cflags.extend(compat.cflags)
-            ldflags.extend(compat.ldflags)
-
-        tree = AlternateBuildTree(self.httpd_root, "-cov")
-        return tree.ensure_build(
-            cc=cc,
-            cflags=" ".join(cflags),
-            ldflags=" ".join(ldflags),
-        )
-
     def _build_coverage_modules(self, cc: str, cov_root: Path) -> List[Path]:
         """Build coverage-instrumented copies of external modules (.so).
 
@@ -398,10 +368,14 @@ class ReportManager:
     def _build_coverage_harness(self, cc: str, harness_name: str = None) -> Tuple[Path, Path]:
         """Build a coverage-instrumented proto harness.
 
-        Uses the separate coverage build tree so the fuzz build is untouched.
+        Requires the ``-cov`` tree to already exist (via ``apatchy make --tree cov``).
         Returns (harness_path, cov_httpd_root).
         """
-        cov_root = self._ensure_coverage_build(cc)
+        cov_root = self.httpd_root.parent / (self.httpd_root.name + "-cov")
+        if not cov_root.exists():
+            raise FileNotFoundError(
+                f"Coverage tree not found at {cov_root.name}/. Run 'apatchy make --tree cov' first."
+            )
 
         harness = self.work_dir / "fuzz_harness_coverage"
         harness_stamp = self.work_dir / ".cov_harness_name"
