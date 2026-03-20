@@ -179,11 +179,10 @@ class BugManager:
         logger.info("Building Apache...")
         build_manager.compile_httpd()
 
-        # Link harnesses (always relink to match the version we just built)
+        # Link harness (always relink to match the version we just built)
         harness_name = bug.harness
-        for engine in ("libfuzzer", "standalone"):
-            logger.info(f"Linking {engine} harness...")
-            build_manager.build_harness(mode=engine, harness_name=harness_name)
+        logger.info("Linking libfuzzer harness...")
+        build_manager.build_harness(mode="libfuzzer", harness_name=harness_name)
 
         # Bug-specific setup
         logger.info("Running bug-specific setup...")
