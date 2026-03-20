@@ -1,5 +1,7 @@
 /*
  * @description: proto harness - base HTTP fuzzing via libprotobuf-mutator
+ * @protos: http_request
+ * @converters: http
  *
  * Structure-aware libFuzzer harness using the base HttpRequest schema.
  * No module-specific transforms -- pure HTTP request fuzzing.

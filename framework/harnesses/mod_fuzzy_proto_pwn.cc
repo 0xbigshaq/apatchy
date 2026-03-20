@@ -1,5 +1,7 @@
 /*
  * @description: proto harness - mod_pwn vulnerability-targeted fuzzing
+ * @protos: http_request, pwn_request
+ * @converters: http, pwn
  *
  * Structure-aware libFuzzer harness targeting mod_pwn's intentional
  * vulnerabilities: buffer overflows, format strings, integer overflows,

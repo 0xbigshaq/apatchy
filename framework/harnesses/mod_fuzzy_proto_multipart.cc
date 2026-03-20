@@ -1,5 +1,7 @@
 /*
  * @description: proto harness - multipart boundary attack fuzzing
+ * @protos: http_request, multipart_request
+ * @converters: http, multipart
  *
  * Structure-aware libFuzzer harness targeting multipart/form-data parsing.
  * Exercises boundary manipulation, tight spacing (CVE-2021-44790 pattern),

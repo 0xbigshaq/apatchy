@@ -1,5 +1,7 @@
 /*
  * @description: proto harness - mod_session_crypto fuzzing via libprotobuf-mutator
+ * @protos: http_request, session_crypto
+ * @converters: http, session_crypto
  *
  * Structure-aware libFuzzer harness for mod_session_crypto.
  * LPM mutates both the HTTP request and session cookie data independently.

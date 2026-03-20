@@ -1,5 +1,7 @@
 /*
  * @description: proto harness - mod_rewrite URL rewriting engine fuzzing
+ * @protos: http_request, rewrite_request
+ * @converters: http, rewrite
  *
  * Structure-aware libFuzzer harness targeting mod_rewrite's rewrite rules,
  * backreference expansion, variable lookups, and flag processing.

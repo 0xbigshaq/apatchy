@@ -322,6 +322,26 @@ class HarnessBuilder:
         ]
         self.runner.run_build(cmd, label="Linking harness")
 
+    @staticmethod
+    def _parse_harness_tags(harness_src):
+        """Parse @protos and @converters tags from a harness source file."""
+        protos = None
+        converters = None
+        try:
+            with open(harness_src) as f:
+                for line in f:
+                    if line.strip() == "*/":
+                        break
+                    m = re.search(r"@protos:\s*(.+)", line)
+                    if m:
+                        protos = [s.strip() for s in m.group(1).split(",")]
+                    m = re.search(r"@converters:\s*(.+)", line)
+                    if m:
+                        converters = [s.strip() for s in m.group(1).split(",")]
+        except OSError:
+            pass
+        return protos, converters
+
     def _build_proto_harness(self, output_name, harness_src, cflags, ldflags):
         """Build a protobuf-based harness using libprotobuf-mutator.
 
@@ -343,7 +363,10 @@ class HarnessBuilder:
             self.logger.error("libprotobuf-mutator not found. Run 'apatchy setup lpm' first.")
             raise FileNotFoundError("libprotobuf-mutator not found")
 
-        # Run protoc on all .proto files (protoc resolves imports automatically)
+        # Parse @protos/@converters tags to only build what this harness needs
+        needed_protos, needed_converters = self._parse_harness_tags(harness_src)
+
+        # Run protoc (all .proto files so imports resolve, but we only compile needed ones)
         gen_dir = Config.WORK_DIR / ".proto_gen"
         gen_dir.mkdir(exist_ok=True)
 
@@ -367,10 +390,12 @@ class HarnessBuilder:
             lpm_libs = [f"-L{lib_dir}", f"-L{lib_src}"]
         lpm_libs += ["-lprotobuf-mutator-libfuzzer", "-lprotobuf-mutator"]
 
-        # Compile all generated .pb.cc files
+        # Compile only the .pb.cc files this harness needs
         Config.OBJ_DIR.mkdir(exist_ok=True)
         pb_objects = []
         for pb_cc in sorted(gen_dir.glob("*.pb.cc")):
+            if needed_protos and pb_cc.stem.removesuffix(".pb") not in needed_protos:
+                continue
             pb_obj = Config.OBJ_DIR / f"{pb_cc.stem}.o"
             self.runner.run_build(
                 [cxx, "-c", "-O2", "-std=c++17", *pb_cflags.split(), f"-I{gen_dir}", str(pb_cc), "-o", str(pb_obj)],
@@ -384,11 +409,13 @@ class HarnessBuilder:
         # Compile harness .cc via libtool with clang++
         self._compile_object(str(harness_src), "fuzz_harness.lo", harness_cflags, cxx)
 
-        # Compile proto converter .cc files
+        # Compile only the proto converters this harness needs
         converter_objects = []
         converters_dir = harness_dir / "proto_converters"
         if converters_dir.is_dir():
             for src in sorted(converters_dir.glob("*.cc")):
+                if needed_converters and src.stem not in needed_converters:
+                    continue
                 obj_name = f"proto_{src.stem}.lo"
                 self._compile_object(str(src), obj_name, harness_cflags, cxx)
                 converter_objects.append(str(Config.OBJ_DIR / obj_name))
