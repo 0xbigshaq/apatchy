@@ -12,6 +12,15 @@ Index
 
 .. toctree::
    :maxdepth: 1
+   :titlesonly:
+   :caption: Architecture
+
+   architecture/building-linking
+   architecture/fuzzing-engines
+   architecture/harness-design
+
+.. toctree::
+   :maxdepth: 1
    :caption: Apache Internals
 
    apache-internals/README
@@ -26,7 +35,7 @@ Index
    apache-internals/09-module-anatomy
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: API Reference
 
    api

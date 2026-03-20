@@ -123,7 +123,29 @@ class BuildManager:
         self.logger.info(f"Updated {clangd_path}")
 
     def configure_httpd(self, extra_flags: Optional[list] = None) -> None:
-        """Run ``./configure`` with optimised flags."""
+        """Run ``./configure`` on the vanilla root tree.
+
+        Key flags and why they are needed:
+
+        - ``--with-included-apr`` - build the bundled APR/APR-Util from
+          ``srclib/`` rather than using a system-installed version. Avoids
+          version mismatches and ensures instrumentation covers APR code.
+        - ``--disable-shared`` - static-only APR/APR-Util. Combined with
+          ``--enable-mods-static=all``, this makes libtool produce ELF
+          binaries directly instead of wrapper shell scripts.
+        - ``--disable-util-dso`` - statically links APR-Util's crypto, dbd,
+          and dbm driver plugins into ``libaprutil-1.a``. Without it,
+          APR-Util builds these as ``.so`` files loaded via ``dlopen()``.
+        - ``--disable-pie`` - SanCov instrumentation (used by LibFuzzer)
+          inserts non-PIC ``R_X86_64_32S`` relocations. PIE binaries with
+          these relocations fail to link.
+        - ``--with-crypto`` - enables OpenSSL support in APR-Util for
+          mod_session_crypto. Without it, mod_session_crypto fails at
+          runtime with "Your APR does not include SSL/EVP support".
+        - ``--enable-pool-debug=yes`` - (ASan only) makes ``apr_palloc()``
+          call ``malloc()`` directly so ASan can track individual pool
+          allocations instead of sub-allocations from large blocks.
+        """
         httpd_version = extract_version_from_path(self.httpd_root)
         config = self.config_manager.generate_build_config(httpd_version=httpd_version)
         cflags = config["CFLAGS"]
