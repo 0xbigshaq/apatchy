@@ -56,35 +56,37 @@ apatchy setup --force llvm --llvm-version 18   # install LLVM tools locally
 # 3. download
 apatchy download --version 2.4.65
 
-# 4. configure 
+# 4. configure (vanilla root tree)
 apatchy configure --asan --ubsan --ubsan-ignorelist ./configs/ubsan.ignorelist
 
-# 5. make (`--bear` for IDE navigation)
-apatchy make --bear
+# 5. build vanilla tree (`--bear` for IDE navigation)
+apatchy make --tree vanilla --bear
 
-# 6. setup for protobuf
+# 6. build libfuzzer branch (inherits sanitizers from root)
+apatchy make --tree lf
+
+# 7. setup for protobuf
 apatchy setup lpm
 
-# 7. list avail. harnesses
-apatchy harness list
+# 8. list avail. harnesses
+apatchy link --list-harnesses
 
-# 8. link target harness
-apatchy link libfuzzer --harness mod_fuzzy_proto_session --bear
+# 9. link target harness
+apatchy link --harness mod_fuzzy_proto_session --bear
 
-# 9. fuzz
-apatchy fuzz     \
-    --engine libfuzzer     \
-    --config configs/session-coverage.conf     \
+# 10. fuzz
+apatchy fuzz \
+    --config configs/session-coverage.conf \
     --seed-dir /tmp/htdocs/
 
-# 10. Generate HTML cov report
+# 11. build coverage branch and generate HTML cov report
+apatchy make --tree cov
 apatchy coverage report \
     --with-introspect \
     --config configs/session-coverage.conf \
-    --jobs 8 \
     --harness mod_fuzzy_proto_session
 
-# 11. Launch interactive gui w/ call-tree analysis 
+# 12. launch interactive gui w/ call-tree analysis
 apatchy introspect \
     --entry session_crypto_decode,session_crypto_encode,session_crypto_init
 ```
