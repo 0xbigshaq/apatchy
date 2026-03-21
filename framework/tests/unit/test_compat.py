@@ -94,13 +94,12 @@ def test_no_matches_returns_empty():
 # --- CompatEntry with min_version ---
 
 
-def test_min_version_excludes_older():
-    """An entry with min_version excludes versions below it."""
+def test_version_range_excludes_outside():
+    """An entry with a version range excludes versions outside it."""
     entry = CompatEntry(
-        id="test-min",
+        id="test-range",
         description="test",
-        min_version="2.4.50",
-        max_version="2.4.55",
+        versions=">=2.4.50,<=2.4.55",
         cflags=["-Wtest"],
     )
     from apatchy import compat
@@ -108,11 +107,11 @@ def test_min_version_excludes_older():
     original = list(compat.COMPAT_REGISTRY)
     try:
         compat.COMPAT_REGISTRY.append(entry)
-        assert "test-min" not in get_compat_flags("2.4.49").applied_ids
-        assert "test-min" in get_compat_flags("2.4.50").applied_ids
-        assert "test-min" in get_compat_flags("2.4.53").applied_ids
-        assert "test-min" in get_compat_flags("2.4.55").applied_ids
-        assert "test-min" not in get_compat_flags("2.4.56").applied_ids
+        assert "test-range" not in get_compat_flags("2.4.49").applied_ids
+        assert "test-range" in get_compat_flags("2.4.50").applied_ids
+        assert "test-range" in get_compat_flags("2.4.53").applied_ids
+        assert "test-range" in get_compat_flags("2.4.55").applied_ids
+        assert "test-range" not in get_compat_flags("2.4.56").applied_ids
     finally:
         compat.COMPAT_REGISTRY[:] = original
 
