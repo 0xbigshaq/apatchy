@@ -77,14 +77,16 @@ apatchy link --harness mod_fuzzy_proto_session --bear
 # 10. fuzz
 apatchy fuzz \
     --config configs/session-coverage.conf \
-    --seed-dir /tmp/htdocs/
+    --seed-dir fuzz-seeds/session/ \
+
 
 # 11. build coverage branch and generate HTML cov report
 apatchy make --tree cov
 apatchy coverage report \
     --with-introspect \
     --config configs/session-coverage.conf \
-    --harness mod_fuzzy_proto_session
+    --harness mod_fuzzy_proto_session \
+    --suppress configs/ubsan.supp
 
 # 12. launch interactive gui w/ call-tree analysis
 apatchy introspect \
