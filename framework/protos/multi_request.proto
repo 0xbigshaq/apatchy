@@ -1,0 +1,8 @@
+syntax = "proto2";
+
+import "http_request.proto";
+
+message MultiRequest {
+  repeated HttpRequest requests = 1;
+  optional bool keep_alive = 2 [default = false];
+}

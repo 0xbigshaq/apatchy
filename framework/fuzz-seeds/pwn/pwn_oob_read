@@ -1,0 +1,5 @@
+requests {
+  method: GET
+  uri: "/pwn/oob/3"
+  headers { name: "Host" value: "localhost" }
+}

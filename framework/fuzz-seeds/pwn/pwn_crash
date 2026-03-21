@@ -1,0 +1,5 @@
+requests {
+  method: GET
+  uri: "/pwn/crash"
+  headers { name: "Host" value: "localhost" }
+}

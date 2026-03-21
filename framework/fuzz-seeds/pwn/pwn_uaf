@@ -1,0 +1,18 @@
+requests {
+  method: GET
+  uri: "/"
+  headers { name: "Host" value: "localhost" }
+  headers { name: "X-Pwn-UAF" value: "alloc" }
+}
+requests {
+  method: GET
+  uri: "/"
+  headers { name: "Host" value: "localhost" }
+  headers { name: "X-Pwn-UAF" value: "free" }
+}
+requests {
+  method: GET
+  uri: "/"
+  headers { name: "Host" value: "localhost" }
+  headers { name: "X-Pwn-UAF" value: "use" }
+}

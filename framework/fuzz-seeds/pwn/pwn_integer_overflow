@@ -1,0 +1,6 @@
+requests {
+  method: GET
+  uri: "/"
+  headers { name: "Host" value: "localhost" }
+  headers { name: "X-Pwn-Integer" value: "1073741824" }
+}

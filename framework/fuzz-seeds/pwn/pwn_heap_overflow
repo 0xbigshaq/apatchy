@@ -1,0 +1,6 @@
+requests {
+  method: GET
+  uri: "/"
+  headers { name: "Host" value: "localhost" }
+  headers { name: "X-Pwn-Heap" value: "10:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" }
+}

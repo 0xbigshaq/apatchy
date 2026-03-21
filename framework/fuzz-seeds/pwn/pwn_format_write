@@ -1,0 +1,6 @@
+requests {
+  method: GET
+  uri: "/"
+  headers { name: "Host" value: "localhost" }
+  headers { name: "X-Pwn-Format" value: "%100$n" }
+}

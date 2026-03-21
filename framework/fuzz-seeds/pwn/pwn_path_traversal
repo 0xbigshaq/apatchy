@@ -1,0 +1,5 @@
+requests {
+  method: GET
+  uri: "/pwn/read?file=../../../etc/passwd"
+  headers { name: "Host" value: "localhost" }
+}
