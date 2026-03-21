@@ -55,7 +55,7 @@ class BaseFuzzer(ABC):
 
         return seed_path, output_path
 
-    def _build_env(self) -> Dict[str, str]:
+    def _build_env(self, suppress: str = None) -> Dict[str, str]:
         """Build base environment with FUZZ_CONF and FUZZ_ROOT."""
         env = os.environ.copy()
         config_path = self.config_manager.get_httpd_config()
@@ -64,6 +64,13 @@ class BaseFuzzer(ABC):
             env["FUZZ_ROOT"] = str(self.work_dir)
         else:
             self.logger.info("No httpd config found - harness will run without Apache pipeline")
+
+        ubsan_opts = "halt_on_error=1:print_stacktrace=1"
+        if suppress:
+            ubsan_opts += f":suppressions={suppress}"
+        existing = env.get("UBSAN_OPTIONS", "")
+        env["UBSAN_OPTIONS"] = f"{existing}:{ubsan_opts}" if existing else ubsan_opts
+
         return env
 
     @abstractmethod

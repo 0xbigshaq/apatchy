@@ -1197,7 +1197,7 @@ class ReportManager:
             env[var] = f"{existing}:color={color_val}" if existing else f"color={color_val}"
 
         existing = env.get("UBSAN_OPTIONS", "")
-        env["UBSAN_OPTIONS"] = f"{existing}:print_stacktrace=1"
+        env["UBSAN_OPTIONS"] = f"{existing}:print_stacktrace=1:halt_on_error=1"
 
         if supp_path:
             existing = env.get("UBSAN_OPTIONS", "")
@@ -1379,6 +1379,7 @@ class ReportManager:
             ]
 
         self.logger.info(f"Bulk triage: {len(files)} crash files from {crash_dir}")
+        self.logger.info(f"Using {harness_binary}")
 
         console = Console()
         results: list[tuple[str, str, str, str]] = []

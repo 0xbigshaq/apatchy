@@ -158,7 +158,7 @@ class ConfigManager:
             self.logger.info("Enabling UndefinedBehaviorSanitizer")
             both("-fsanitize=undefined")
             # fix SIGILL issue
-            both("-fsanitize-recover=all")  # continue after UBSan reports (ASAN still aborts)
+            # both("-fsanitize-recover=all")  # continue after UBSan reports (ASAN still aborts)
             both("-fno-sanitize-trap")  # emit runtime report instead of ud1/ud2 trap
             if self.ubsan_ignorelist:
                 ignorelist = Path(self.ubsan_ignorelist).resolve()

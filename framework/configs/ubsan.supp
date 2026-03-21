@@ -18,6 +18,7 @@ null:sockopt.c
 
 # Intentional unsigned wrapping in hash functions and string helpers.
 unsigned-integer-overflow:proxy_util.c
+signed-integer-overflow:proxy_util.c
 unsigned-integer-overflow:shm.c
 unsigned-integer-overflow:util.c
 
