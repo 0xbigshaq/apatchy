@@ -1,4 +1,3 @@
-import contextlib
 import json
 import os
 import re
@@ -6,15 +5,13 @@ import shutil
 import signal
 import subprocess
 import tempfile
-import threading
 from collections import Counter
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import List, Optional, Tuple
 
 from rich.console import Console
 from rich.live import Live
-from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
+from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
 from apatchy.compat import extract_version_from_path, get_compat_flags
@@ -957,9 +954,17 @@ class ReportManager:
         cflags = " ".join(t for t in cflags.split() if not t.startswith(("-fsanitize", "-fno-sanitize")))
         ldflags = " ".join(t for t in ldflags.split() if not t.startswith(("-fsanitize", "-fno-sanitize")))
 
+        marker = self.work_dir / ".profile_harness_name"
+        cached_name = marker.read_text().strip() if marker.exists() else None
+
         harness = self.work_dir / "fuzz_harness_profile"
         libmain = prof_root / "server" / "libmain.la"
-        if harness.exists() and libmain.exists() and harness.stat().st_mtime > libmain.stat().st_mtime:
+        if (
+            harness.exists()
+            and libmain.exists()
+            and harness.stat().st_mtime > libmain.stat().st_mtime
+            and cached_name == (harness_name or "mod_fuzzy_proto")
+        ):
             self.logger.info(f"Profile harness up to date: {harness}")
             return harness, prof_root
 
@@ -971,6 +976,7 @@ class ReportManager:
         if not harness.exists():
             raise FileNotFoundError("Failed to build fuzz_harness_profile")
 
+        marker.write_text(harness_name or "mod_fuzzy_proto")
         self.logger.info(f"Profile harness built: {harness}")
         return harness, prof_root
 
@@ -980,113 +986,30 @@ class ReportManager:
         queue_dir: Path,
         output_dir: Path,
         config_path: Path,
-        prof_offset: int = 0,
-        jobs: int = 1,
-        timeout: int = 120,
-    ) -> int:
+    ) -> bool:
         """Replay corpus through harness under callgrind, producing .callgrind files."""
         env = os.environ.copy()
         env["FUZZ_CONF"] = str(config_path)
         env["FUZZ_ROOT"] = str(self.work_dir)
 
-        harness_cmd = [
-            str(harness),
-            "-f",
-            str(config_path),
-            "-d",
-            str(self.work_dir),
+        callgrind_out = output_dir / f"callgrind.out.{queue_dir.name}"
+        queue_files = queue_dir.glob("*")
+        # self.logger.info(f"files to replay: {queue_files}")
+        harness_cmd = [str(harness), *queue_files]
+        cmd = [
+            "valgrind",
+            "--tool=callgrind",
+            f"--callgrind-out-file={callgrind_out}",
+            "--collect-jumps=yes",
+            *harness_cmd,
         ]
+        try:
+            run_stream_panel(cmd, env=env, label="Replaying corpus under callgrind...")
+        except Exception as e:
+            self.logger.warning(f"Error replaying {str(queue_dir)}: {e}")
 
-        test_cases = sorted(queue_dir.glob("id:*"))
-        if not test_cases:
-            test_cases = sorted(f for f in queue_dir.iterdir() if f.is_file() and f.name != ".state")
-
-        if not test_cases:
-            self.logger.error(f"No test cases found in {queue_dir}")
-            return 0
-
-        total = len(test_cases)
-        workers = min(jobs, total)
-        self.logger.info(f"Replaying {total} test cases under callgrind ({workers} workers)...")
-
-        count = 0
-        cancel = threading.Event()
-        worker_batches: list[list[tuple[int, Path]]] = [[] for _ in range(workers)]
-        for i, tc in enumerate(test_cases):
-            worker_batches[i % workers].append((i, tc))
-
-        with Progress(
-            SpinnerColumn(),
-            BarColumn(bar_width=20),
-            TextColumn("[progress.description]{task.description}"),
-            TextColumn("{task.completed}/{task.total}"),
-            console=Console(stderr=True),
-            refresh_per_second=4,
-        ) as progress:
-            overall_task = progress.add_task("Overall", total=total)
-            worker_task_ids = [
-                progress.add_task(f"  Worker {w + 1}", total=len(worker_batches[w])) for w in range(workers)
-            ]
-
-            def _run_worker(worker_id: int) -> int:
-                ok = 0
-                for i, tc in worker_batches[worker_id]:
-                    if cancel.is_set():
-                        break
-                    name = tc.name[:70].ljust(70)
-                    progress.update(worker_task_ids[worker_id], description=f"  [cyan]{name}[/]")
-                    callgrind_out = output_dir / f"callgrind.out.{prof_offset + i}"
-                    cmd = [
-                        "valgrind",
-                        "--tool=callgrind",
-                        f"--callgrind-out-file={callgrind_out}",
-                        "--collect-jumps=yes",
-                        *harness_cmd,
-                    ]
-                    try:
-                        with open(tc, "rb") as stdin_f:
-                            proc = subprocess.Popen(
-                                cmd,
-                                stdin=stdin_f,
-                                stdout=subprocess.DEVNULL,
-                                stderr=subprocess.DEVNULL,
-                                env=env,
-                            )
-                            try:
-                                proc.wait(timeout=timeout)
-                            except subprocess.TimeoutExpired:
-                                proc.kill()
-                                proc.wait()
-                                self.logger.warning(f"Timeout replaying {tc.name}, skipping")
-                        if proc.returncode is not None:
-                            ok += 1
-                    except Exception as e:
-                        self.logger.warning(f"Error replaying {tc.name}: {e}")
-                    progress.advance(worker_task_ids[worker_id])
-                    progress.advance(overall_task)
-                progress.update(worker_task_ids[worker_id], description="  Done")
-                return ok
-
-            try:
-                with ThreadPoolExecutor(max_workers=workers) as pool:
-                    futures = [pool.submit(_run_worker, w) for w in range(workers)]
-                    for future in as_completed(futures):
-                        count += future.result()
-            except KeyboardInterrupt:
-                cancel.set()
-                for future in futures:
-                    future.cancel()
-                for future in futures:
-                    if not future.cancelled():
-                        with contextlib.suppress(Exception):
-                            count += future.result(timeout=5)
-                return -1
-
-            for tid in worker_task_ids:
-                progress.remove_task(tid)
-
-        self.logger.info(f"Replayed {count}/{total} test cases")
-        return count
+        self.logger.info("Replayed test cases")
+        return True
 
     def generate_callgrind(
         self,
@@ -1094,8 +1017,6 @@ class ReportManager:
         config_name: str = "fuzz.conf",
         output_dir: str = "callgrind-out",
         harness_name: str = None,
-        jobs: int = 1,
-        timeout: int = 120,
     ) -> None:
         """Replay corpus under callgrind and collect output for kcachegrind.
 
@@ -1130,37 +1051,24 @@ class ReportManager:
         out_path = Path(output_dir).resolve()
         out_path.mkdir(parents=True, exist_ok=True)
 
-        count = 0
-        interrupted = False
-        for replay_dir in replay_dirs:
-            self.logger.info(f"Replaying {replay_dir.name}/ ({len(list(replay_dir.iterdir()))} entries)...")
-            result = self._replay_corpus_callgrind(
-                harness_path, replay_dir, out_path, config_path, prof_offset=count, jobs=jobs, timeout=timeout
-            )
-            if result < 0:
-                interrupted = True
-                break
-            count += result
-
-        if interrupted:
-            return
-
-        if count == 0:
-            self.logger.error("No test cases were replayed successfully")
-            return
+        for corpus_path in replay_dirs:
+            self.logger.info(f"checking {corpus_path}")
+            self._replay_corpus_callgrind(harness_path, corpus_path, out_path, config_path)
 
         callgrind_files = sorted(f for f in out_path.glob("callgrind.out.*") if f.stat().st_size > 0)
         self.logger.info(f"Generated {len(callgrind_files)} callgrind output files in {out_path}")
 
-        first_file = out_path / "callgrind.out.0"
-        is_wsl = "microsoft" in Path("/proc/version").read_text().lower() if Path("/proc/version").exists() else False
-        viewer = "qcachegrind.exe" if is_wsl else "kcachegrind"
-        self.logger.info(f"View with: {viewer} {first_file}")
+        # is_wsl = "microsoft" in Path("/proc/version").read_text().lower() if Path("/proc/version").exists() else False
+        # viewer = "qcachegrind.exe" if is_wsl else "kcachegrind"
+        # FIXME: we need to figure out why `qcachegrind.exe` fails to load huge files
+        #        and whether we want to keep it as an option or not.
+        viewer = "kcachegrind"
+        self.logger.info(f"View with: {viewer} {out_path}")
 
         answer = input("\nOpen in viewer now? [y/N] ").strip().lower()
         if answer == "y":
             subprocess.Popen(
-                [viewer, str(first_file)],
+                [viewer, *[str(f) for f in callgrind_files]],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )

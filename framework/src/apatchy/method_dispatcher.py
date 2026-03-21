@@ -484,8 +484,6 @@ class MethodDispatcher:
                 config_name=args.config,
                 output_dir=args.output,
                 harness_name=getattr(args, "harness", None),
-                jobs=getattr(args, "jobs", 1),
-                timeout=getattr(args, "timeout", 120),
             )
         else:
             logger.error("No profile sub-command specified. Use: callgrind")

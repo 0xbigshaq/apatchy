@@ -156,7 +156,9 @@ def main():
     link_parser = _sub(subparsers, "link", help="Link fuzzing harness")
     link_parser.add_argument("engine", nargs="?", choices=["libfuzzer"], default="libfuzzer", help="Fuzzing engine")
     link_parser.add_argument("--harness", help="Harness name to use (e.g. 'mod_fuzzy_proto_session')")
-    link_parser.add_argument("--tree", choices=["lf", "cov"], default="lf", help="Build tree to link against (default: lf)")
+    link_parser.add_argument(
+        "--tree", choices=["lf", "cov"], default="lf", help="Build tree to link against (default: lf)"
+    )
     link_parser.add_argument("--list-harnesses", action="store_true", help="List available harnesses and exit")
     link_parser.add_argument(
         "--bear", action="store_true", help="Wrap compilation with bear to generate compile_commands.json"
@@ -281,12 +283,6 @@ def main():
     profile_callgrind.add_argument("--config", default="fuzz.conf", help="Httpd config for corpus replay")
     profile_callgrind.add_argument("--output", default="callgrind-out", help="Output directory for callgrind files")
     profile_callgrind.add_argument("--harness", default=None, help="Harness to use (e.g. mod_fuzzy)")
-    profile_callgrind.add_argument(
-        "--jobs", "-j", type=int, default=1, help="Number of parallel replay workers (default: 1)"
-    )
-    profile_callgrind.add_argument(
-        "--timeout", type=int, default=120, help="Per-testcase timeout in seconds (default: 120, callgrind is slow)"
-    )
 
     # Setup / toolchain
     setup_parser = _sub(subparsers, "setup", help="Manage toolchain and dependencies")

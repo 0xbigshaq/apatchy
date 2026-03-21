@@ -154,7 +154,7 @@ class HarnessBuilder:
 
         # Proto harnesses (.cc) need a completely different build pipeline
         if harness_src.suffix == ".cc":
-            self._build_proto_harness(output_name, harness_src, cflags, ldflags)
+            self._build_proto_harness(output_name, harness_src, cflags, ldflags, mode)
             return
 
         # Add harness directory to include path so #include "fuzz_common.h" works
@@ -342,7 +342,7 @@ class HarnessBuilder:
             pass
         return protos, converters
 
-    def _build_proto_harness(self, output_name, harness_src, cflags, ldflags):
+    def _build_proto_harness(self, output_name, harness_src, cflags, ldflags, mode="standalone"):
         """Build a protobuf-based harness using libprotobuf-mutator.
 
         Pipeline:
@@ -409,6 +409,10 @@ class HarnessBuilder:
         # Compile harness .cc via libtool with clang++
         self._compile_object(str(harness_src), "fuzz_harness.lo", harness_cflags, cxx)
 
+        # in profiling mode we should write a main that gets input from stdin
+        if mode == "profile":
+            self._compile_object(str(harness_dir / "proto_harness_main.cc"), "harness_main.lo", harness_cflags, cxx)
+
         # Compile only the proto converters this harness needs
         converter_objects = []
         converters_dir = harness_dir / "proto_converters"
@@ -443,6 +447,9 @@ class HarnessBuilder:
             + pb_objects
             + [f"{obj}/buildmark.lo", f"{obj}/modules.lo"]
         )
+        if mode == "profile":
+            objects.append(f"{obj}/harness_main.lo")
+
         self._link_harness(
             output_name,
             objects,

@@ -117,3 +117,4 @@ framework/corpus/
 framework/.proto_gentoolchain/libprotobuf-mutator
 .proto_gen
 .cov_harness_name
+.profile_harness_name
