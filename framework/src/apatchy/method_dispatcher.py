@@ -260,25 +260,28 @@ class MethodDispatcher:
         if not httpd_root:
             return
 
-        lf_root = httpd_root.parent / (httpd_root.name + "-lf")
-        if not lf_root.exists():
-            logger.error(f"LibFuzzer tree not found at {lf_root.name}/. Run 'apatchy make --tree lf' first.")
+        tree = getattr(args, "tree", "lf")
+        suffix = f"-{tree}"
+        mode = "coverage" if tree == "cov" else "libfuzzer"
+
+        tree_root = httpd_root.parent / (httpd_root.name + suffix)
+        if not tree_root.exists():
+            logger.error(f"Build tree not found at {tree_root.name}/. Run 'apatchy make --tree {tree}' first.")
             return
 
         verbose = getattr(args, "verbose", False)
 
-        # Read branch metadata for flags, fall back to defaults
-        if BuildMeta.exists(lf_root):
-            meta = BuildMeta.load(lf_root)
+        if BuildMeta.exists(tree_root):
+            meta = BuildMeta.load(tree_root)
             cflags = meta.cflags
             ldflags = meta.ldflags
         else:
             cflags = ""
             ldflags = ""
 
-        harness_builder = HarnessBuilder(lf_root, verbose=verbose)
+        harness_builder = HarnessBuilder(tree_root, verbose=verbose)
         harness_builder.build(
-            mode="libfuzzer",
+            mode=mode,
             cflags=cflags,
             ldflags=ldflags,
             harness_name=getattr(args, "harness", None),
