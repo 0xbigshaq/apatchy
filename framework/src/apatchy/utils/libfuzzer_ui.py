@@ -210,6 +210,10 @@ class LibFuzzerUI:  # noqa: D101
 
         if "Test unit written to" in line:
             self.last_crash_time = time.monotonic()
+            crash_path = line.split("Test unit written to")[-1].strip().rstrip(";").strip()
+            crash_name = Path(crash_path).name if crash_path else "unknown"
+            if self.exporter:
+                self.exporter.record_event("crash", crash_name)
 
     def _count_crashes(self) -> int:
         if self.crashes_dir and self.crashes_dir.exists():

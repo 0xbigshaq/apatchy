@@ -66,6 +66,7 @@ const COLORS = {
   execS: '#3b82f6',
   corpus: '#a855f7',
   event: '#facc15',
+  crash: '#ef4444',
   grid: '#27272a',
   axis: '#71717a',
 };
@@ -88,8 +89,8 @@ export function StatsPanel({ sessions }: Props) {
   const covChartRef = useRef<ChartJS<'line'>>(null);
   const perfChartRef = useRef<ChartJS<'line'>>(null);
 
-  const { pulsePoints, eventPoints } = useMemo(() => {
-    if (!session) return { pulsePoints: [], eventPoints: [] };
+  const { pulsePoints, eventPoints, crashPoints } = useMemo(() => {
+    if (!session) return { pulsePoints: [], eventPoints: [], crashPoints: [] };
 
     const pulses = session.pulses.map((p) => ({
       ts: new Date(p.time).getTime(),
@@ -99,8 +100,7 @@ export function StatsPanel({ sessions }: Props) {
       exec_s: p.exec_s,
     }));
 
-    const events = session.events.map((ev) => {
-      const evTs = new Date(ev.time).getTime();
+    const interpolate = (evTs: number) => {
       let beforeIdx = 0;
       for (let i = 0; i < pulses.length; i++) {
         if (pulses[i].ts <= evTs) beforeIdx = i;
@@ -110,14 +110,24 @@ export function StatsPanel({ sessions }: Props) {
       const after = pulses[Math.min(beforeIdx + 1, pulses.length - 1)];
       const range = after.ts - before.ts;
       const t = range > 0 ? (evTs - before.ts) / range : 0;
-      return {
-        ts: evTs,
-        edges: Math.round(before.edges + (after.edges - before.edges) * t),
-        label: ev.value,
-      };
-    });
+      return Math.round(before.edges + (after.edges - before.edges) * t);
+    };
 
-    return { pulsePoints: pulses, eventPoints: events };
+    const funcEvents: { ts: number; edges: number; label: string }[] = [];
+    const crashes: { ts: number; edges: number; label: string }[] = [];
+
+    for (const ev of session.events) {
+      const evTs = new Date(ev.time).getTime();
+      const edges = interpolate(evTs);
+      const point = { ts: evTs, edges, label: ev.value };
+      if (ev.type === 'crash') {
+        crashes.push(point);
+      } else {
+        funcEvents.push(point);
+      }
+    }
+
+    return { pulsePoints: pulses, eventPoints: funcEvents, crashPoints: crashes };
   }, [session]);
 
   const mutatorData = useMemo(() => {
@@ -130,7 +140,7 @@ export function StatsPanel({ sessions }: Props) {
   const xMin = pulsePoints.length ? pulsePoints[0].ts : 0;
   const xMax = pulsePoints.length ? pulsePoints[pulsePoints.length - 1].ts : 1;
 
-  const zoomPanOptions = {
+  const zoomPanOptions = useMemo(() => ({
     limits: {
       x: { min: xMin, max: xMax, minRange: 1000 },
     },
@@ -143,7 +153,7 @@ export function StatsPanel({ sessions }: Props) {
       enabled: true,
       mode: 'x' as const,
     },
-  };
+  }), [xMin, xMax]);
 
   const resetZoom = () => {
     covChartRef.current?.resetZoom();
@@ -186,8 +196,21 @@ export function StatsPanel({ sessions }: Props) {
         showLine: false,
         yAxisID: 'y',
       },
+      {
+        label: 'crash',
+        data: crashPoints.map((e) => ({ x: e.ts, y: e.edges })),
+        borderColor: COLORS.crash,
+        backgroundColor: COLORS.crash,
+        borderWidth: 0,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        pointStyle: 'circle',
+        showLine: false,
+        yAxisID: 'y',
+        order: -1,
+      },
     ],
-  }), [pulsePoints, eventPoints]);
+  }), [pulsePoints, eventPoints, crashPoints]);
 
   const coverageOptions: ChartOptions<'line'> = useMemo(() => ({
     responsive: true,
@@ -219,7 +242,23 @@ export function StatsPanel({ sessions }: Props) {
     },
     plugins: {
       legend: {
-        labels: { color: '#a1a1aa', font: { size: 11 }, usePointStyle: true, pointStyle: 'line' },
+        labels: {
+          color: '#a1a1aa',
+          font: { size: 11 },
+          usePointStyle: true,
+          generateLabels: (chart) => {
+            return chart.data.datasets.map((ds, i) => ({
+              text: ds.label ?? '',
+              fontColor: '#a1a1aa',
+              fillStyle: ds.borderColor as string,
+              strokeStyle: ds.borderColor as string,
+              lineWidth: (ds as any).showLine === false ? 0 : 2,
+              pointStyle: (ds as any).showLine === false ? 'circle' : 'line',
+              hidden: !chart.isDatasetVisible(i),
+              datasetIndex: i,
+            }));
+          },
+        },
       },
       tooltip: {
         position: 'nearest',
@@ -230,10 +269,15 @@ export function StatsPanel({ sessions }: Props) {
         bodyColor: '#d4d4d8',
         titleFont: { size: 11 },
         bodyFont: { size: 11 },
+        usePointStyle: true,
         callbacks: {
           label: (ctx) => {
             if (ctx.dataset.label === 'new function') {
               const ev = eventPoints[ctx.dataIndex];
+              return ev ? ev.label : '';
+            }
+            if (ctx.dataset.label === 'crash') {
+              const ev = crashPoints[ctx.dataIndex];
               return ev ? ev.label : '';
             }
             return `${ctx.dataset.label}: ${formatNumber(ctx.parsed.y ?? 0)}`;
@@ -242,7 +286,7 @@ export function StatsPanel({ sessions }: Props) {
       },
       zoom: zoomPanOptions,
     },
-  }), [eventPoints, zoomPanOptions]);
+  }), [eventPoints, crashPoints, zoomPanOptions]);
 
   const perfData = useMemo(() => ({
     datasets: [
