@@ -498,6 +498,13 @@ class MethodDispatcher:
         if not httpd_root:
             return
 
+        tree_suffix = getattr(args, "tree", None)
+        if tree_suffix:
+            httpd_root = httpd_root.parent / f"{httpd_root.name}-{tree_suffix}"
+            if not httpd_root.exists():
+                logger.error(f"Tree not found: {httpd_root}")
+                return
+
         mm = ModuleManager(httpd_root)
         action = getattr(args, "action", None)
         if not action:
