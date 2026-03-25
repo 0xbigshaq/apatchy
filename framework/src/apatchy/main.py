@@ -308,6 +308,7 @@ def main():
     module_build = _sub(module_sub, "build", help="Build external module as .so DSO")
     module_build.add_argument("name", nargs="?", default=None, help="Module name (builds all if omitted)")
     module_build.add_argument("--cc", default=None, help="C compiler to use (default: clang)")
+    module_build.add_argument("--tree", default=None, help="Build tree suffix (e.g. lf, cov, prof)")
     _sub(module_sub, "list", help="List available external modules")
 
     # Dev (harness developer projects)

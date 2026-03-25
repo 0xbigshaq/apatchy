@@ -307,18 +307,15 @@ class ReportManager:
     def _build_coverage_modules(self, cc: str, cov_root: Path) -> List[Path]:
         """Build coverage-instrumented copies of external modules (.so).
 
-        Looks for module sources in EXTERNAL_MODULES_DIR, compiles each with
-        coverage flags, and places them in <work_dir>/modules/ (overwriting
-        the fuzz-instrumented version).  Returns the list of built .so paths.
+        Handles both single-file modules (*.c) and directory-based modules
+        (with build.sh).  Coverage flags are passed instead of sanitizer
+        flags.  Built .so files go in <work_dir>/modules/.
+        Returns the list of built .so paths.
         """
         from apatchy.config import Config
 
         modules_dir = self.work_dir / "modules"
         if not Config.EXTERNAL_MODULES_DIR.exists():
-            return []
-
-        sources = list(Config.EXTERNAL_MODULES_DIR.glob("*.c"))
-        if not sources:
             return []
 
         modules_dir.mkdir(exist_ok=True)
@@ -337,7 +334,9 @@ class ReportManager:
                 if p.is_dir():
                     includes.append(f"-I{p}")
 
-        for src in sources:
+        cov_flags = "-fprofile-instr-generate -fcoverage-mapping"
+
+        for src in sorted(Config.EXTERNAL_MODULES_DIR.glob("*.c")):
             name = src.stem
             output = modules_dir / f"{name}.so"
             cmd = [
@@ -357,6 +356,36 @@ class ReportManager:
             try:
                 subprocess.run(cmd, check=True, capture_output=True, text=True)
                 built.append(output)
+            except subprocess.CalledProcessError as e:
+                self.logger.warning(f"Failed to build coverage {name}.so: {e.stderr}")
+
+        for d in sorted(Config.EXTERNAL_MODULES_DIR.iterdir()):
+            if not d.is_dir() or not (d / "build.sh").exists():
+                continue
+            name = d.name
+            output = modules_dir / f"{name}.so"
+            env = {
+                **subprocess.os.environ,
+                "HTTPD_ROOT": str(cov_root),
+                "CC": cc,
+                "SANITIZER_FLAGS": cov_flags,
+                "OUTPUT_DIR": str(modules_dir),
+                "MODULE_DIR": str(d),
+            }
+            self.logger.info(f"Building coverage-instrumented {name}.so via build.sh ...")
+            try:
+                subprocess.run(
+                    ["bash", str(d / "build.sh")],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    env=env,
+                    cwd=d,
+                )
+                if output.exists():
+                    built.append(output)
+                else:
+                    self.logger.warning(f"build.sh completed but {name}.so was not produced")
             except subprocess.CalledProcessError as e:
                 self.logger.warning(f"Failed to build coverage {name}.so: {e.stderr}")
 
