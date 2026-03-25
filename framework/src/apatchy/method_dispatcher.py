@@ -305,6 +305,7 @@ class MethodDispatcher:
             resume=getattr(args, "resume", False),
             output_dir=getattr(args, "output_dir", "fuzz-output"),
             suppress=getattr(args, "suppress", None),
+            lsan_supp=getattr(args, "lsan_supp", None),
             timeout=getattr(args, "timeout", None),
             debug=getattr(args, "debug", False),
             workers=getattr(args, "workers", 1),

@@ -183,6 +183,9 @@ def main():
     fuzz_parser.add_argument(
         "--suppress", default=None, help="UBSan suppression file (e.g. ubsan.supp). See configs/ for examples."
     )
+    fuzz_parser.add_argument(
+        "--lsan-supp", default=None, help="LSan suppression file (e.g. lsan.supp). See configs/ for examples."
+    )
     fuzz_parser.add_argument("--debug", action="store_true", help="Show child process output for debugging")
     fuzz_parser.add_argument(
         "--workers", "-w", type=int, default=1, help="Number of parallel workers (uses libfuzzer -fork=N)"

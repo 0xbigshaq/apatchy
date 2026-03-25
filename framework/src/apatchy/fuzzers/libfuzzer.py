@@ -32,7 +32,7 @@ class LibFuzzer(BaseFuzzer):
         self.logger.info(f"Corpus:  {queue_dir}")
         self.logger.info(f"Crashes: {crashes_dir}")
 
-        env = self._build_env(suppress=kwargs.get("suppress"))
+        env = self._build_env(suppress=kwargs.get("suppress"), lsan_supp=kwargs.get("lsan_supp"))
 
         cmd = [
             str(harness),

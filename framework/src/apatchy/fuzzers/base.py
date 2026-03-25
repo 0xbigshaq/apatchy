@@ -55,7 +55,7 @@ class BaseFuzzer(ABC):
 
         return seed_path, output_path
 
-    def _build_env(self, suppress: str = None) -> Dict[str, str]:
+    def _build_env(self, suppress: str = None, lsan_supp: str = None) -> Dict[str, str]:
         """Build base environment with FUZZ_CONF and FUZZ_ROOT."""
         env = os.environ.copy()
         config_path = self.config_manager.get_httpd_config()
@@ -70,6 +70,11 @@ class BaseFuzzer(ABC):
             ubsan_opts += f":suppressions={suppress}"
         existing = env.get("UBSAN_OPTIONS", "")
         env["UBSAN_OPTIONS"] = f"{existing}:{ubsan_opts}" if existing else ubsan_opts
+
+        if lsan_supp:
+            lsan_opts = f"suppressions={lsan_supp}"
+            existing = env.get("LSAN_OPTIONS", "")
+            env["LSAN_OPTIONS"] = f"{existing}:{lsan_opts}" if existing else lsan_opts
 
         return env
 
