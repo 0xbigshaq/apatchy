@@ -645,6 +645,16 @@ int fuzz_init(const char *confname, const char *server_root)
     }
 #endif
 
+    /* Pre-seed userdata keys that modules use for the "double-init"
+     * pattern.  Apache normally runs the full config cycle twice;
+     * modules skip real init on the first call by checking a
+     * per-process userdata key.  We only run post_config once, so
+     * set the keys upfront so modules think it is the second pass.
+     * Known keys: mod_wsgi ("wsgi_init"). */
+    apr_pool_userdata_set((const void *)1, "wsgi_init",
+                          apr_pool_cleanup_null,
+                          g_server->process->pool);
+
     if (ap_run_post_config(g_pconf, g_plog, ptemp, g_server) != OK) {
         fprintf(stderr, "post_config failed\n");
         return -1;

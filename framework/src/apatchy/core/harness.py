@@ -299,6 +299,12 @@ class HarnessBuilder:
                 "-Wl,-u,ap_cookie_check_string",
                 "-Wl,-u,ap_rxplus_compile",
                 "-Wl,-u,ap_rxplus_exec",
+                # APR symbols needed by dynamically loaded modules (mod_wsgi, etc.)
+                "-Wl,-u,apr_threadkey_private_create",
+                "-Wl,-u,apr_threadkey_private_get",
+                "-Wl,-u,apr_threadkey_private_set",
+                "-Wl,-u,apr_bucket_type_eos",
+                "-Wl,-u,apr_bucket_type_flush",
             ]
 
         cmd = [
@@ -411,6 +417,7 @@ class HarnessBuilder:
 
         # in profiling mode we should write a main that gets input from stdin
         if mode == "profile":
+            self.logger.info("Adding proto_harness_main.cc")
             self._compile_object(str(harness_dir / "proto_harness_main.cc"), "harness_main.lo", harness_cflags, cxx)
 
         # Compile only the proto converters this harness needs
