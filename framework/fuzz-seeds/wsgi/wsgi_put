@@ -1,0 +1,8 @@
+requests {
+  method: PUT
+  uri: "/resource/123"
+  headers { name: "Host" value: "localhost" }
+  headers { name: "Content-Type" value: "text/plain" }
+  headers { name: "Content-Length" value: "11" }
+  body: "hello world"
+}

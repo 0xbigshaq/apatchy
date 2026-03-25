@@ -1,0 +1,15 @@
+requests {
+  method: GET
+  uri: "/headers"
+  headers { name: "Host" value: "localhost" }
+  headers { name: "Accept" value: "text/html, application/json, */*" }
+  headers { name: "Accept-Language" value: "en-US,en;q=0.9,fr;q=0.8" }
+  headers { name: "Accept-Encoding" value: "gzip, deflate, br" }
+  headers { name: "User-Agent" value: "Mozilla/5.0 (X11; Linux x86_64)" }
+  headers { name: "Referer" value: "http://localhost/previous" }
+  headers { name: "Cookie" value: "sid=abc123; theme=dark; lang=en" }
+  headers { name: "X-Forwarded-For" value: "192.168.1.1, 10.0.0.1" }
+  headers { name: "X-Request-Id" value: "550e8400-e29b-41d4-a716-446655440000" }
+  headers { name: "If-None-Match" value: "\"etag12345\"" }
+  headers { name: "Cache-Control" value: "no-cache" }
+}

@@ -1,0 +1,6 @@
+requests {
+  method: GET
+  uri: "/app?foo=bar&baz=1&key=val%20ue"
+  headers { name: "Host" value: "localhost" }
+  headers { name: "Accept" value: "text/html" }
+}

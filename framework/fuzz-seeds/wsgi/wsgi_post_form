@@ -1,0 +1,8 @@
+requests {
+  method: POST
+  uri: "/submit"
+  headers { name: "Host" value: "localhost" }
+  headers { name: "Content-Type" value: "application/x-www-form-urlencoded" }
+  headers { name: "Content-Length" value: "23" }
+  body: "username=admin&pass=test"
+}

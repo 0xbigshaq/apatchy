@@ -1,0 +1,6 @@
+requests {
+  method: GET
+  uri: "/protected"
+  headers { name: "Host" value: "localhost" }
+  headers { name: "Authorization" value: "Basic dXNlcjpwYXNzd29yZA==" }
+}

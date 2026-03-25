@@ -1,0 +1,5 @@
+requests {
+  method: OPTIONS
+  uri: "*"
+  headers { name: "Host" value: "localhost" }
+}

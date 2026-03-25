@@ -1,0 +1,3 @@
+# Python interpreter - one-time allocations that are never freed
+leak:libpython
+leak:newInterpreterObject

@@ -1,0 +1,8 @@
+requests {
+  method: POST
+  uri: "/api/data"
+  headers { name: "Host" value: "localhost" }
+  headers { name: "Content-Type" value: "application/json" }
+  headers { name: "Content-Length" value: "27" }
+  body: "{\"key\": \"value\", \"num\": 42}"
+}

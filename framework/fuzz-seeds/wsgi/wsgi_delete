@@ -1,0 +1,5 @@
+requests {
+  method: DELETE
+  uri: "/resource/456"
+  headers { name: "Host" value: "localhost" }
+}

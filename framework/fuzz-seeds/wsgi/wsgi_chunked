@@ -1,0 +1,8 @@
+requests {
+  method: POST
+  uri: "/stream"
+  headers { name: "Host" value: "localhost" }
+  headers { name: "Transfer-Encoding" value: "chunked" }
+  headers { name: "Content-Type" value: "text/plain" }
+  body: "5\r\nhello\r\n6\r\n world\r\n0\r\n\r\n"
+}

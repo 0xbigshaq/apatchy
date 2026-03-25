@@ -118,3 +118,6 @@ framework/.proto_gentoolchain/libprotobuf-mutator
 .proto_gen
 .cov_harness_name
 .profile_harness_name
+# External module cloned sources and build artifacts (keep only build.sh)
+framework/src/apatchy/external_modules/*/.build/
+framework/src/apatchy/external_modules/*/mod_wsgi-*/

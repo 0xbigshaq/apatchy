@@ -1,0 +1,8 @@
+requests {
+  method: POST
+  uri: "/upload"
+  headers { name: "Host" value: "localhost" }
+  headers { name: "Content-Type" value: "multipart/form-data; boundary=----boundary" }
+  headers { name: "Content-Length" value: "131" }
+  body: "------boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"test.txt\"\r\nContent-Type: text/plain\r\n\r\nfile data\r\n------boundary--\r\n"
+}
