@@ -1,0 +1,74 @@
+syntax = "proto2";
+
+import "http_request.proto";
+
+enum AjpHttpMethod {
+    AJP_GET = 0;
+    AJP_POST = 1;
+    AJP_PUT = 2;
+    AJP_DELETE = 3;
+    AJP_HEAD = 4;
+    AJP_OPTIONS = 5;
+}
+
+enum AjpResponseCode {
+    AJP_OK_200 = 0;
+    AJP_CREATED_201 = 1;
+    AJP_REDIRECT_301 = 2;
+    AJP_REDIRECT_302 = 3;
+    AJP_NOT_MODIFIED_304 = 4;
+    AJP_BAD_REQUEST_400 = 5;
+    AJP_UNAUTHORIZED_401 = 6;
+    AJP_FORBIDDEN_403 = 7;
+    AJP_NOT_FOUND_404 = 8;
+    AJP_SERVER_ERROR_500 = 9;
+    AJP_BAD_GATEWAY_502 = 10;
+    AJP_SERVICE_UNAVAILABLE_503 = 11;
+}
+
+enum AjpEncodedHeader {
+    AJP_HDR_CONTENT_TYPE = 0;
+    AJP_HDR_CONTENT_LANGUAGE = 1;
+    AJP_HDR_CONTENT_LENGTH = 2;
+    AJP_HDR_DATE = 3;
+    AJP_HDR_LAST_MODIFIED = 4;
+    AJP_HDR_LOCATION = 5;
+    AJP_HDR_SET_COOKIE = 6;
+    AJP_HDR_SET_COOKIE2 = 7;
+    AJP_HDR_SERVLET_ENGINE = 8;
+    AJP_HDR_STATUS = 9;
+    AJP_HDR_WWW_AUTHENTICATE = 10;
+    AJP_HDR_RAW = 11;
+}
+
+message AjpResponseHeader {
+    required AjpEncodedHeader code = 1;
+    optional string raw_name = 2;
+    required string value = 3;
+}
+
+message AjpBodyChunk {
+    required bytes data = 1;
+}
+
+message AjpSendHeaders {
+    required AjpResponseCode status = 1;
+    optional string status_msg = 2 [default = "OK"];
+    repeated AjpResponseHeader headers = 3;
+}
+
+message AjpResponse {
+    required AjpSendHeaders send_headers = 1;
+    repeated AjpBodyChunk body_chunks = 2;
+    optional bool reuse = 3 [default = true];
+    optional bool send_cpong = 4 [default = false];
+}
+
+message AjpRequest {
+    required AjpHttpMethod method = 1;
+    required string uri = 2;
+    optional string http_version = 3 [default = "HTTP/1.1"];
+    repeated Header headers = 4;
+    optional bytes req_body = 5;
+    optional AjpResponse resp = 6;
+}
