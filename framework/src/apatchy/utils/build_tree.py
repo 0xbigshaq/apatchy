@@ -26,7 +26,7 @@ class AlternateBuildTree:
         self.alt_root = httpd_root.parent / (httpd_root.name + suffix)
         self.runner = ProcessRunner()
 
-    def ensure_build(self, cc: str, cflags: str, ldflags: str) -> Path:
+    def ensure_build(self, cc: str, cflags: str, ldflags: str, bear: bool = False) -> Path:
         """Create the alternate tree (if needed) and rebuild Apache with the given flags.
 
         Returns the path to the alternate httpd root.
@@ -70,6 +70,8 @@ class AlternateBuildTree:
             f"CC={cc}",
             f"CFLAGS={cflags}",
         ]
+        if bear:
+            make_cmd = ["bear", "--"] + make_cmd
         # CC and CFLAGS are passed on the command line as well for top-level
         # targets.  LDFLAGS is only patched in config files (not passed on the
         # command line) because command-line LDFLAGS clobbers the Makefile
