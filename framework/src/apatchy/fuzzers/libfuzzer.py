@@ -46,6 +46,23 @@ class LibFuzzer(BaseFuzzer):
             cmd.append(f"-fork={workers}")
             self.logger.info(f"Parallel mode: {workers} workers (-fork={workers})")
 
+        verbose = kwargs.get("verbose", False)
+        if verbose:
+            import subprocess
+            import sys
+
+            proc = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env,
+            )
+            try:
+                for line in proc.stdout:
+                    sys.stdout.write(line)
+                    sys.stdout.flush()
+            except KeyboardInterrupt:
+                proc.terminate()
+            proc.wait()
+            return
+
         from apatchy.utils.libfuzzer_ui import LibFuzzerUI
 
         pulse_interval = kwargs.get("pulse_interval", 60)

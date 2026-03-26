@@ -88,6 +88,7 @@ class FuzzManager:
         debug: bool = False,
         workers: int = 1,
         pulse_interval: int = 60,
+        verbose: bool = False,
         **kwargs,
     ) -> None:
         engine_cls = ENGINES.get(engine)
@@ -109,4 +110,5 @@ class FuzzManager:
             debug=debug,
             workers=workers,
             pulse_interval=pulse_interval,
+            verbose=verbose,
         )

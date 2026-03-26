@@ -229,6 +229,7 @@ class MethodDispatcher:
             cc=cc,
             cflags=branch_config["CFLAGS"],
             ldflags=branch_config["LDFLAGS"],
+            bear=bear,
         )
 
         # Save branch metadata
@@ -310,6 +311,7 @@ class MethodDispatcher:
             debug=getattr(args, "debug", False),
             workers=getattr(args, "workers", 1),
             pulse_interval=getattr(args, "pulse_interval", 60),
+            verbose=getattr(args, "verbose", False),
         )
 
     def _handle_triage(self, args: argparse.Namespace) -> None:
