@@ -1,0 +1,10 @@
+method: AJP_POST
+uri: "/"
+headers { name: "Host" value: "localhost" }
+headers { name: "Transfer-Encoding" value: "chunked" }
+headers { name: "Content-Type" value: "text/plain" }
+req_body: "5\r\nhello\r\n0\r\n\r\n"
+resp {
+  send_headers { status: AJP_OK_200 status_msg: "OK" }
+  reuse: true
+}

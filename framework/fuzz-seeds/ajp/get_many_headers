@@ -1,0 +1,28 @@
+method: AJP_GET
+uri: "/test"
+headers { name: "Host" value: "localhost" }
+headers { name: "Accept" value: "*/*" }
+headers { name: "Accept-Encoding" value: "gzip, deflate" }
+headers { name: "Accept-Language" value: "en-US" }
+headers { name: "Authorization" value: "Basic dXNlcjpwYXNz" }
+headers { name: "Connection" value: "keep-alive" }
+headers { name: "Cookie" value: "session=abc123" }
+headers { name: "Cookie2" value: "$Version=1" }
+headers { name: "Pragma" value: "no-cache" }
+headers { name: "Referer" value: "http://localhost/" }
+headers { name: "User-Agent" value: "Mozilla/5.0" }
+headers { name: "X-Forwarded-For" value: "10.0.0.1" }
+resp {
+  send_headers {
+    status: AJP_OK_200
+    status_msg: "OK"
+    headers { code: AJP_HDR_CONTENT_TYPE value: "text/html" }
+    headers { code: AJP_HDR_SET_COOKIE value: "id=abc; Path=/" }
+    headers { code: AJP_HDR_LOCATION value: "http://localhost/test" }
+    headers { code: AJP_HDR_DATE value: "Thu, 26 Mar 2026 10:00:00 GMT" }
+    headers { code: AJP_HDR_LAST_MODIFIED value: "Wed, 25 Mar 2026 10:00:00 GMT" }
+    headers { code: AJP_HDR_RAW raw_name: "X-Custom" value: "custom-value" }
+  }
+  body_chunks { data: "<html>hello</html>" }
+  reuse: true
+}

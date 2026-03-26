@@ -1,0 +1,13 @@
+method: AJP_GET
+uri: "/old"
+headers { name: "Host" value: "localhost" }
+resp {
+  send_headers {
+    status: AJP_REDIRECT_302
+    status_msg: "Found"
+    headers { code: AJP_HDR_LOCATION value: "http://127.0.0.1:8009/new" }
+    headers { code: AJP_HDR_SET_COOKIE value: "id=xyz; Path=/; Domain=.localhost" }
+    headers { code: AJP_HDR_SET_COOKIE2 value: "id2=abc; Path=/" }
+  }
+  reuse: true
+}

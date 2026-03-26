@@ -1,0 +1,10 @@
+method: AJP_POST
+uri: "/"
+headers { name: "Host" value: "localhost" }
+headers { name: "Content-Length" value: "5" }
+headers { name: "Content-Length" value: "100" }
+req_body: "hello"
+resp {
+  send_headers { status: AJP_OK_200 status_msg: "OK" }
+  reuse: true
+}

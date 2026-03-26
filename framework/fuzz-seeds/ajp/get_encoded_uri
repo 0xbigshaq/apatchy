@@ -1,0 +1,7 @@
+method: AJP_GET
+uri: "/%2e%2e/%2e%2e/etc/passwd"
+headers { name: "Host" value: "localhost" }
+resp {
+  send_headers { status: AJP_FORBIDDEN_403 status_msg: "Forbidden" }
+  reuse: true
+}

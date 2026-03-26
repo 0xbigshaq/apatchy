@@ -1,0 +1,13 @@
+method: AJP_GET
+uri: "/p"
+headers { name: "Host" value: "localhost" }
+resp {
+  send_cpong: true
+  send_headers {
+    status: AJP_OK_200
+    status_msg: "OK"
+    headers { code: AJP_HDR_CONTENT_TYPE value: "text/plain" }
+  }
+  body_chunks { data: "pong" }
+  reuse: true
+}

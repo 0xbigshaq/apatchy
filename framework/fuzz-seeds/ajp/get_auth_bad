@@ -1,0 +1,12 @@
+method: AJP_GET
+uri: "/a"
+headers { name: "Host" value: "localhost" }
+headers { name: "Authorization" value: "Basic aW52YWxpZDppbnZhbGlk" }
+resp {
+  send_headers {
+    status: AJP_UNAUTHORIZED_401
+    status_msg: "Unauthorized"
+    headers { code: AJP_HDR_WWW_AUTHENTICATE value: "Basic realm=\"ajp\"" }
+  }
+  reuse: true
+}

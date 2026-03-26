@@ -1,0 +1,14 @@
+method: AJP_GET
+uri: "/"
+headers { name: "Host" value: "localhost" }
+resp {
+  send_headers {
+    status: AJP_OK_200
+    status_msg: "OK"
+    headers { code: AJP_HDR_CONTENT_TYPE value: "text/html" }
+  }
+  body_chunks { data: "<html>" }
+  body_chunks { data: "<body>hello</body>" }
+  body_chunks { data: "</html>" }
+  reuse: true
+}

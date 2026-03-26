@@ -1,0 +1,7 @@
+method: AJP_GET
+uri: "/..;/manager/html"
+headers { name: "Host" value: "localhost" }
+resp {
+  send_headers { status: AJP_NOT_FOUND_404 status_msg: "Not Found" }
+  reuse: true
+}
