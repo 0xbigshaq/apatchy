@@ -7,7 +7,11 @@
  * our pre_connection hook detects it (no "fuzz_client" note) and installs
  * an input filter that serves g_backend_buf as the backend response.
  */
+#include "apr_file_info.h"
+#include "apr_portable.h"
 #include "http_core.h"
+
+#include "arch/unix/apr_arch_networkio.h"
 
 #include "http_connection.h"
 #include "http_log.h"
@@ -22,10 +26,55 @@
 
 #include "fuzz_backend.h"
 #include "fuzz_common.h"
+#include <netinet/in.h>
+#include <signal.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
 int g_backend_enabled = 0;        /* feature flag */
 const char *g_backend_buf = NULL; /* buffer from proto harness */
 apr_size_t g_backend_size = 0;    /* size from proto harness */
+static int g_backend_fd = -1;     /* cached backend socket fd */
+
+/*
+ * Wraps ap_proxy_connect_backend via -Wl,--wrap=ap_proxy_connect_backend.
+ * The linker renames the original to __real_ap_proxy_connect_backend
+ * and routes all calls through our __wrap_ version.
+ * After the real connection succeeds, we replace the socket with a
+ * socketpair containing our fuzzed AJP response data.
+ */
+#include "mod_proxy.h"
+
+int __real_ap_proxy_connect_backend(
+    const char *proxy_function, proxy_conn_rec *conn, proxy_worker *worker, server_rec *s
+);
+
+int __wrap_ap_proxy_connect_backend(
+    const char *proxy_function, proxy_conn_rec *conn, proxy_worker *worker, server_rec *s
+)
+{
+    if (g_backend_fd >= 0) {
+        close(g_backend_fd);
+        g_backend_fd = -1;
+    }
+    int rc = __real_ap_proxy_connect_backend(proxy_function, conn, worker, s);
+    if (rc != OK || !g_backend_buf || g_backend_size == 0 || !conn->sock)
+        return rc;
+
+    apr_os_sock_t fd;
+    if (apr_os_sock_get(&fd, conn->sock) != APR_SUCCESS)
+        return rc;
+
+    int pair[2];
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, pair) != 0)
+        return rc;
+    close(fd);
+    conn->sock->socketdes = pair[0];
+    write(pair[1], g_backend_buf, g_backend_size);
+    shutdown(pair[1], SHUT_WR);
+    g_backend_fd = pair[1]; /* keep alive so writes to pair[0] don't EPIPE */
+    return rc;
+}
 
 static ap_filter_rec_t *apatchy_input_filter; /* filter handle */
 static ap_filter_rec_t *apatchy_output_filter;
@@ -129,22 +178,8 @@ static int apatchy_pre_connection(conn_rec *c, void *csd)
 
     ap_add_input_filter_handle(apatchy_input_filter, ctx, NULL, c);
     ap_add_output_filter_handle(apatchy_output_filter, NULL, NULL, c);
-    // ap_remove_input_filter()
-
-    /*
-    ap_filter_t *cur = c->input_filters;
-    while (cur) {
-        ap_log_error(
-            APLOG_MARK, APLOG_ERR, 0, NULL, "filter chain: %s (type=%d)", cur->frec->name,
-            cur->frec->ftype
-        );
-        cur = cur->next;
-    }
-    */
 
     c->master = c; // mock/prevent null ptr crashes
-
-    // ap_remove_input_filter(c->);
     return DONE;
 }
 
