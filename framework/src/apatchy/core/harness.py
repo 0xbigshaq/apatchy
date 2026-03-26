@@ -330,9 +330,10 @@ class HarnessBuilder:
 
     @staticmethod
     def _parse_harness_tags(harness_src):
-        """Parse @protos and @converters tags from a harness source file."""
+        """Parse @protos, @converters and @ldflags tags from a harness source file."""
         protos = None
         converters = None
+        ldflags = None
         try:
             with open(harness_src) as f:
                 for line in f:
@@ -344,9 +345,12 @@ class HarnessBuilder:
                     m = re.search(r"@converters:\s*(.+)", line)
                     if m:
                         converters = [s.strip() for s in m.group(1).split(",")]
+                    m = re.search(r"@ldflags:\s*(.+)", line)
+                    if m:
+                        ldflags = m.group(1).strip()
         except OSError:
             pass
-        return protos, converters
+        return protos, converters, ldflags
 
     def _build_proto_harness(self, output_name, harness_src, cflags, ldflags, mode="standalone"):
         """Build a protobuf-based harness using libprotobuf-mutator.
@@ -369,8 +373,10 @@ class HarnessBuilder:
             self.logger.error("libprotobuf-mutator not found. Run 'apatchy setup lpm' first.")
             raise FileNotFoundError("libprotobuf-mutator not found")
 
-        # Parse @protos/@converters tags to only build what this harness needs
-        needed_protos, needed_converters = self._parse_harness_tags(harness_src)
+        # Parse @protos/@converters/@ldflags tags to only build what this harness needs
+        needed_protos, needed_converters, extra_ldflags = self._parse_harness_tags(harness_src)
+        if extra_ldflags:
+            ldflags = f"{ldflags} {extra_ldflags}"
 
         # Run protoc (all .proto files so imports resolve, but we only compile needed ones)
         gen_dir = Config.WORK_DIR / ".proto_gen"
