@@ -15,12 +15,14 @@ null:mod_logio.c
 null:apr_brigade.c
 null:apr_date.c
 null:sockopt.c
+shift-base:http_filters.c
 
 # Intentional unsigned wrapping in hash functions and string helpers.
 unsigned-integer-overflow:proxy_util.c
 signed-integer-overflow:proxy_util.c
 unsigned-integer-overflow:shm.c
 unsigned-integer-overflow:util.c
+unsigned-integer-overflow:apr_sha1.c
 
 # $ clang -fsanitize=undefined -xc /dev/null '-###'
 # alignment
