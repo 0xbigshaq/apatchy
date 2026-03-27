@@ -9,6 +9,7 @@ dependencies = [
     "requests",
     "rich",
     "argcomplete",
+    "psutil",
 ]
 requires-python = ">=3.8"
 

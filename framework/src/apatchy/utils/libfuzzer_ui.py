@@ -5,6 +5,7 @@ from collections import deque
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
+import psutil
 from rich.console import Console, Group
 from rich.live import Live
 from rich.markup import escape
@@ -62,6 +63,39 @@ def _fmt_num(n: str) -> str:
         return n
 
 
+def _get_descendant_procs(pid: int) -> List[psutil.Process]:
+    try:
+        parent = psutil.Process(pid)
+        return parent.children(recursive=True)
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
+        return []
+
+
+def _proc_rss_mb(pid: int) -> int:
+    total = 0
+    for p in _get_descendant_procs(pid):
+        try:
+            total += p.memory_info().rss
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+    return total // (1024 * 1024)
+
+
+_SYNC_BEGIN = "\033[?2026h"
+_SYNC_END = "\033[?2026l"
+
+
+class SyncConsole(Console):  # noqa: D101
+    def _write_buffer(self) -> None:
+        if self.file and hasattr(self.file, "isatty") and self.file.isatty():
+            self.file.write(_SYNC_BEGIN)
+            super()._write_buffer()
+            self.file.write(_SYNC_END)
+            self.file.flush()
+        else:
+            super()._write_buffer()
+
+
 class LibFuzzerUI:  # noqa: D101
     MAX_WIDTH = 90
 
@@ -74,7 +108,7 @@ class LibFuzzerUI:  # noqa: D101
         workers: int = 1,
         pulse_interval: int = 60,
     ):
-        self.console = Console()
+        self.console = SyncConsole()
         self.log_height = log_height
         self.max_width = max_width
         self.crashes_dir = crashes_dir
@@ -82,6 +116,9 @@ class LibFuzzerUI:  # noqa: D101
         self.start_time = 0.0
         self.last_new_time = 0.0
         self.last_crash_time = 0.0
+        self._proc_pid: Optional[int] = None
+        self._last_proc_poll = 0.0
+        self._sys_cpu_pcts: List[int] = []
         self.stats: Dict[str, Optional[str]] = {
             "run": "0",
             "event": "INIT",
@@ -109,6 +146,7 @@ class LibFuzzerUI:  # noqa: D101
         returncode = 0
 
         with Live(self._render(), refresh_per_second=8, console=self.console) as live:
+            live.get_renderable = self._render
             while True:
                 with subprocess.Popen(
                     command,
@@ -117,6 +155,7 @@ class LibFuzzerUI:  # noqa: D101
                     text=True,
                     env=env,
                 ) as proc:
+                    self._proc_pid = proc.pid
                     for line in proc.stdout:
                         clean = line.rstrip()
                         if not clean:
@@ -127,14 +166,12 @@ class LibFuzzerUI:  # noqa: D101
                             self.exporter.maybe_pulse(self.stats)
                         ts = time.strftime("%H:%M:%S")
                         self.log_buffer.append(f"[dim]{ts}[/dim] {escape(stripped)}")
-                        live.update(self._render())
                     returncode = proc.wait()
 
                 # code 1 = crash found; restart to keep fuzzing the corpus
                 if returncode == 1:
                     ts = time.strftime("%H:%M:%S")
                     self.log_buffer.append(f"[dim]{ts}[/dim] [yellow][~] crash saved, restarting...[/yellow]")
-                    live.update(self._render())
                     continue
 
                 break
@@ -173,6 +210,7 @@ class LibFuzzerUI:  # noqa: D101
                 self.last_new_time = time.monotonic()
                 if self.exporter and self.stats["strategy"]:
                     self.exporter.record_mutators(self.stats["strategy"])
+            self._poll_system_stats()
             return
 
         fm = _FORK_RE.match(line)
@@ -187,6 +225,7 @@ class LibFuzzerUI:  # noqa: D101
             self.stats["worker_exec_s"] = fm.group(5)
             ooms, timeouts, crashes = fm.group(6), fm.group(7), fm.group(8)
             self.stats["strategy"] = f"oom:{ooms} tout:{timeouts} crash:{crashes}"
+            self._poll_system_stats(poll_rss=True)
             old_cov = getattr(self, "_last_cov", 0)
             new_cov = int(fm.group(2))
             if new_cov > old_cov:
@@ -214,6 +253,17 @@ class LibFuzzerUI:  # noqa: D101
             crash_name = Path(crash_path).name if crash_path else "unknown"
             if self.exporter:
                 self.exporter.record_event("crash", crash_name)
+
+    def _poll_system_stats(self, poll_rss: bool = False) -> None:
+        now = time.monotonic()
+        if now - self._last_proc_poll < 2.0:
+            return
+        self._last_proc_poll = now
+        if poll_rss and self._proc_pid:
+            rss_mb = _proc_rss_mb(self._proc_pid)
+            if rss_mb > 0:
+                self.stats["rss"] = f"{rss_mb}Mb"
+        self._sys_cpu_pcts = [int(p) for p in psutil.cpu_percent(percpu=True)]
 
     def _count_crashes(self) -> int:
         if self.crashes_dir and self.crashes_dir.exists():
@@ -275,8 +325,24 @@ class LibFuzzerUI:  # noqa: D101
         else:
             table.add_row("rss", s["rss"], "input limit", _fmt_num(s["limit"]))
 
+        extras = []
+        if self._sys_cpu_pcts:
+            bar = ""
+            for pct in self._sys_cpu_pcts:
+                if pct >= 70:
+                    bar += "[red]|[/red]"
+                elif pct >= 30:
+                    bar += "[yellow]|[/yellow]"
+                else:
+                    bar += "[green].[/green]"
+            avg = sum(self._sys_cpu_pcts) // len(self._sys_cpu_pcts)
+            extras.append(f"  [dim]cpu[/dim]  {bar}  [dim]avg[/dim] {avg}%")
+
         last_func = s.get("last_func")
-        panel_body = Group(table, f"  [dim]last func[/dim]  [cyan]{last_func}[/cyan]") if last_func else table
+        if last_func:
+            extras.append(f"  [dim]last func[/dim]  [cyan]{last_func}[/cyan]")
+
+        panel_body = Group(table, *extras) if extras else table
 
         title = f"[bold cyan]apatchy libfuzzer[/bold cyan]  {event_tag}  [dim]{run_time}[/dim]"
         stats_panel = Panel(
@@ -288,7 +354,7 @@ class LibFuzzerUI:  # noqa: D101
         )
 
         # Log panel
-        log_content = "\n".join(self.log_buffer) if self.log_buffer else "[dim]waiting for output...[/dim]"
+        log_content = "\n".join(self.log_buffer) if self.log_buffer else ""
         log_panel = Panel(log_content, box=_EMPTY_BOX, height=self.log_height + 2)
 
         return Group(stats_panel, log_panel)

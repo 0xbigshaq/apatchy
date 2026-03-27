@@ -38,12 +38,13 @@ class LibFuzzer(BaseFuzzer):
             str(harness),
             str(queue_dir),
             f"-artifact_prefix={crashes_dir}/",
-            "-keep_going=1000000",
-            "-print_new_func_on_new=1",
         ]
 
         if workers > 1:
             cmd.append(f"-fork={workers}")
+        else:
+            cmd.append("-keep_going=1000000")
+            cmd.append("-print_new_func_on_new=1")
             self.logger.info(f"Parallel mode: {workers} workers (-fork={workers})")
 
         verbose = kwargs.get("verbose", False)
