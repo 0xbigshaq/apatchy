@@ -1,0 +1,14 @@
+method: AJP_POST
+uri: "/"
+headers { name: "Host" value: "localhost" }
+headers { name: "Content-Type" value: "text/plain" }
+req_body: "hello world this is test body data"
+resp {
+  send_headers {
+    status: AJP_OK_200
+    status_msg: "OK"
+    headers { code: AJP_HDR_CONTENT_TYPE value: "text/plain" }
+  }
+  body_chunks { data: "ok" }
+  reuse: true
+}

@@ -71,4 +71,5 @@ message AjpRequest {
     repeated Header headers = 4;
     optional bytes req_body = 5;
     optional AjpResponse resp = 6;
+    optional bytes raw_resp = 7;
 }

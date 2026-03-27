@@ -1,0 +1,4 @@
+method: AJP_GET
+uri: "/"
+headers { name: "Host" value: "localhost" }
+raw_resp: "AAAAAAAAAAAAAAAA"

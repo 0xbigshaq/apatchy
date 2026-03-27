@@ -1,0 +1,12 @@
+method: AJP_GET
+uri: "/e"
+headers { name: "Host" value: "localhost" }
+resp {
+  send_headers {
+    status: AJP_SERVER_ERROR_500
+    status_msg: "Internal Server Error"
+    headers { code: AJP_HDR_CONTENT_TYPE value: "text/html" }
+  }
+  body_chunks { data: "<html>500</html>" }
+  reuse: true
+}

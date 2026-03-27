@@ -27,7 +27,9 @@ DEFINE_PROTO_FUZZER(const AjpRequest &req)
 
     std::string raw_req = BuildAjpRequest(req);
     std::string raw_resp;
-    if (req.has_resp())
+    if (req.has_raw_resp() && req.raw_resp().size() > 0)
+        raw_resp = req.raw_resp();
+    else if (req.has_resp())
         raw_resp = BuildAjpResponse(req.resp());
     else
         raw_resp = BuildAjpDefaultResponse();

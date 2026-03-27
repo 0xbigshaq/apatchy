@@ -1,0 +1,6 @@
+method: AJP_POST
+uri: "/"
+headers { name: "Host" value: "localhost" }
+headers { name: "Content-Type" value: "text/plain" }
+req_body: "hello world this is a test body"
+raw_resp: "AB\000\003\006\040\000AB\000\014\004\000\310\000\002OK\000\000\000AB\000\002\005\001"

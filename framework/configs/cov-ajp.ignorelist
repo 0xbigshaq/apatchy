@@ -1,4 +1,7 @@
+.proto_gen
 balancers
+http_protocol.h
+http_request.pb.h
 mod_proxy_balancer
 mod_proxy_connect
 mod_proxy_express
@@ -10,6 +13,7 @@ mod_proxy_http
 mod_proxy_scgi
 mod_proxy_uwsgi
 mod_proxy_wstunnel
+mod_proxy.c
 modules/aaa
 modules/arch
 modules/cache
@@ -50,6 +54,9 @@ modules/ssl
 modules/ssl
 modules/test
 os/unix
+port/protobuf.h
+proto_converters/http.cc
+proxy_util.c
 server/buildmark
 server/config
 server/connection
@@ -85,8 +92,3 @@ server/util_time
 server/util_xml
 server/vhost
 srclib/apr
-port/protobuf.h
-http_protocol.h
-http_request.pb.h
-.proto_gen
-proto_converters/http.cc
