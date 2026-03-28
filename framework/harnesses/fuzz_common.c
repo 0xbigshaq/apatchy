@@ -651,9 +651,12 @@ int fuzz_init(const char *confname, const char *server_root)
      * per-process userdata key.  We only run post_config once, so
      * set the keys upfront so modules think it is the second pass.
      * Known keys: mod_wsgi ("wsgi_init"). */
-    apr_pool_userdata_set((const void *)1, "wsgi_init",
-                          apr_pool_cleanup_null,
-                          g_server->process->pool);
+    apr_pool_userdata_set(
+        (const void *)1, "wsgi_init", apr_pool_cleanup_null, g_server->process->pool
+    );
+    apr_pool_userdata_set(
+        (const void *)1, "mod_http2_init_counter", apr_pool_cleanup_null, g_server->process->pool
+    );
 
     if (ap_run_post_config(g_pconf, g_plog, ptemp, g_server) != OK) {
         fprintf(stderr, "post_config failed\n");
@@ -731,7 +734,20 @@ int fuzz_one_input(const char *data, size_t size)
      * only intercepts it, not proxy backend connections. */
     apr_table_setn(c->notes, "fuzz_client", "1");
 
-    ap_process_connection(c, g_dummy_socket);
+    /* <ap_process_connection> */
+
+    /* we are 'in-lining' here the contents of `ap_process_connection` because we need to
+     * clear `c->master = NULL` after `ap_pre_connection` and before `ap_run_process_connection`
+     * this is because in http2, `h2_c2_hook_process()` would segfault on a null ptr deref.
+     **/
+    ap_update_vhost_given_ip(c);
+    ap_pre_connection(c, g_dummy_socket);
+    c->master = NULL;
+    if (!c->aborted) {
+        ap_run_process_connection(c);
+    }
+
+    /* </ap_process_connection> */
 
     apr_pool_destroy(ptrans);
 
