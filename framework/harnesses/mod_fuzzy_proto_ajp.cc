@@ -2,6 +2,7 @@
  * @description: proto harness - AJP request + response fuzzing via libprotobuf-mutator
  * @protos: http_request, ajp_response
  * @converters: http, ajp
+ * @extras: fuzz_backend
  * @ldflags: -Wl,--wrap=ap_proxy_connect_backend
  *
  * Fuzzes both the HTTP-to-AJP request translation and the binary AJP
@@ -12,11 +13,11 @@
  * Build: apatchy link libfuzzer --harness mod_fuzzy_proto_ajp
  * Run:   apatchy fuzz --engine libfuzzer
  */
+#include "ajp_response.pb.h"
+#include "fuzz_backend.h"
 #include "proto_converters/converters.h"
 #include "proto_harness_common.h"
 #include "src/libfuzzer/libfuzzer_macro.h"
-#include "ajp_response.pb.h"
-#include "fuzz_backend.h"
 
 DEFINE_PROTO_FUZZER(const AjpRequest &req)
 {

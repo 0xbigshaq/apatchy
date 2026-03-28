@@ -121,3 +121,5 @@ framework/.proto_gentoolchain/libprotobuf-mutator
 # External module cloned sources and build artifacts (keep only build.sh)
 framework/src/apatchy/external_modules/*/.build/
 framework/src/apatchy/external_modules/*/mod_wsgi-*/
+
+ideas/

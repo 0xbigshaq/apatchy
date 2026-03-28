@@ -53,7 +53,11 @@ class LibFuzzer(BaseFuzzer):
             import sys
 
             proc = subprocess.Popen(
-                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env,
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                env=env,
             )
             try:
                 for line in proc.stdout:

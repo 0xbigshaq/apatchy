@@ -2,6 +2,7 @@
  * @description: proto harness - uwsgi HTTP fuzzing via libprotobuf-mutator
  * @protos: http_request, uwsgi_req_res
  * @converters: http, uwsgi
+ * @extras: fuzz_backend
  *
  * Structure-aware libFuzzer harness using the base HttpRequest schema.
  * No module-specific transforms -- pure HTTP request fuzzing.

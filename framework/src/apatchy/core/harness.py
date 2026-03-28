@@ -330,10 +330,11 @@ class HarnessBuilder:
 
     @staticmethod
     def _parse_harness_tags(harness_src):
-        """Parse @protos, @converters and @ldflags tags from a harness source file."""
+        """Parse @protos, @converters, @ldflags, and @extras tags from a harness source file."""
         protos = None
         converters = None
         ldflags = None
+        extras = None
         try:
             with open(harness_src) as f:
                 for line in f:
@@ -348,9 +349,12 @@ class HarnessBuilder:
                     m = re.search(r"@ldflags:\s*(.+)", line)
                     if m:
                         ldflags = m.group(1).strip()
+                    m = re.search(r"@extras:\s*(.+)", line)
+                    if m:
+                        extras = [s.strip() for s in m.group(1).split(",")]
         except OSError:
             pass
-        return protos, converters, ldflags
+        return protos, converters, ldflags, extras
 
     def _build_proto_harness(self, output_name, harness_src, cflags, ldflags, mode="standalone"):
         """Build a protobuf-based harness using libprotobuf-mutator.
@@ -374,7 +378,7 @@ class HarnessBuilder:
             raise FileNotFoundError("libprotobuf-mutator not found")
 
         # Parse @protos/@converters/@ldflags tags to only build what this harness needs
-        needed_protos, needed_converters, extra_ldflags = self._parse_harness_tags(harness_src)
+        needed_protos, needed_converters, extra_ldflags, extras = self._parse_harness_tags(harness_src)
         if extra_ldflags:
             ldflags = f"{ldflags} {extra_ldflags}"
 
@@ -437,10 +441,20 @@ class HarnessBuilder:
                 self._compile_object(str(src), obj_name, harness_cflags, cxx)
                 converter_objects.append(str(Config.OBJ_DIR / obj_name))
 
-        # Compile fuzz_common.c and fuzz_backend.c with the C compiler via libtool
+        # Compile fuzz_common.c with the C compiler via libtool
         c_cflags = f"-I{harness_dir} {cflags}"
         self._compile_object(str(harness_dir / "fuzz_common.c"), "fuzz_common.lo", c_cflags, c_cc)
-        self._compile_object(str(harness_dir / "fuzz_backend.c"), "fuzz_backend.lo", c_cflags, c_cc)
+
+        # Compile extra C files specified by @extras tag
+        extra_objects = []
+        if extras:
+            for extra in extras:
+                extra_src = harness_dir / extra
+                if not extra_src.suffix:
+                    extra_src = extra_src.with_suffix(".c")
+                obj_name = f"extra_{extra_src.stem}.lo"
+                self._compile_object(str(extra_src), obj_name, c_cflags, c_cc)
+                extra_objects.append(str(Config.OBJ_DIR / obj_name))
 
         # Compile buildmark.c and modules.c
         self._compile_object(str(self.httpd_root / "server" / "buildmark.c"), "buildmark.lo", c_cflags, c_cc)
@@ -456,7 +470,8 @@ class HarnessBuilder:
         objects = (
             [f"{obj}/fuzz_harness.lo"]
             + converter_objects
-            + [f"{obj}/fuzz_common.lo", f"{obj}/fuzz_backend.lo"]
+            + [f"{obj}/fuzz_common.lo"]
+            + extra_objects
             + pb_objects
             + [f"{obj}/buildmark.lo", f"{obj}/modules.lo"]
         )
