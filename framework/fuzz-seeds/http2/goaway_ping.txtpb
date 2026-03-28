@@ -1,0 +1,16 @@
+frames {
+  settings {}
+  stream_id: 0
+}
+frames {
+  ping { data: "\x00\x01\x02\x03\x04\x05\x06\x07" }
+  stream_id: 0
+}
+frames {
+  goaway {
+    last_stream_id: 0
+    error_code: 0
+    debug_data: "graceful"
+  }
+  stream_id: 0
+}

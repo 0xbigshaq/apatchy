@@ -1,0 +1,22 @@
+frames {
+  settings {}
+  stream_id: 0
+}
+frames {
+  window_update { increment: 1048576 }
+  stream_id: 0
+}
+frames {
+  headers {
+    headers { name: ":method" value: "GET" }
+    headers { name: ":path" value: "/" }
+    headers { name: ":scheme" value: "http" }
+    headers { name: ":authority" value: "localhost" }
+    end_stream: true
+  }
+  stream_id: 1
+}
+frames {
+  window_update { increment: 32768 }
+  stream_id: 1
+}

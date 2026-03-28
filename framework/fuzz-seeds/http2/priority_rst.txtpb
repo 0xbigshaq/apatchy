@@ -1,0 +1,25 @@
+frames {
+  settings {}
+  stream_id: 0
+}
+frames {
+  headers {
+    headers { name: ":method" value: "GET" }
+    headers { name: ":path" value: "/" }
+    headers { name: ":scheme" value: "http" }
+    headers { name: ":authority" value: "localhost" }
+  }
+  stream_id: 1
+}
+frames {
+  priority {
+    dep_stream_id: 0
+    exclusive: true
+    weight: 255
+  }
+  stream_id: 1
+}
+frames {
+  rst_stream { error_code: 8 }
+  stream_id: 1
+}

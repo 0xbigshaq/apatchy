@@ -1,0 +1,22 @@
+frames {
+  settings {}
+  stream_id: 0
+}
+frames {
+  headers {
+    headers { name: ":method" value: "GET" }
+    headers { name: ":path" value: "/" }
+    headers { name: ":scheme" value: "http" }
+    end_stream: true
+  }
+  stream_id: 1
+}
+frames {
+  continuation {
+    headers { name: ":authority" value: "localhost" }
+    headers { name: "accept" value: "text/html" }
+    headers { name: "user-agent" value: "fuzzer/1.0" }
+    end_headers: true
+  }
+  stream_id: 1
+}

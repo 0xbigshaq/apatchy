@@ -1,0 +1,17 @@
+frames {
+  settings {
+    settings { id: MAX_CONCURRENT_STREAMS value: 100 }
+    settings { id: INITIAL_WINDOW_SIZE value: 65535 }
+  }
+  stream_id: 0
+}
+frames {
+  headers {
+    headers { name: ":method" value: "GET" }
+    headers { name: ":path" value: "/" }
+    headers { name: ":scheme" value: "http" }
+    headers { name: ":authority" value: "localhost" }
+    end_stream: true
+  }
+  stream_id: 1
+}

@@ -1,0 +1,21 @@
+frames {
+  settings {}
+  stream_id: 0
+}
+frames {
+  headers {
+    headers { name: ":method" value: "POST" }
+    headers { name: ":path" value: "/upload" }
+    headers { name: ":scheme" value: "http" }
+    headers { name: ":authority" value: "localhost" }
+    headers { name: "content-type" value: "application/x-www-form-urlencoded" }
+  }
+  stream_id: 1
+}
+frames {
+  data {
+    data: "key=value&foo=bar"
+    end_stream: true
+  }
+  stream_id: 1
+}

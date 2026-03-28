@@ -1,0 +1,85 @@
+syntax = "proto2";                                                                                                                                                                   
+                
+import "http_request.proto";
+
+enum H2SettingId {                                                                                                                                                                   
+    HEADER_TABLE_SIZE = 0;
+    ENABLE_PUSH = 1;                                                                                                                                                                 
+    MAX_CONCURRENT_STREAMS = 2;                                                                                                                                                      
+    INITIAL_WINDOW_SIZE = 3;
+    MAX_FRAME_SIZE = 4;                                                                                                                                                              
+    MAX_HEADER_LIST_SIZE = 5;
+}                                                                                                                                                                                    
+
+message H2Setting {                                                                                                                                                                  
+    required H2SettingId id = 1;
+    required uint32 value = 2;
+}
+
+message H2HeadersFrame {                                                                                                                                                             
+    repeated Header headers = 1;
+    optional bool end_stream = 2 [default = false];                                                                                                                                  
+    optional uint32 priority_dep = 3;
+    optional uint32 priority_weight = 4;                                                                                                                                             
+}
+                                                                                                                                                                                    
+message H2DataFrame {
+    required bytes data = 1;
+    optional bool end_stream = 2 [default = true];
+}                                                                                                                                                                                    
+
+message H2SettingsFrame {                                                                                                                                                            
+    repeated H2Setting settings = 1;
+    optional bool ack = 2 [default = false];
+}                                                                                                                                                                                    
+
+message H2WindowUpdateFrame {                                                                                                                                                        
+    required uint32 increment = 1;
+}
+
+message H2RstStreamFrame {
+    required uint32 error_code = 1;
+}                                                                                                                                                                                    
+
+message H2GoawayFrame {                                                                                                                                                              
+    required uint32 last_stream_id = 1;
+    required uint32 error_code = 2;
+    optional bytes debug_data = 3;
+}                                                                                                                                                                                    
+
+message H2PingFrame {                                                                                                                                                                
+    optional bytes data = 1;
+    optional bool ack = 2 [default = false];
+}                                                                                                                                                                                    
+
+message H2PriorityFrame {                                                                                                                                                            
+    required uint32 dep_stream_id = 1;
+    optional bool exclusive = 2 [default = false];
+    optional uint32 weight = 3 [default = 16];                                                                                                                                       
+}
+                                                                                                                                                                                    
+message H2ContinuationFrame {
+    repeated Header headers = 1;
+    optional bool end_headers = 2 [default = true];                                                                                                                                  
+}
+                                                                                                                                                                                    
+message H2Frame {
+    oneof frame {
+        H2HeadersFrame headers = 1;
+        H2DataFrame data = 2;
+        H2SettingsFrame settings = 3;                                                                                                                                                
+        H2WindowUpdateFrame window_update = 4;
+        H2RstStreamFrame rst_stream = 5;                                                                                                                                             
+        H2GoawayFrame goaway = 6;
+        H2PingFrame ping = 7;                                                                                                                                                        
+        H2PriorityFrame priority = 8;
+        H2ContinuationFrame continuation = 9;                                                                                                                                        
+    }           
+    optional uint32 stream_id = 10 [default = 0];
+}                                                                                                                                                                                    
+
+message Http2Request {                                                                                                                                                               
+    repeated H2Frame frames = 1;
+    optional bytes raw_preface = 2;                                                                                                                                                  
+}
+                            

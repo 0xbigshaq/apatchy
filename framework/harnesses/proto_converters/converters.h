@@ -36,3 +36,7 @@ class AjpResponse;
 std::string BuildAjpRequest(const AjpRequest &req);
 std::string BuildAjpResponse(const AjpResponse &resp);
 std::string BuildAjpDefaultResponse();
+
+// HTTP2
+class Http2Request;
+std::string BuildHttp2Request(const Http2Request &req);

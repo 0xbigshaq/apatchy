@@ -1,0 +1,25 @@
+frames {
+  settings {
+    settings { id: HEADER_TABLE_SIZE value: 4096 }
+    settings { id: ENABLE_PUSH value: 0 }
+    settings { id: MAX_CONCURRENT_STREAMS value: 100 }
+    settings { id: INITIAL_WINDOW_SIZE value: 65535 }
+    settings { id: MAX_FRAME_SIZE value: 16384 }
+    settings { id: MAX_HEADER_LIST_SIZE value: 8192 }
+  }
+  stream_id: 0
+}
+frames {
+  settings { ack: true }
+  stream_id: 0
+}
+frames {
+  headers {
+    headers { name: ":method" value: "GET" }
+    headers { name: ":path" value: "/" }
+    headers { name: ":scheme" value: "http" }
+    headers { name: ":authority" value: "localhost" }
+    end_stream: true
+  }
+  stream_id: 1
+}
