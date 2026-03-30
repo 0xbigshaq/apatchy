@@ -92,13 +92,23 @@ export function StatsPanel({ sessions }: Props) {
   const { pulsePoints, eventPoints, crashPoints } = useMemo(() => {
     if (!session) return { pulsePoints: [], eventPoints: [], crashPoints: [] };
 
-    const pulses = session.pulses.map((p) => ({
-      ts: new Date(p.time).getTime(),
-      edges: p.edges,
-      features: p.features,
-      corpus: p.corpus,
-      exec_s: p.exec_s,
-    }));
+    let maxEdges = 0;
+    let maxFeatures = 0;
+    let maxCorpus = 0;
+    const pulses = session.pulses.map((p) => {
+      maxEdges = Math.max(maxEdges, p.edges);
+      maxFeatures = Math.max(maxFeatures, p.features);
+      maxCorpus = Math.max(maxCorpus, p.corpus);
+      return {
+        ts: new Date(p.time).getTime(),
+        edges: maxEdges,
+        features: maxFeatures,
+        corpus: maxCorpus,
+        exec_s: p.worker_exec_s
+          ? p.worker_exec_s * (session.workers || 1)
+          : p.exec_s,
+      };
+    });
 
     const interpolate = (evTs: number) => {
       let beforeIdx = 0;

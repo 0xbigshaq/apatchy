@@ -42,10 +42,10 @@ class LibFuzzer(BaseFuzzer):
 
         if workers > 1:
             cmd.append(f"-fork={workers}")
+            self.logger.info(f"Parallel mode: {workers} workers (-fork={workers})")
         else:
             cmd.append("-keep_going=1000000")
             cmd.append("-print_new_func_on_new=1")
-            self.logger.info(f"Parallel mode: {workers} workers (-fork={workers})")
 
         verbose = kwargs.get("verbose", False)
         if verbose:

@@ -76,6 +76,7 @@ class StatsExporter:  # noqa: D101
 
     def _capture_pulse(self, stats: dict) -> None:
         worker_exec_s_raw = stats.get("worker_exec_s")
+        effective_exec_s = int(stats.get("exec_s", 0))
         pulse: FuzzerPulse = {
             "time": time.strftime("%Y-%m-%dT%H:%M:%S"),
             "edges": int(stats.get("cov", 0)),
@@ -83,7 +84,7 @@ class StatsExporter:  # noqa: D101
             "corpus": int(stats.get("corp_n", 0)),
             "corpus_size": stats.get("corp_size", "0b"),
             "total_execs": int(stats.get("run", 0)),
-            "exec_s": int(stats.get("exec_s", 0)),
+            "exec_s": effective_exec_s,
             "worker_exec_s": int(worker_exec_s_raw) if worker_exec_s_raw else None,
             "rss": stats.get("rss", "0Mb"),
             "crashes": self.crash_counter() if self.crash_counter else 0,

@@ -111,6 +111,7 @@ class LibFuzzerUI:  # noqa: D101
         self.console = SyncConsole()
         self.log_height = log_height
         self.max_width = max_width
+        self.workers = workers
         self.crashes_dir = crashes_dir
         self.log_buffer: deque = deque(maxlen=log_height)
         self.start_time = 0.0
@@ -217,11 +218,12 @@ class LibFuzzerUI:  # noqa: D101
         if fm:
             self.stats["run"] = fm.group(1)
             self.stats["event"] = f"job {fm.group(10)}"
-            self.stats["cov"] = fm.group(2)
-            self.stats["ft"] = fm.group(3)
-            self.stats["corp_n"] = fm.group(4)
-            elapsed = time.monotonic() - self.start_time
-            self.stats["exec_s"] = str(int(int(fm.group(1)) / elapsed)) if elapsed > 0 else fm.group(5)
+            self.stats["cov"] = str(max(int(fm.group(2)), int(self.stats.get("cov", 0))))
+            self.stats["ft"] = str(max(int(fm.group(3)), int(self.stats.get("ft", 0))))
+            disk_corpus = self._count_corpus()
+            self.stats["corp_n"] = str(disk_corpus) if disk_corpus > 0 else fm.group(4)
+            worker_rate = int(fm.group(5))
+            self.stats["exec_s"] = str(worker_rate * self.workers)
             self.stats["worker_exec_s"] = fm.group(5)
             ooms, timeouts, crashes = fm.group(6), fm.group(7), fm.group(8)
             self.stats["strategy"] = f"oom:{ooms} tout:{timeouts} crash:{crashes}"
@@ -270,6 +272,13 @@ class LibFuzzerUI:  # noqa: D101
             return sum(1 for f in self.crashes_dir.iterdir() if f.is_file())
         return 0
 
+    def _count_corpus(self) -> int:
+        if self.crashes_dir:
+            queue_dir = self.crashes_dir.parent / "queue"
+            if queue_dir.exists():
+                return sum(1 for f in queue_dir.iterdir() if f.is_file())
+        return 0
+
     def _render(self) -> Group:
         now = time.monotonic()
         s = self.stats
@@ -307,21 +316,15 @@ class LibFuzzerUI:  # noqa: D101
 
         table.add_row("run time", run_time, "total execs", f"[bold]{_fmt_num(s['run'])}[/bold]")
         worker_exec_s = s.get("worker_exec_s")
-        if worker_exec_s:
-            exec_label = "exec/s (all)"
-            exec_val = _fmt_num(s["exec_s"])
-        else:
-            exec_label = "exec/sec"
-            exec_val = _fmt_num(s["exec_s"])
 
-        table.add_row("last new cov", last_new, exec_label, exec_val)
+        table.add_row("last new cov", last_new, "exec/sec", _fmt_num(s["exec_s"]))
         table.add_row("last crash", last_crash, "corpus", f"{_fmt_num(s['corp_n'])} ({s['corp_size']})")
         table.add_row(
             "edges", f"[green]{_fmt_num(s['cov'])}[/green]", "features", f"[green]{_fmt_num(s['ft'])}[/green]"
         )
         table.add_row("mutator", s["strategy"], "crashes", crashes)
         if worker_exec_s:
-            table.add_row("rss", s["rss"], "exec/s (worker)", _fmt_num(worker_exec_s))
+            table.add_row("rss", s["rss"], "exec/s/worker", _fmt_num(worker_exec_s))
         else:
             table.add_row("rss", s["rss"], "input limit", _fmt_num(s["limit"]))
 
