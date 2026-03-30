@@ -1,3 +1,15 @@
 # Python interpreter - one-time allocations that are never freed
 leak:libpython
 leak:newInterpreterObject
+
+# flex/bison expression parser allocates with malloc (yyalloc, yyparse stack).
+# When a handler calls exit() and we longjmp, yylex_destroy never runs.
+leak:ap_expr_yy
+leak:yy_fatal_error
+leak:yyalloc
+leak:yy_create_buffer
+
+# ap_varbuf_grow creates a standalone apr_allocator_t via malloc that can
+# leak when directive handlers exit() and we longjmp past cleanup.
+leak:ap_varbuf_grow
+leak:apr_allocator_create

@@ -157,6 +157,11 @@ class HarnessBuilder:
             self._build_proto_harness(output_name, harness_src, cflags, ldflags, mode)
             return
 
+        # Parse @ldflags from harness source (shared with proto path)
+        _, _, extra_ldflags, _ = self._parse_harness_tags(harness_src)
+        if extra_ldflags:
+            ldflags = f"{ldflags} {extra_ldflags}"
+
         # Add harness directory to include path so #include "fuzz_common.h" works
         harness_dir = harness_src.parent
         cflags = f"-I{harness_dir} {cflags}"

@@ -16,6 +16,10 @@ null:apr_brigade.c
 null:apr_date.c
 null:sockopt.c
 shift-base:http_filters.c
+# Apache dispatches directive handlers through a union of function pointer
+# types in invoke_cmd(). The cast is by design (NO_ARGS, TAKE1, TAKE2, etc.
+# share one dispatch path) but triggers UBSan's -fsanitize=function check.
+function:config.c
 
 # Intentional unsigned wrapping in hash functions and string helpers.
 unsigned-integer-overflow:proxy_util.c
