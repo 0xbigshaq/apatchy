@@ -1,0 +1,7 @@
+Header set X-Frame-Options "DENY"
+Header set X-Content-Type-Options "nosniff"
+Header append Vary "Accept-Encoding"
+Header unset Server
+RequestHeader set X-Forwarded-Proto "https"
+SetEnvIf Request_URI "\.gif$" image_request
+SetEnvIf Remote_Addr "^192\.168\." local_net

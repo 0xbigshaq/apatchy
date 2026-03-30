@@ -1,0 +1,4 @@
+ErrorDocument 404 /errors/notfound.html
+ErrorDocument 403 "Access Forbidden"
+ErrorDocument 500 /errors/internal.html
+ErrorDocument 301 /redirect.php

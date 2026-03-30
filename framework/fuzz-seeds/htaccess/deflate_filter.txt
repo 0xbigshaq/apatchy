@@ -1,0 +1,5 @@
+SetOutputFilter DEFLATE
+SetEnvIfNoCase Request_URI \.(?:gif|jpe?g|png)$ no-gzip
+AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css application/javascript
+DeflateCompressionLevel 9
+DeflateBufferSize 8096

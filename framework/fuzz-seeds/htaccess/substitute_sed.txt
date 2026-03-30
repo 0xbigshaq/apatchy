@@ -1,0 +1,5 @@
+AddOutputFilterByType SUBSTITUTE text/html
+Substitute "s|http://example.com|https://example.com|ni"
+Substitute "s|<title>(.*?)</title>|<title>Modified: $1</title>|i"
+SubstituteMaxLineLength 10m
+SubstituteInheritBefore on

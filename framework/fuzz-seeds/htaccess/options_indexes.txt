@@ -1,0 +1,5 @@
+Options -Indexes +FollowSymLinks +MultiViews
+DirectoryIndex index.html index.php default.htm
+AddType application/x-httpd-php .php .phtml
+AddHandler cgi-script .cgi .pl
+AddCharset UTF-8 .html .css .js

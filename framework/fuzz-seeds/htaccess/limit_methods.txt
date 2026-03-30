@@ -1,0 +1,10 @@
+<Limit GET POST>
+    Require all granted
+</Limit>
+<LimitExcept GET POST HEAD>
+    Require all denied
+</LimitExcept>
+LimitRequestBody 10485760
+LimitRequestFields 50
+LimitRequestFieldSize 8190
+LimitRequestLine 8190

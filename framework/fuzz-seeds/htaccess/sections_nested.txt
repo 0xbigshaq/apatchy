@@ -1,0 +1,12 @@
+<If "%{REQUEST_URI} =~ m#^/admin#">
+    Require user admin
+    <If "%{REMOTE_ADDR} == '127.0.0.1'">
+        Require all granted
+    </If>
+</If>
+<FilesMatch "\.(gif|jpe?g|png)$">
+    Header set Cache-Control "max-age=604800"
+</FilesMatch>
+<Files ".ht*">
+    Require all denied
+</Files>

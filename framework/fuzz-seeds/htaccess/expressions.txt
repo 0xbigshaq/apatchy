@@ -1,0 +1,15 @@
+<If "%{HTTP_HOST} == 'example.com'">
+    Redirect "/" "https://www.example.com/"
+</If>
+<ElseIf "%{REQUEST_METHOD} in {'HEAD', 'OPTIONS'}">
+    Header set Allow "GET, POST, HEAD, OPTIONS"
+</ElseIf>
+<Else>
+    Require all denied
+</Else>
+<If "-f '%{DOCUMENT_ROOT}/%{REQUEST_URI}'">
+    Header set X-Static "true"
+</If>
+<If "%{QUERY_STRING} =~ /debug=1/">
+    SetEnv DEBUG 1
+</If>
