@@ -1,0 +1,5 @@
+# Syntax: method URL [coordinates]
+base aaaa
+rect   https://rect.com  0,0 250,250 "testing"
+circle http://circle.com/ 400,400 500,500 "some url aaa
+default https://default.com "works"

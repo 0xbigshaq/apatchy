@@ -179,6 +179,8 @@ class BuildManager:
             "--enable-session-crypto",
             # add http2 support
             "--enable-http2=static",
+            # enable imagemap
+            "--enable-imagemap",
         ]
 
         # When ASan is enabled, make apr_palloc() use direct malloc()

@@ -1,0 +1,9 @@
+syntax = "proto2";
+
+import "http_request.proto";
+
+message ImageMapReq {
+    required HttpRequest http_req = 1;
+    required string coord_x = 2;
+    required string coord_y = 3;
+}

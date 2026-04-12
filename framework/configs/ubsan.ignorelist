@@ -9,3 +9,9 @@ src:*/apr_tables.c
 src:*/apr_date.c
 src:*/sockopt.c
 src:*/mod_logio.c
+
+# Known heap-buffer-overflow in mod_substitute's set_pattern (off-by-one
+# in hand-rolled s/from/to/flags delimiter parsing). Confirmed bug,
+# suppressed to avoid flooding crashes while fuzzing other targets.
+[address]
+fun:set_pattern

@@ -18,6 +18,7 @@ Index
    architecture/building-linking
    architecture/fuzzing-engines
    architecture/harness-design
+   architecture/contributing-proto-harness
 
 .. toctree::
    :maxdepth: 1

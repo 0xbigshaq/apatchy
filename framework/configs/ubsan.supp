@@ -16,6 +16,11 @@ null:apr_brigade.c
 null:apr_date.c
 null:sockopt.c
 shift-base:http_filters.c
+
+# APR parse_network() left-shifts IP octets >= 128 into signed int.
+# Technically UB but intentional bit manipulation. APR bug, not httpd.
+shift-base:sockaddr.c
+
 # Apache dispatches directive handlers through a union of function pointer
 # types in invoke_cmd(). The cast is by design (NO_ARGS, TAKE1, TAKE2, etc.
 # share one dispatch path) but triggers UBSan's -fsanitize=function check.

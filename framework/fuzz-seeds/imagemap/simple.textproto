@@ -1,0 +1,7 @@
+http_req {
+  method: GET
+  uri: "/test.map"
+  headers { name: "Host" value: "localhost" }
+}
+coord_x: "155"
+coord_y: "100"
