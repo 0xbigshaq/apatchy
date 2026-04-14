@@ -43,3 +43,4 @@ std::string BuildHttp2Request(const Http2Request &req);
 // ImageMap
 class ImageMapReq;
 std::string BuildImageMapReq(const ImageMapReq &req);
+std::string BuildMapFile(const ImageMapReq &req);

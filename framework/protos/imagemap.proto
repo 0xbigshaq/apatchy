@@ -2,8 +2,19 @@ syntax = "proto2";
 
 import "http_request.proto";
 
+enum ImageMapDirective {
+    DIRECTIVE_BASE = 1;
+    DIRECTIVE_DEFAULT = 2;
+    DIRECTIVE_POLY = 3;
+    DIRECTIVE_CIRCLE = 4;
+    DIRECTIVE_RECT = 5;
+    DIRECTIVE_POINT = 6;
+}
+
 message ImageMapReq {
     required HttpRequest http_req = 1;
     required string coord_x = 2;
     required string coord_y = 3;
+    required ImageMapDirective map_directive_key = 4;
+    required string map_directive_value = 5;
 }
