@@ -10,7 +10,7 @@
   <ul align="center">
     <a href='https://pwner.gg/apatchy/'>
     <img src='https://img.shields.io/badge/docs-8A2BE2' />
-    <img src='https://img.shields.io/github/v/tag/0xbigshaq/apatchy?include_prereleases&logo=apache&logoColor=orange' /> 
+    <img src='https://img.shields.io/github/v/tag/0xbigshaq/apatchy?include_prereleases&logo=apache&logoColor=orange&color=blue' /> 
     </a>
   </ul>
 </div>
