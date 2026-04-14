@@ -1,9 +1,9 @@
 http_req {
-  method: GET
-  uri: "/test.map"
+  method: OPTIONS
+  uri: "/c"
   headers { name: "Host" value: "localhost" }
 }
 coord_x: "155"
 coord_y: "100"
-map_directive_key: DIRECTIVE_BASE
+map_directive_key: "base"
 map_directive_value: "/ 1,1"

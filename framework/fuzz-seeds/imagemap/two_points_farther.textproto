@@ -1,0 +1,9 @@
+http_req {
+  method: GET
+  uri: "/a"
+  headers { name: "Host" value: "localhost" }
+}
+coord_x: "15"
+coord_y: "15"
+map_directive_key: DIRECTIVE_POINT
+map_directive_value: "http://first.com/ 10,10\npoint http://second.com/ 1000,1000"

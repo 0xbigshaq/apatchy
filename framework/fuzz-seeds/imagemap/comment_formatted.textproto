@@ -1,0 +1,9 @@
+http_req {
+  method: GET
+  uri: "/test.map"
+  headers { name: "Host" value: "localhost" }
+}
+coord_x: ""
+coord_y: ""
+map_directive_key: DIRECTIVE_DEFAULT
+map_directive_value: "http://example.com/\n# this is a formatted comment"

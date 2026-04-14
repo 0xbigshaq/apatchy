@@ -1,0 +1,9 @@
+http_req {
+  method: GET
+  uri: "/a"
+  headers { name: "Host" value: "localhost" }
+}
+coord_x: "500"
+coord_y: "500"
+map_directive_key: DIRECTIVE_CIRCLE
+map_directive_value: "http://example.com/ 100,100 101,101"
