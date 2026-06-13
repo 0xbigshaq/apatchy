@@ -1,0 +1,36 @@
+syntax = "proto2";
+
+import "http_request.proto";
+
+// Target location -> selects which multibyte CharsetDefault (iconv "frompage"
+// on the request-body input path) the request hits. See configs/charset.conf.
+enum XlateTarget {
+  XT_JP  = 0; // /jp   -> CharsetDefault ISO-2022-JP
+  XT_JP2 = 1; // /jp2  -> CharsetDefault ISO-2022-JP-2
+  XT_KR  = 2; // /kr   -> CharsetDefault ISO-2022-KR
+  XT_CN  = 3; // /cn   -> CharsetDefault ISO-2022-CN-EXT
+}
+
+// Structure-aware input for mod_charset_lite's request-body translation path
+// (modules/filters/mod_charset_lite.c: xlate_in_filter -> xlate_brigade ->
+// finish_partial_char). The converter emits a *chunked* POST/PUT whose body is
+// split across HTTP chunks so the partial multibyte char straddles buckets:
+//   chunk 1 (primer) ends in an INCOMPLETE escape sequence  -> set_aside_partial_char (saved < 8)
+//   chunk 2 (driver) keeps iconv at APR_INCOMPLETE          -> finish_partial_char walks ctx->buf[saved++]
+// finish_partial_char has no `saved < sizeof(ctx->buf)` guard, so a long driver
+// overflows the 8-byte ctx->buf on the heap.
+message CharsetBody {
+  optional XlateTarget target = 1 [default = XT_JP];
+  optional bool use_put = 2 [default = false];
+  repeated Header extra_headers = 3;
+
+  // bucket 1: the incomplete-char "primer". Converter caps it to <= 7 bytes so
+  // set_aside_partial_char() stores it (saved < FATTEST_CHAR) rather than erroring.
+  // Defaults to a lone ESC (0x1b) -- the start of an ISO-2022 escape sequence.
+  optional bytes primer = 4;
+
+  // bucket 2: the run fed one byte at a time by finish_partial_char(). Repeated
+  // `driver_repeat` times to guarantee the write marches past ctx->buf[8].
+  optional bytes driver = 5;
+  optional uint32 driver_repeat = 6 [default = 256];
+}

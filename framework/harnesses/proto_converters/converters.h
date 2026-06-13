@@ -44,3 +44,8 @@ std::string BuildHttp2Request(const Http2Request &req);
 class ImageMapReq;
 std::string BuildImageMapReq(const ImageMapReq &req);
 std::string BuildMapFile(const ImageMapReq &req);
+
+// Charset: chunked request body that straddles buckets to drive
+// mod_charset_lite's finish_partial_char() partial-char heap overflow
+class CharsetBody;
+std::string BuildCharsetRequest(const CharsetBody &req);
