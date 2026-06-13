@@ -1,0 +1,4 @@
+target: XT_KR
+primer: "\033"
+driver: "\033"
+driver_repeat: 256

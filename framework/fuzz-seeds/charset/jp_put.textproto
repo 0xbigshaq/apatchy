@@ -1,0 +1,5 @@
+target: XT_JP
+use_put: true
+primer: "\033"
+driver: "\000\033"
+driver_repeat: 256

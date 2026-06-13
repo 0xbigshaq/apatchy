@@ -1,0 +1,4 @@
+target: XT_JP2
+primer: "\033"
+driver: "\000\033"
+driver_repeat: 256
